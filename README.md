@@ -1,0 +1,289 @@
+# KUNEY FLOWERS
+
+A virtual 3D flower shop and garden. Visitors walk through a still, sunlit
+room, gather stems from the displays, choose a colour palette and an occasion,
+and print an invoice for a seasonal florist's-choice bouquet. A door on the
+left leads through a white threshold space into a walled garden they can plant
+and tend, day by day.
+
+Everything is generated in code — the travertine, the plaster, the jade marble,
+every petal. There is not a single image asset in the repository, so the whole
+site is a few hundred kilobytes plus three.js from a CDN.
+
+---
+
+## Running it
+
+The app uses ES modules, so it has to be served over `http://` — opening
+`index.html` from the filesystem will not work.
+
+```bash
+npm start                 # → http://localhost:8080
+```
+
+That is a zero-dependency Node server (`serve.mjs`); `npm install` is not
+needed. Any static server will do just as well:
+
+```bash
+python3 -m http.server 8080
+npx serve .
+```
+
+Then:
+
+| Page | What it is |
+| --- | --- |
+| `/` | The shop, the garden and the landing page |
+| `/admin.html` | Owner panel — calendar stock, prices, copy, colours |
+| `/?admin=1` | The shop with in-place calendar editing turned on |
+
+Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
+any web host. There is no build step and no server-side code.
+
+```bash
+npm test                  # 67 assertions + a DOM audit, no browser needed
+```
+
+---
+
+## What a visitor does
+
+1. Lands on a full-screen still captured from the live 3D room.
+2. Presses **Enter KUNEY FLOWERS SHOP** and arrives at the entrance.
+3. Moves between camera stops — Next/Previous, arrow keys, the floor plan, or
+   by clicking a display directly.
+4. Clicks a flower once to move to it, again to gather a stem. The stem leaves
+   the display and drops into the glass vase on the long table.
+5. Opens the order panel: colour, occasion, size, delivery date.
+6. Reads the wall calendar to find a day with bouquets left.
+7. Prints the invoice — the printer on the island feeds the paper out, then the
+   black-and-white invoice opens with buttons to buy online, save the image, or
+   send it to WhatsApp.
+8. Walks through the plaster door into the garden, sows a seed, and comes back
+   tomorrow to water it.
+
+### The honest bit
+
+The stems a visitor gathers are a keepsake of the visit. The shop only commits
+to **colour** and **occasion**, both optional, plus a size and a date. That
+separation is enforced in `js/order.js`: `summary()` — the only thing the
+invoice can read — has no field for individual varieties, and a test asserts
+that a gathered variety name never reaches the WhatsApp message.
+
+---
+
+## Two modes
+
+**Immersive** — the 3D room, with minimal chrome.
+
+**Collection** — an HTML grid of every arrangement, filterable, fully
+keyboard-navigable. Switching modes keeps the space you were in, and choosing a
+piece from the grid takes you back to it in the room.
+
+Collection Mode is also the fallback: if WebGL is unavailable or the CDN is
+blocked, the visitor is offered the collection and the purchase link instead of
+a blank screen.
+
+---
+
+## Navigation
+
+| | Desktop | Phone / tablet |
+| --- | --- | --- |
+| Look around | drag | swipe |
+| Move | ← → arrow keys, Next/Previous, floor plan | large Next/Previous buttons, tap a flower |
+| Select | click a display | tap a display |
+| Gather | click again | tap again |
+| Free walking | **Explore Freely**, then arrows or WASD; Esc leaves | not offered — the stops are easier |
+| Close anything | Esc | the close button |
+
+Pointer lock is never used. The camera never rolls. In guided mode a drag pans
+within a limited cone and then relaxes back to the stop's framing, so it is not
+possible to get lost looking at a wall.
+
+---
+
+## The calendar
+
+A plaster board on the back wall, drawn to a canvas from live data, showing
+bouquets remaining per day. Navigating to it zooms in and opens an accessible
+HTML version with real buttons.
+
+Availability resolves in this order — the precedence is deliberate and tested:
+
+1. A day on the **closed** list is shut, whatever number is against it.
+2. Otherwise a **per-day number** wins, including on a weekly rest day, so you
+   can open one Sunday without opening them all.
+3. Then the **weekly rest day**.
+4. Then the standing **daily limit**.
+
+A day at zero shows `SOLD OUT`, struck through, and cannot be selected.
+
+### Editing it
+
+Open `/admin.html` → **Availability calendar**. Type a number into any day, or
+use **Apply to month** for a whole month. **Closed** shuts a day outright;
+**Default** removes the override.
+
+You can also edit from inside the shop: open `/?admin=1`, navigate to the
+calendar, and the owner controls appear under it.
+
+---
+
+## Publishing your changes
+
+Admin edits are saved in **your browser only**. To make them live for
+everybody:
+
+1. `/admin.html` → **Publish & backup** → **Download content.json**
+2. Replace `data/content.json` with that file
+3. Re-upload the site
+
+`data/content.json` is merged over the defaults in `js/content.js`, so it only
+needs to contain what you changed. It ships as `{ "version": 3 }` — an empty
+override.
+
+Resolution order, later winning: `js/content.js` → `data/content.json` →
+this browser's localStorage.
+
+---
+
+## Adding photographs
+
+The landing hero and the collection cards are rendered from the live 3D room at
+load, so the site looks finished with no assets. To use real photography
+instead, drop files into `images/` and set the path in the owner panel:
+
+- **Displays** → *Photo path* — overrides the card image, e.g. `images/peony-01.jpg`
+- **Wall photographs** — the three frames on the back wall
+
+Any frame left without a photo shows a plaster placeholder with its title.
+
+---
+
+## Layout of the room
+
+```
+                        back wall — frames + calendar
+   ┌──────────────────────────────────────────────────────┐
+   │  ▓ calendar        ░ ░ ░ frames                      │
+   │                                                       │
+   │   ╭─────╮                    🌳 olive tree            │
+   │   │steps│   ▮ column                     ▌ branches   │
+   │   ╰─────╯                                             │  shelves ▐
+   │                                                       │     (right
+   │              ══════════════════                       │      wall)
+   │              jade island · vase · printer             │
+   │  ← garden                                             │
+   │    door                        ▭ low table + stools   │
+   │                     ⚱ anthurium                       │
+   └──────────────────────── entrance ────────────────────┘
+```
+
+16 × 22 m, 6.2 m to the ceiling, with a 4.3 m circular oculus. The bright
+ellipse on the floor is a real cast shadow: a shadow-casting directional light
+shines through an actual hole in the ceiling geometry.
+
+The garden is 24 × 26 m — gravel paths, a stone path from the gate, six raised
+beds, a long basin, clipped hedging, olive trees in terracotta, a bench, and a
+plaster stele whose plaque links to the real shop.
+
+---
+
+## The garden game
+
+Growth is measured in *growth hours* that accumulate in real time, so a bloom
+genuinely takes about three days.
+
+- **Sow** — costs a seed; you can grow any variety the shop stocks.
+- **Water** — once per day per bed; adds 7 growth hours immediately.
+- **Neglect** — a bed dry for more than a day slows to a quarter speed. Nothing
+  ever dies.
+- **Cut** — a bloom can be kept, frees the bed, and leaves two seeds behind.
+- **Streak** — returning on consecutive days advances a seven-day reward cycle,
+  claimable once a day.
+
+Stages: Seed → Sprout → Bud → Opening → In Bloom, at 0/6/20/44/72 hours. All of
+those numbers are editable in the owner panel.
+
+---
+
+## Accessibility
+
+- Every interactive thing in the 3D space has an HTML equivalent — no
+  information is only available by clicking a mesh.
+- Long text never sits inside the canvas; it lives in overlays and side panels.
+- Panels are labelled dialogs, focus-managed, closed with Esc. The invoice is a
+  true modal with a focus trap.
+- The calendar is a `role="grid"` of real buttons with arrow-key movement and a
+  spoken label per day (`"Thursday 10 September 2026 — 4 bouquets remaining"`).
+- Camera moves, gathered stems and mode changes are announced through a polite
+  live region.
+- `prefers-reduced-motion` shortens camera moves, stops the hero drift, removes
+  the floating motes and skips the print animation.
+- A skip link jumps straight to Collection Mode.
+
+---
+
+## Files
+
+```
+index.html            landing + the 3D app
+admin.html            owner panel
+serve.mjs             zero-dependency static server
+data/content.json     published content overrides
+
+css/base.css          tokens, typography, buttons
+css/ui.css            landing, HUD, panels, invoice, collection
+css/admin.css         owner panel
+
+js/content.js         DEFAULT_CONTENT — every editable value
+js/store.js           persistence, content merge, availability rules
+js/order.js           order state; the colour/occasion boundary
+js/invoice.js         invoice as HTML, as a saveable PNG, as WhatsApp text
+js/calendar.js        wall board canvas + accessible HTML panel
+js/garden-game.js     growth, watering, streaks, rewards
+
+js/textures.js        procedural travertine, plaster, marble, soil, lawn
+js/geometry.js        rounded slabs, lathe forms, amphitheatre seating
+js/flowers.js         petal geometry and ten flower recipes
+js/scene-shop.js      the interior
+js/scene-corridor.js  the threshold between spaces
+js/scene-garden.js    the walled garden
+js/camera-rig.js      guided stops + free exploration
+js/app.js             renderer, routing, modes, all the wiring
+js/admin.js           schema-driven owner panel
+
+tests/run.mjs         geometry, flowers, availability, order, garden logic
+tests/scene.mjs       builds all three spaces and checks the layout
+tests/dom-stub.mjs    just enough canvas/DOM to run headless
+```
+
+`node_modules/` holds a small three.js shim so the tests can run in Node; the
+browser loads three.js from a CDN via the import map in `index.html` and never
+touches it.
+
+---
+
+## Notes on the build
+
+**Why procedural?** A photographed gallery needs photographs. This shop needed
+to exist before the photographs did, and to be re-tintable from an admin panel.
+Every surface is a canvas texture built from value-noise fbm, with normal maps
+derived from the height field — which is what makes travertine read as stone
+under raking light.
+
+**Why merged flower heads?** A peony is around fifty petals, each a parametric
+sheet. Merging every head into one buffer geometry keeps ninety stems in the
+room at a couple of hundred draw calls.
+
+**Why one Scene?** Spaces are `THREE.Group`s added and removed around a single
+scene and camera rig, so the shop stays in memory while you are in the garden
+and walking back is instant. The garden is built lazily on first visit, behind
+the threshold fade.
+
+**Testing without a browser.** three.js geometry, the growth model and the
+availability rules are all pure JavaScript. `tests/dom-stub.mjs` supplies a
+canvas real enough for the texture generators, which lets the whole room be
+built and inspected in Node — including raycasting from each camera stop to
+prove the doorways are genuinely cut through the walls.

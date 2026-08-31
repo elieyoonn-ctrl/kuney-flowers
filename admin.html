@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Owner Panel — KUNEY FLOWERS</title>
+<meta name="robots" content="noindex, nofollow" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/ui.css" />
+<link rel="stylesheet" href="css/admin.css" />
+</head>
+<body class="admin">
+
+<div class="admin-shell">
+
+  <nav class="admin-nav" aria-label="Sections">
+    <p class="admin-nav__mark">KUNEY</p>
+    <ul>
+      <li><a href="#sec-calendar">Availability calendar</a></li>
+      <li><a href="#sec-brand">Brand &amp; introduction</a></li>
+      <li><a href="#sec-contact">Contact &amp; links</a></li>
+      <li><a href="#sec-theme">Interior colours</a></li>
+      <li><a href="#sec-palette">Colour palette</a></li>
+      <li><a href="#sec-occasions">Occasions</a></li>
+      <li><a href="#sec-sizes">Sizes &amp; prices</a></li>
+      <li><a href="#sec-delivery">Delivery zones</a></li>
+      <li><a href="#sec-terms">Terms &amp; invoice text</a></li>
+      <li><a href="#sec-displays">Flower displays</a></li>
+      <li><a href="#sec-frames">Wall photographs</a></li>
+      <li><a href="#sec-garden">The garden</a></li>
+      <li><a href="#sec-io">Publish &amp; backup</a></li>
+    </ul>
+    <div class="admin-nav__foot">
+      <a href="index.html">← Back to the shop</a>
+      <a href="index.html?admin=1">Open the shop in owner mode</a>
+      <p>Edits are saved in this browser as you type. Publish from “Publish &amp; backup”.</p>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <header class="admin-head">
+      <p class="eyebrow">Owner Panel</p>
+      <h1>Everything you can change</h1>
+      <p>
+        Nothing here needs a developer. Numbers, names, prices, copy and colours all
+        take effect immediately in this browser — reload the shop in another tab to
+        see them. When you are happy, use <strong>Publish &amp; backup</strong> to
+        export a file that makes the changes live for every visitor.
+      </p>
+    </header>
+
+    <div class="admin-bar">
+      <button class="btn btn--ghost" data-admin="reload">Reload from saved</button>
+      <button class="btn btn--ghost" data-admin="reset">Reset everything</button>
+      <a class="btn btn--ghost" href="index.html?admin=1" target="_blank" rel="noopener">Preview shop</a>
+      <span class="admin-bar__status" data-role="status">Ready</span>
+    </div>
+
+    <div data-role="sections"></div>
+  </main>
+
+</div>
+
+<div id="toasts" aria-hidden="true"></div>
+<p class="visually-hidden" role="status" aria-live="polite" data-role="live"></p>
+
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

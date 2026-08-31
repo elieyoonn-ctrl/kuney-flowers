@@ -1,0 +1,477 @@
+/* Node-runnable checks for the parts of KUNEY FLOWERS that do not need WebGL:
+   geometry builders, the procedural flower factory, availability rules, order
+   state and the garden growth model. Run with `npm test`.
+
+   The browser-only surfaces (canvas textures, renderer, DOM) are stubbed just
+   enough to let the modules import. */
+
+import * as THREE from 'three';
+
+/* --- stubs ------------------------------------------------------------- */
+
+const memory = new Map();
+globalThis.localStorage = {
+  getItem: (k) => (memory.has(k) ? memory.get(k) : null),
+  setItem: (k, v) => memory.set(k, String(v)),
+  removeItem: (k) => memory.delete(k),
+  clear: () => memory.clear(),
+};
+globalThis.location = { search: '', pathname: '/', hash: '', origin: 'http://localhost' };
+globalThis.fetch = async () => ({ ok: false });
+
+/* --- harness ----------------------------------------------------------- */
+
+let pass = 0;
+const failures = [];
+
+function check(name, fn) {
+  try {
+    fn();
+    pass += 1;
+  } catch (err) {
+    failures.push(`${name}: ${err.message}`);
+  }
+}
+
+function assert(cond, message) {
+  if (!cond) throw new Error(message || 'assertion failed');
+}
+
+function near(a, b, tol, message) {
+  assert(Math.abs(a - b) <= tol, `${message}: ${a} vs ${b} (tol ${tol})`);
+}
+
+/** Every vertex finite, and no NaN normals — the usual procedural-mesh trap. */
+function sane(geo, label) {
+  const pos = geo.attributes.position;
+  assert(pos && pos.count > 0, `${label}: no positions`);
+  for (let i = 0; i < pos.count * 3; i += 1) {
+    assert(Number.isFinite(pos.array[i]), `${label}: non-finite position at ${i}`);
+  }
+  const nrm = geo.attributes.normal;
+  if (nrm) {
+    for (let i = 0; i < nrm.count * 3; i += 1) {
+      assert(Number.isFinite(nrm.array[i]), `${label}: non-finite normal at ${i}`);
+    }
+  }
+  geo.computeBoundingBox();
+  const b = geo.boundingBox;
+  assert(b && Number.isFinite(b.min.x) && Number.isFinite(b.max.y), `${label}: bad bounds`);
+  return b;
+}
+
+function size(geo) {
+  geo.computeBoundingBox();
+  const v = new THREE.Vector3();
+  geo.boundingBox.getSize(v);
+  return v;
+}
+
+/* --- geometry ---------------------------------------------------------- */
+
+const geom = await import('../js/geometry.js');
+
+check('slab: dimensions land on the requested axes', () => {
+  const s = geom.slab(2, 1, 0.25, { radius: 0.05, bevel: 0.03 });
+  const v = size(s);
+  near(v.x, 2, 0.02, 'slab width on X');
+  near(v.z, 1, 0.02, 'slab depth on Z');
+  near(v.y, 0.25, 0.02, 'slab thickness on Y');
+  sane(s, 'slab');
+});
+
+check('slab: raw wobble only perturbs the long edges', () => {
+  const plain = size(geom.slab(2, 1, 0.1));
+  const wobbly = size(geom.slab(2, 1, 0.1, { wobble: 0.03 }));
+  assert(wobbly.z > plain.z, 'wobble should widen the depth');
+  near(wobbly.x, plain.x, 0.001, 'wobble must not change width');
+  near(wobbly.y, plain.y, 0.001, 'wobble must not change thickness');
+});
+
+check('planeWithHole: hole is offset, slab stays centred', () => {
+  const g = geom.planeWithHole(16, 22, 2, { holeX: 0.4, holeZ: -1.2, segments: 32 });
+  const b = sane(g, 'ceiling');
+  near(b.min.x, -8, 0.05, 'ceiling left edge');
+  near(b.max.x, 8, 0.05, 'ceiling right edge');
+  near(b.min.z, -11, 0.05, 'ceiling back edge');
+  near(b.max.z, 11, 0.05, 'ceiling front edge');
+  // A vertex must exist on the hole rim at its offset centre.
+  const pos = g.attributes.position;
+  let found = false;
+  for (let i = 0; i < pos.count; i += 1) {
+    const dx = pos.getX(i) - 0.4;
+    const dz = pos.getZ(i) - (-1.2);
+    if (Math.abs(Math.hypot(dx, dz) - 2) < 0.05) { found = true; break; }
+  }
+  assert(found, 'no vertices on the offset hole rim');
+});
+
+check('turned: lathe profiles never invert', () => {
+  for (const [name, profile] of Object.entries(geom.VASE_PROFILES)) {
+    const g = geom.turned(profile, { segments: 24 });
+    sane(g, `vase ${name}`);
+  }
+  sane(geom.turned(geom.POT_PROFILE, { segments: 24 }), 'pot');
+});
+
+check('turned: smoothing keeps radii positive', () => {
+  // A deliberately sharp profile: the spline will overshoot without clamping.
+  const g = geom.turned([[0.001, 0], [0.4, 0], [0.02, 0.1], [0.4, 0.2], [0.001, 0.2]], { segments: 16 });
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const r = Math.hypot(pos.getX(i), pos.getZ(i));
+    assert(r >= -1e-6, `negative radius ${r}`);
+  }
+});
+
+check('amphitheatre: rises tier by tier', () => {
+  const g = geom.amphitheatre({ tiers: 4, innerRadius: 1.5, tread: 0.66, rise: 0.4 });
+  const b = sane(g, 'amphitheatre');
+  near(b.max.y, 4 * 0.4, 0.06, 'top tier height');
+  assert(b.max.x - b.min.x > 2, 'seating should be wide');
+});
+
+check('seeded: deterministic and in range', () => {
+  const a = geom.seeded(42);
+  const b = geom.seeded(42);
+  for (let i = 0; i < 50; i += 1) {
+    const x = a();
+    assert(x === b(), 'same seed must give the same sequence');
+    assert(x >= 0 && x <= 1, `out of range: ${x}`);
+  }
+});
+
+/* --- flowers ----------------------------------------------------------- */
+
+const flowers = await import('../js/flowers.js');
+
+check('every recipe builds a valid stem', () => {
+  for (const id of Object.keys(flowers.RECIPES)) {
+    const rng = geom.seeded(7);
+    const stem = flowers.createStem(id, '#e8c4c9', { rng });
+    assert(stem.children.length > 0, `${id}: empty group`);
+    let meshes = 0;
+    stem.traverse((o) => {
+      if (o.isMesh) {
+        meshes += 1;
+        sane(o.geometry, `${id}/${o.name || 'mesh'}`);
+      }
+    });
+    assert(meshes >= 1, `${id}: no meshes`);
+    assert(stem.userData.height > 0.1, `${id}: implausible height ${stem.userData.height}`);
+  }
+});
+
+check('openness changes the bloom without breaking it', () => {
+  for (const openness of [0, 0.25, 0.6, 1]) {
+    const stem = flowers.createStem('peony', '#eec3cb', { rng: geom.seeded(3), openness });
+    const head = stem.getObjectByName('head');
+    assert(head, `no head at openness ${openness}`);
+    sane(head.geometry, `peony head @${openness}`);
+  }
+  // A closed bud must be narrower than an open flower.
+  const closed = flowers.createStem('rose', '#fff', { rng: geom.seeded(9), openness: 0 });
+  const open = flowers.createStem('rose', '#fff', { rng: geom.seeded(9), openness: 1 });
+  const cw = size(closed.getObjectByName('head').geometry).x;
+  const ow = size(open.getObjectByName('head').geometry).x;
+  assert(ow > cw, `open rose (${ow.toFixed(3)}) should be wider than a bud (${cw.toFixed(3)})`);
+});
+
+check('merged heads carry every attribute needed to merge', () => {
+  const stem = flowers.createStem('dahlia', '#b83a3f', { rng: geom.seeded(1) });
+  const head = stem.getObjectByName('head');
+  for (const attr of ['position', 'normal', 'uv', 'color']) {
+    assert(head.geometry.attributes[attr], `head is missing ${attr}`);
+  }
+  assert(head.geometry.index, 'head should be indexed');
+});
+
+check('bunches fan out as separate pickable stems', () => {
+  const bunch = flowers.createBunch('ranunculus', '#f6c9a8', 9, { rng: geom.seeded(5) });
+  assert(bunch.children.length === 9, `expected 9 stems, got ${bunch.children.length}`);
+  const spreads = bunch.children.map((s) => Math.hypot(s.position.x, s.position.z));
+  assert(Math.max(...spreads) > 0, 'stems should be offset from the centre');
+  for (const s of bunch.children) {
+    assert(Number.isFinite(s.rotation.z) && Math.abs(s.rotation.z) < 1, 'implausible lean');
+  }
+});
+
+check('olive tree builds trunk and canopy', () => {
+  const tree = flowers.createOliveTree({ height: 3, rng: geom.seeded(11) });
+  const canopy = tree.getObjectByName('canopy');
+  assert(canopy, 'no canopy');
+  const b = sane(canopy.geometry, 'canopy');
+  assert(b.max.y > 1, 'canopy should sit above the trunk base');
+});
+
+/* --- availability ------------------------------------------------------ */
+
+const store = await import('../js/store.js');
+const content = await store.load();
+
+const key = (offset) => store.dateKey(store.addDays(new Date(), offset));
+
+check('dateKey is local time, not UTC', () => {
+  const d = new Date(2026, 0, 1, 23, 30);
+  assert(store.dateKey(d) === '2026-01-01', `got ${store.dateKey(d)}`);
+});
+
+check('lead time blocks today, allows tomorrow', () => {
+  store.saveContent({ calendar: { leadTimeDays: 1, dailyLimit: 8, closedWeekdays: [], closed: [], overrides: {} } });
+  assert(store.availability(key(0)).tooSoon, 'today should be too soon');
+  assert(store.availability(key(-3)).past, 'past days flagged');
+  assert(store.availability(key(2)).selectable, 'day after tomorrow should be open');
+});
+
+check('a day override wins over the daily limit', () => {
+  store.setDayLimit(key(3), 2);
+  assert(store.availability(key(3)).remaining === 2, 'override not applied');
+  store.setDayLimit(key(3), null);
+  assert(store.availability(key(3)).remaining === 8, 'override not cleared');
+});
+
+check('zero stock sells the day out and blocks selection', () => {
+  store.setDayLimit(key(4), 0);
+  const day = store.availability(key(4));
+  assert(day.soldOut, 'should be sold out');
+  assert(!day.selectable, 'sold-out days must not be selectable');
+});
+
+check('closing a day sells it out regardless of the number', () => {
+  store.setDayLimit(key(5), 9);
+  store.toggleClosed(key(5));
+  assert(store.availability(key(5)).soldOut, 'closed day should be sold out');
+  store.toggleClosed(key(5));
+  assert(store.availability(key(5)).selectable, 'reopening should restore it');
+});
+
+check('a rest weekday closes every matching day', () => {
+  const target = store.parseDateKey(key(6)).getDay();
+  store.saveContent({ calendar: { closedWeekdays: [target] } });
+  assert(store.availability(key(6)).soldOut, 'rest day should be sold out');
+  assert(store.availability(key(13)).soldOut, 'same weekday next week too');
+  store.saveContent({ calendar: { closedWeekdays: [] } });
+});
+
+check('orders decrement the remaining count', () => {
+  const k = key(7);
+  store.setDayLimit(k, 2);
+  store.recordOrder(k);
+  assert(store.availability(k).remaining === 1, 'first order not counted');
+  store.recordOrder(k);
+  assert(store.availability(k).soldOut, 'second order should sell it out');
+});
+
+check('firstAvailableDate skips blocked days', () => {
+  store.saveContent({ calendar: { dailyLimit: 4, leadTimeDays: 1, closed: [], overrides: {}, closedWeekdays: [] } });
+  memory.delete('kuney.orders.v3');
+  const first = store.firstAvailableDate();
+  assert(first, 'should find a date');
+  assert(store.availability(first).selectable, 'returned date must be selectable');
+  assert(first >= key(1), `too early: ${first}`);
+});
+
+check('monthAvailability covers the whole month', () => {
+  const m = store.monthAvailability(2026, 8);   // September 2026
+  assert(m.days.length === 30, `September should have 30 days, got ${m.days.length}`);
+  assert(m.firstWeekday === new Date(2026, 8, 1).getDay(), 'wrong first weekday');
+});
+
+check('content export/import round-trips', () => {
+  store.saveContent({ brand: { seasonName: 'Test Season' } });
+  const json = store.exportContent();
+  store.saveContent({ brand: { seasonName: 'Overwritten' } });
+  store.importContent(json);
+  assert(store.getContent().brand.seasonName === 'Test Season', 'round-trip lost the value');
+});
+
+/* --- order ------------------------------------------------------------- */
+
+const { Order } = await import('../js/order.js');
+
+check('order needs a size and an available date, nothing else', () => {
+  const o = new Order(store.getContent());
+  assert(!o.isReady, 'empty order must not be ready');
+  o.setSize('standard');
+  assert(o.missing().includes('a delivery date'), 'should still want a date');
+  o.setDate(store.firstAvailableDate());
+  assert(o.isReady, `should be ready, missing: ${o.missing()}`);
+  assert(o.colors.size === 0 && o.occasions.size === 0, 'colour and occasion stay optional');
+});
+
+check('a sold-out date is rejected', () => {
+  const o = new Order(store.getContent());
+  o.setSize('large');
+  const k = key(9);
+  store.setDayLimit(k, 0);
+  o.setDate(k);
+  assert(!o.isReady, 'sold-out date must block the order');
+  assert(o.missing().includes('an available delivery date'), `got: ${o.missing()}`);
+});
+
+check('gathering a stem adds its colour but never the variety', () => {
+  const o = new Order(store.getContent());
+  o.addPicked({ displayId: 'peony-blush', title: 'Peony, Blush', recipeId: 'peony', hex: '#eec3cb', colorId: 'blush-pink' });
+  o.addPicked({ displayId: 'peony-blush', title: 'Peony, Blush', recipeId: 'peony', hex: '#eec3cb', colorId: 'blush-pink' });
+  o.addPicked({ displayId: 'dahlia-red', title: 'Dahlia, Deep Red', recipeId: 'dahlia', hex: '#b83a3f', colorId: 'red' });
+  assert(o.colors.has('blush-pink') && o.colors.has('red'), 'picking should add colours');
+  const byColour = o.pickedByColor();
+  assert(byColour.find((c) => c.id === 'blush-pink').count === 2, 'colour count wrong');
+
+  o.setSize('standard');
+  o.setDate(store.firstAvailableDate());
+  o.confirm();
+  const s = o.summary();
+  assert(s.reference && /^KF-\d{6}-\d{4}$/.test(s.reference), `bad reference ${s.reference}`);
+  assert(s.gathered === 3, 'gathered count missing from summary');
+  // The critical invariant: the invoice must not enumerate floral materials.
+  assert(!('varieties' in s), 'summary must not carry varieties');
+  assert(s.total === 1599, `wrong total ${s.total}`);
+});
+
+check('confirm is refused until the order is ready', () => {
+  const o = new Order(store.getContent());
+  assert(o.confirm() === null, 'incomplete order should not confirm');
+  assert(o.reference === null, 'no reference before confirming');
+});
+
+check('invoice text carries the order but not the stems', async () => {
+  const invoice = await import('../js/invoice.js');
+  const o = new Order(store.getContent());
+  o.setSize('extravagant');
+  o.toggleColor('peach');
+  o.toggleOccasion('birthday');
+  o.setDate(store.firstAvailableDate());
+  o.addPicked({ displayId: 'x', title: 'Secret Variety', recipeId: 'rose', hex: '#fff', colorId: 'white' });
+  o.confirm();
+  const text = invoice.text(o.summary());
+  assert(text.includes('Extravagant'), 'size missing');
+  assert(text.includes('Peach'), 'colour missing');
+  assert(text.includes('Birthday'), 'occasion missing');
+  assert(!text.includes('Secret Variety'), 'variety leaked into the WhatsApp message');
+  const link = invoice.whatsappLink(o.summary(), store.getContent());
+  assert(link.startsWith('https://wa.me/85296124061?text='), `bad link: ${link.slice(0, 60)}`);
+});
+
+/* --- garden ------------------------------------------------------------ */
+
+const { GardenGame } = await import('../js/garden-game.js');
+
+/** Minimal stand-in for the 3D garden. */
+function fakeGarden() {
+  const calls = [];
+  return { calls, setPlant: (i, spec) => calls.push([i, spec]) };
+}
+
+check('garden starts with seeds, water and a claimable reward', () => {
+  memory.delete('kuney.garden.v3');
+  const g = new GardenGame(store.getContent(), fakeGarden());
+  assert(g.state.seeds > 0, 'should start with seeds');
+  assert(g.state.water === store.getContent().garden.waterPerDay, 'watering can should be full');
+  assert(g.state.streak === 1, `first visit should be streak 1, got ${g.state.streak}`);
+  assert(g.canClaim, 'first reward should be claimable');
+  const reward = g.claimDaily();
+  assert(reward, 'claim failed');
+  assert(!g.canClaim, 'reward should only be claimable once a day');
+});
+
+check('sowing costs a seed and reaches the scene', () => {
+  memory.delete('kuney.garden.v3');
+  const scene = fakeGarden();
+  const g = new GardenGame(store.getContent(), scene);
+  const before = g.state.seeds;
+  const variety = g.seedVarieties[0];
+  const res = g.plant(0, variety);
+  assert(res.ok, `plant failed: ${res.reason}`);
+  assert(g.state.seeds === before - 1, 'seed not spent');
+  assert(scene.calls.some(([i, spec]) => i === 0 && spec && spec.stage === 0), 'scene not told to show a seed');
+  assert(!g.plant(0, variety).ok, 'should refuse to plant twice in one bed');
+});
+
+check('growth advances with real time and stalls without water', () => {
+  memory.delete('kuney.garden.v3');
+  const g = new GardenGame(store.getContent(), fakeGarden());
+  g.plant(0, g.seedVarieties[0]);
+  const HOUR = 3600 * 1000;
+  const plot = g.state.plots[0];
+
+  // Pretend 10 hours passed with a recent watering.
+  plot.lastUpdate = Date.now() - 10 * HOUR;
+  plot.lastWatered = Date.now() - 2 * HOUR;
+  g.syncScene();
+  near(plot.growthHours, 10, 0.2, 'watered growth should run at full speed');
+  assert(g.stageOf(plot) === 1, `expected sprout, got stage ${g.stageOf(plot)}`);
+
+  // Now 10 hours with no water for two days.
+  plot.lastUpdate = Date.now() - 10 * HOUR;
+  plot.lastWatered = Date.now() - 48 * HOUR;
+  g.syncScene();
+  near(plot.growthHours, 10 + 2.5, 0.3, 'neglected growth should run at a quarter speed');
+});
+
+check('watering is once a day and boosts growth', () => {
+  memory.delete('kuney.garden.v3');
+  const g = new GardenGame(store.getContent(), fakeGarden());
+  g.plant(0, g.seedVarieties[0]);
+  const before = g.state.plots[0].growthHours;
+  const first = g.water(0);
+  assert(first.ok, `water failed: ${first.reason}`);
+  assert(g.state.plots[0].growthHours > before, 'watering should advance growth');
+  assert(!g.water(0).ok, 'second watering on the same day should be refused');
+});
+
+check('a bloom can be cut, returns seeds and frees the bed', () => {
+  memory.delete('kuney.garden.v3');
+  const g = new GardenGame(store.getContent(), fakeGarden());
+  g.plant(0, g.seedVarieties[0]);
+  assert(!g.harvest(0).ok, 'should not harvest a seed');
+  g.state.plots[0].growthHours = 999;
+  const seeds = g.state.seeds;
+  const res = g.harvest(0);
+  assert(res.ok, `harvest failed: ${res.reason}`);
+  assert(g.state.plots[0] === null, 'bed should be empty after cutting');
+  assert(g.state.bloomed === 1, 'bloom not counted');
+  assert(g.state.seeds === seeds + 2, 'cutting should leave seed behind');
+});
+
+check('streak counts consecutive days and resets after a gap', () => {
+  memory.delete('kuney.garden.v3');
+  new GardenGame(store.getContent(), fakeGarden());   // day 1
+  let saved = JSON.parse(memory.get('kuney.garden.v3'));
+  saved.lastVisit = store.dateKey(store.addDays(new Date(), -1));
+  memory.set('kuney.garden.v3', JSON.stringify(saved));
+  let g = new GardenGame(store.getContent(), fakeGarden());
+  assert(g.state.streak === 2, `returning the next day should be streak 2, got ${g.state.streak}`);
+
+  saved = JSON.parse(memory.get('kuney.garden.v3'));
+  saved.lastVisit = store.dateKey(store.addDays(new Date(), -5));
+  memory.set('kuney.garden.v3', JSON.stringify(saved));
+  g = new GardenGame(store.getContent(), fakeGarden());
+  assert(g.state.streak === 1, `a five-day gap should reset to 1, got ${g.state.streak}`);
+});
+
+check('growth stages map to visibly different plants', () => {
+  memory.delete('kuney.garden.v3');
+  const scene = fakeGarden();
+  const g = new GardenGame(store.getContent(), scene);
+  g.plant(0, g.seedVarieties[0]);
+  const seen = new Set();
+  for (const hours of [0, 8, 25, 50, 90]) {
+    g.state.plots[0].growthHours = hours;
+    g.state.plots[0].lastUpdate = Date.now();
+    g.state.plots[0].lastWatered = Date.now();
+    scene.calls.length = 0;
+    g.syncScene(0);
+    const spec = scene.calls[0][1];
+    seen.add(`${spec.stage}`);
+    assert(spec.scale > 0 && spec.scale <= 1.2, `implausible scale ${spec.scale}`);
+    assert(spec.openness >= 0 && spec.openness <= 1, `openness out of range ${spec.openness}`);
+  }
+  assert(seen.size === 5, `expected 5 distinct stages, saw ${[...seen].join(',')}`);
+});
+
+/* --- report ------------------------------------------------------------ */
+
+console.log(`\n  ${pass} passed, ${failures.length} failed\n`);
+for (const f of failures) console.log(`  ✗ ${f}`);
+process.exit(failures.length ? 1 : 0);

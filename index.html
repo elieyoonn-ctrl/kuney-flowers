@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>KUNEY FLOWERS — A Virtual Flower Shop</title>
+<meta name="description" content="Step inside KUNEY FLOWERS: a quiet, sunlit 3D flower shop and garden. Gather stems, choose a palette and an occasion, and let our florist compose a one-of-a-kind seasonal bouquet." />
+<meta name="theme-color" content="#f4f1ec" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="KUNEY FLOWERS — A Virtual Flower Shop" />
+<meta property="og:description" content="A quiet room for flowers. Walk through the shop, gather stems, and order a seasonal florist’s-choice bouquet." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/ui.css" />
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#/collection">Skip the 3D shop and view the collection</a>
+
+<div id="app">
+
+  <!-- The 3D space ---------------------------------------------------- -->
+  <div id="canvas-host" aria-hidden="true"></div>
+  <div id="veil"></div>
+
+  <!-- Minimal chrome inside the space --------------------------------- -->
+  <div id="hud" hidden>
+    <div class="hud__topbar">
+      <a class="hud__brand" href="#" data-action="to-landing" data-role="hud-brand">KUNEY</a>
+
+      <div class="hud__spacer"></div>
+
+      <div class="hud__group" role="group" aria-label="Viewing mode">
+        <button class="hud__tab" data-action="mode-immersive" aria-pressed="true">Immersive</button>
+        <button class="hud__tab" data-action="mode-collection" aria-pressed="false">Collection</button>
+      </div>
+
+      <div class="hud__group">
+        <button class="icon-btn" data-action="toggle-space" data-role="space-toggle"
+                aria-label="Go to the garden" title="Go to the garden">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V11m0 0c0-3 2-5 5-5 0 3-2 5-5 5Zm0 0c0-3-2-5-5-5 0 3 2 5 5 5Zm-8 10h16"/></svg>
+        </button>
+        <button class="icon-btn" data-action="open-order" data-role="order-btn"
+                aria-label="Your bouquet order" title="Your bouquet order">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7L6 8Zm3 0V6a3 3 0 0 1 6 0v2"/></svg>
+        </button>
+        <button class="icon-btn" data-action="toggle-explore" data-role="explore-btn"
+                aria-pressed="false" aria-label="Explore freely" title="Explore freely">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4m0 10v4M3 12h4m10 0h4"/><circle cx="12" cy="12" r="3.2"/></svg>
+        </button>
+        <button class="icon-btn" data-action="help" aria-label="How to move around" title="How to move around">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.3"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Guided navigation -->
+    <div class="hud__steps" role="group" aria-label="Move through the space">
+      <button class="hud__stepbtn" data-action="home" aria-label="Return to the entrance" title="Return to the entrance">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5M6.5 10v9h11v-9"/></svg>
+      </button>
+      <button class="hud__stepbtn" data-action="prev" aria-label="Previous stop">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="hud__stepnow">
+        <b data-role="stop-label">Entrance</b>
+        <span data-role="stop-index">1 / 1</span>
+      </div>
+      <button class="hud__stepbtn" data-action="next" aria-label="Next stop">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+      <button class="hud__stepbtn" data-action="close-focus" data-role="exit-focus" aria-label="Leave this view" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+
+    <p class="hud__hint" data-role="hint" hidden></p>
+
+    <!-- Miniature floor plan -->
+    <div class="hud__plan" data-role="plan">
+      <p data-role="plan-title">Floor plan</p>
+      <svg viewBox="0 0 100 130" role="group" aria-label="Miniature floor plan">
+        <g data-role="plan-shell"></g>
+        <g data-role="plan-dots"></g>
+        <g data-role="plan-you">
+          <path class="plan__cone" d="M0 0" />
+          <circle class="plan__you" r="2.6" cx="50" cy="110" />
+        </g>
+      </svg>
+    </div>
+
+    <!-- Gathered stems -->
+    <div class="hud__basket" data-role="basket" hidden>
+      <button class="basket__pill" data-action="open-order">
+        <span class="basket__swatches" data-role="basket-swatches"></span>
+        <span data-role="basket-count">0 stems gathered</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Flower / frame detail ------------------------------------------- -->
+  <aside class="panel" id="panel-detail" role="dialog" aria-modal="false"
+         aria-labelledby="detail-title" tabindex="-1" aria-hidden="true">
+    <div class="panel__head">
+      <div>
+        <p class="eyebrow" data-role="detail-kind">Display</p>
+        <h2 id="detail-title" data-role="detail-title">—</h2>
+      </div>
+      <button class="icon-btn" data-action="close-panel" aria-label="Close panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="panel__body" data-role="detail-body"></div>
+    <div class="panel__foot" data-role="detail-foot"></div>
+  </aside>
+
+  <!-- Order / invoice builder ----------------------------------------- -->
+  <aside class="panel panel--wide" id="panel-order" role="dialog" aria-modal="false"
+         aria-labelledby="order-title" tabindex="-1" aria-hidden="true">
+    <div class="panel__head">
+      <div>
+        <p class="eyebrow">Your bouquet</p>
+        <h2 id="order-title">Florist’s choice</h2>
+      </div>
+      <button class="icon-btn" data-action="close-panel" aria-label="Close panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="panel__body" data-role="order-body"></div>
+    <div class="panel__foot" data-role="order-foot"></div>
+  </aside>
+
+  <!-- Garden ---------------------------------------------------------- -->
+  <aside class="panel" id="panel-garden" role="dialog" aria-modal="false"
+         aria-labelledby="garden-title" tabindex="-1" aria-hidden="true">
+    <div class="panel__head">
+      <div>
+        <p class="eyebrow" data-role="garden-eyebrow">The Garden</p>
+        <h2 id="garden-title" data-role="garden-title">Tend your beds</h2>
+      </div>
+      <button class="icon-btn" data-action="close-panel" aria-label="Close panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="panel__body" data-role="garden-body"></div>
+    <div class="panel__foot" data-role="garden-foot"></div>
+  </aside>
+
+  <!-- Collection mode ------------------------------------------------- -->
+  <section id="collection" aria-labelledby="collection-title">
+    <div class="coll__head">
+      <div>
+        <p class="eyebrow">Collection Mode</p>
+        <h2 id="collection-title">The Season’s Flowers</h2>
+      </div>
+      <div class="hud__group">
+        <button class="hud__tab" data-action="mode-immersive">Immersive</button>
+        <button class="hud__tab" data-action="mode-collection" aria-pressed="true">Collection</button>
+      </div>
+    </div>
+    <div class="coll__filters" data-role="coll-filters"></div>
+    <div class="coll__grid" id="collection-grid" data-role="coll-grid" tabindex="-1"></div>
+  </section>
+
+  <!-- Invoice --------------------------------------------------------- -->
+  <div id="invoice-overlay" role="dialog" aria-modal="true" aria-labelledby="inv-title" tabindex="-1">
+    <div class="invoice-shell">
+      <div class="invoice-paper" data-role="invoice-paper"></div>
+      <div class="invoice-actions" data-role="invoice-actions"></div>
+    </div>
+  </div>
+
+  <!-- Announcements + toasts ------------------------------------------ -->
+  <div id="toasts" aria-hidden="true"></div>
+  <p class="visually-hidden" role="status" aria-live="polite" data-role="live"></p>
+
+  <!-- Landing --------------------------------------------------------- -->
+  <main id="landing">
+    <section class="hero">
+      <div class="hero__plate"></div>
+      <div class="hero__image" data-role="hero-image"></div>
+      <div class="hero__scrim"></div>
+      <div class="hero__motes" data-role="motes" aria-hidden="true"></div>
+
+      <div class="hero__inner">
+        <p class="eyebrow hero__eyebrow" data-role="hero-eyebrow">Hong Kong · Seasonal Florist</p>
+        <h1 class="hero__title">
+          <span data-role="hero-name">KUNEY</span>
+          <b data-role="hero-mark">FLOWERS</b>
+        </h1>
+        <p class="hero__season"><span data-role="hero-season">Late Summer Selection</span></p>
+        <p class="hero__intro" data-role="hero-intro"></p>
+        <div class="hero__actions">
+          <button class="btn" data-action="enter" data-role="enter-btn">Enter KUNEY FLOWERS SHOP</button>
+          <button class="btn btn--ghost" data-action="mode-collection" data-role="collection-btn">View Collection</button>
+          <button class="btn btn--ghost" data-action="enter-garden">Visit the Garden</button>
+        </div>
+      </div>
+
+      <p class="hero__scroll">Scroll</p>
+    </section>
+
+    <section class="featured" aria-labelledby="featured-title">
+      <div class="featured__head">
+        <div>
+          <p class="eyebrow">Featured</p>
+          <h2 id="featured-title">In the shop this week</h2>
+        </div>
+        <button class="btn btn--ghost" data-action="mode-collection">See all</button>
+      </div>
+      <div class="featured__grid" data-role="featured-grid"></div>
+    </section>
+
+    <section class="sizes" aria-labelledby="sizes-title">
+      <div>
+        <p class="eyebrow">Customised seasonal bouquets</p>
+        <h2 id="sizes-title">Three sizes</h2>
+      </div>
+      <div class="sizes__grid" data-role="sizes-grid"></div>
+      <p class="site-foot__note" data-role="sizes-note"></p>
+    </section>
+
+    <footer class="site-foot">
+      <div class="site-foot__grid">
+        <div>
+          <h4>Visit</h4>
+          <ul>
+            <li><button class="u-link" data-action="enter">Enter the shop</button></li>
+            <li><button class="u-link" data-action="enter-garden">The garden</button></li>
+            <li><button class="u-link" data-action="mode-collection">Collection</button></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Order</h4>
+          <ul data-role="foot-order"></ul>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <ul data-role="foot-contact"></ul>
+        </div>
+        <div>
+          <h4>Delivery</h4>
+          <ul data-role="foot-delivery"></ul>
+        </div>
+      </div>
+      <p class="site-foot__note" data-role="foot-note"></p>
+      <div class="site-foot__legal">
+        <span data-role="foot-copy"></span>
+        <span>All payment in HK dollars. Orders are final.</span>
+        <a href="admin.html">Owner panel</a>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Loader ---------------------------------------------------------- -->
+  <div id="loader">
+    <p class="loader__mark">KUNEY</p>
+    <div class="loader__bar"><span></span></div>
+    <p class="loader__status" data-role="loader-status">Arranging the room</p>
+  </div>
+
+</div>
+
+<noscript>
+  <div style="padding:3rem 1.5rem;max-width:60ch;margin:0 auto;font-family:Inter,Arial,sans-serif">
+    <h1 style="font-family:'Cormorant Garamond',Georgia,serif;font-weight:300">KUNEY FLOWERS</h1>
+    <p>The virtual shop needs JavaScript. To order a seasonal florist’s-choice bouquet,
+      visit <a href="https://kuneyflowers.com/products/let-us-create-something-unique-florist-choice">our shop</a>
+      or message us on WhatsApp at +852 9612 4061.</p>
+  </div>
+</noscript>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
