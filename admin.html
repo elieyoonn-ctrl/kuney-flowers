@@ -6,12 +6,55 @@
 <title>Owner Panel — KUNEY FLOWERS</title>
 <meta name="robots" content="noindex, nofollow" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/fonts.css" />
 
 <link rel="stylesheet" href="css/base.css" />
 <link rel="stylesheet" href="css/ui.css" />
+<!-- Diagnostics: installed before the modules so it catches load failures too.
+     Silent unless something actually breaks. -->
+<script>
+(function () {
+  var shown = false;
+  function show(title, detail) {
+    if (shown) return;
+    shown = true;
+    var box = document.createElement('div');
+    box.setAttribute('role', 'alert');
+    box.style.cssText = 'position:fixed;inset:0;z-index:99999;overflow:auto;padding:6vh 5vw;' +
+      'background:#f4f1ec;color:#2c2a26;font:14px/1.6 ui-monospace,Menlo,monospace';
+    var esc = function (s) {
+      return String(s).replace(/[&<>]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+      });
+    };
+    box.innerHTML =
+      '<h1 style="font:300 28px/1.2 Georgia,serif;margin:0 0 .4em">Something broke</h1>' +
+      '<p style="margin:0 0 1.4em;font:13px/1.6 -apple-system,sans-serif;color:#55514a">' +
+      'Copy this and send it over — it says exactly what went wrong.</p>' +
+      '<pre style="white-space:pre-wrap;word-break:break-word;background:#fff;padding:1.2em;' +
+      'border:1px solid rgba(44,42,38,.2);border-radius:3px;margin:0">' +
+      esc(title) + '\n\n' + esc(detail) + '\n\n' +
+      esc(navigator.userAgent) + '</pre>';
+    (document.body || document.documentElement).appendChild(box);
+  }
+
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT' && e.target.src) {
+      show('A script failed to load', e.target.src);
+      return;
+    }
+    if (e.target && e.target.tagName === 'LINK') return;   // a missing font is not fatal
+    var where = e.filename ? e.filename.replace(location.origin, '') + ':' + e.lineno + ':' + e.colno : '';
+    show(e.message || 'Script error', [where, e.error && e.error.stack].filter(Boolean).join('\n'));
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    show('Unhandled promise rejection', (r && (r.stack || r.message)) || String(r));
+  });
+})();
+</script>
+
 <link rel="stylesheet" href="css/admin.css" />
 </head>
 <body class="admin">

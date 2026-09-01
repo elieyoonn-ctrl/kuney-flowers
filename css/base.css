@@ -22,9 +22,13 @@
   --jade: #4f6b5a;
   --blush: #e8c4c9;
 
-  /* Type */
-  --serif: 'Cormorant Garamond', 'Iowan Old Style', 'Times New Roman', serif;
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  /* Type — self-hosted (css/fonts.css), with fallbacks that hold the design
+     if a font file ever fails: Iowan Old Style and Palatino are both quiet
+     editorial serifs already present on macOS and iOS. */
+  --serif: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino,
+    'Book Antiqua', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
+    Roboto, Helvetica, Arial, sans-serif;
   --mono: 'SFMono-Regular', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Rhythm */

@@ -20,13 +20,11 @@ export const DEFAULT_CONTENT = {
     logoText: 'KUNEY',
     logoMark: 'FLOWERS',
     tagline: 'Seasonal florist-choice bouquets, Hong Kong',
-    introTitle: 'A quiet room for flowers',
     intro:
-      'Step inside a still, sunlit space where the season’s finest stems are gathered and arranged by hand. Wander the shop, choose a palette and an occasion, then let our florist compose something singular for you.',
+      'Step inside a still, sunlit space where the season’s finest stems are gathered and arranged by hand. Wander the shop, choose a colour and an occasion, then let our florist compose something singular for you.',
     seasonLabel: 'Current Season',
     seasonName: 'Late Summer Selection',
     enterLabel: 'Enter KUNEY FLOWERS SHOP',
-    collectionLabel: 'View Collection',
     footerNote:
       'Bouquets are composed from the finest stems available on the day of arrangement. No two are alike.',
   },
@@ -136,7 +134,7 @@ export const DEFAULT_CONTENT = {
   /* --- Displays in the 3D shop ------------------------------------------
      `kind`  vase-table | shelf | floor | frame
      `slot`  index into the layout positions defined per kind in scene-shop.js
-     `photo` optional path, e.g. 'images/peony-01.jpg' (frames + collection)
+     `photo` optional path, e.g. 'images/peony-01.jpg' — overrides the auto still
      `bloom` procedural flower recipe id from js/flowers.js
      ---------------------------------------------------------------------- */
 

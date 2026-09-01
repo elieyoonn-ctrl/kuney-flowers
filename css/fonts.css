@@ -1,0 +1,65 @@
+/* ==========================================================================
+   Self-hosted typefaces.
+
+   These were loaded from Google Fonts until fonts.googleapis.com became
+   unreachable on a working machine and took the whole site down with it: a
+   <link rel="stylesheet"> is render-blocking, so Safari painted nothing at all
+   — correct page title, no script error, blank white page. A site that ships
+   no image assets should not be able to be blanked by a third party.
+
+   `font-display: swap` means text draws immediately in the fallback and
+   upgrades when the file lands, so even a slow disk cannot hide the page.
+   Latin subsets only; the weights here are the three each design actually uses.
+   ========================================================================== */
+
+/* Cormorant Garamond — exhibition titles */
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('../fonts/cormorant-300.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/cormorant-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../fonts/cormorant-500.woff2') format('woff2');
+}
+
+/* Inter — controls, descriptions and administration */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('../fonts/inter-300.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/inter-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../fonts/inter-500.woff2') format('woff2');
+}

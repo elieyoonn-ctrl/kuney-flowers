@@ -2,9 +2,8 @@
    KUNEY FLOWERS — application
 
    Owns the renderer, the one Scene, the camera rig, and the routing between
-   three spaces (shop → threshold → garden) and two modes (immersive and
-   collection). Everything visual lives in the scene modules; everything
-   persisted lives in store.js. This file is the wiring.
+   the three spaces: shop → threshold → garden. Everything visual lives in the
+   scene modules; everything persisted lives in store.js. This is the wiring.
    ========================================================================== */
 
 import * as THREE from 'three';
@@ -21,7 +20,6 @@ import { GardenGame } from './garden-game.js';
 /* --- tiny DOM helpers --------------------------------------------------- */
 
 const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const role = (name, root = document) => root.querySelector(`[data-role="${name}"]`);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -35,7 +33,6 @@ class App {
   constructor(content) {
     this.content = content;
     this.space = 'shop';
-    this.mode = 'immersive';
     this.stopIndex = 0;
     this.selectedId = null;
     this.entered = false;
@@ -56,7 +53,6 @@ class App {
       loaderStatus: role('loader-status'),
       landing: $('#landing'),
       hud: $('#hud'),
-      collection: $('#collection'),
       invoice: $('#invoice-overlay'),
       toasts: $('#toasts'),
       live: role('live'),
@@ -246,7 +242,6 @@ class App {
     this.camera.rotation.copy(savedRot);
 
     this.renderFeatured();
-    this.renderCollection();
   }
 
   /** Best available image for a display: owner photo, then captured still. */
@@ -265,7 +260,6 @@ class App {
     role('hero-season').textContent = `${c.brand.seasonLabel} — ${c.brand.seasonName}`;
     role('hero-intro').textContent = c.brand.intro;
     role('enter-btn').textContent = c.brand.enterLabel;
-    role('collection-btn').textContent = c.brand.collectionLabel;
     role('hud-brand').textContent = c.brand.logoText;
     document.title = `${c.brand.name} — A Virtual Flower Shop`;
 
@@ -340,60 +334,11 @@ class App {
     `;
   }
 
-  /* --- collection mode -------------------------------------------------- */
-
-  renderCollection() {
-    const grid = role('coll-grid');
-    const filters = role('coll-filters');
-    if (!grid) return;
-
-    const active = this.collectionFilter || 'all';
-    const kinds = [
-      { id: 'all', label: 'Everything' },
-      { id: 'vase-table', label: 'The long table' },
-      { id: 'shelf', label: 'Wall shelves' },
-      { id: 'floor', label: 'Floor & installations' },
-    ];
-    filters.innerHTML = kinds.map((k) => `
-      <button class="chip" data-action="filter" data-kind="${k.id}"
-              aria-pressed="${active === k.id}">${esc(k.label)}</button>
-    `).join('');
-
-    const list = this.content.displays.filter((d) => active === 'all' || d.kind === active);
-    grid.innerHTML = list.map((d) => this.cardHTML(d)).join('');
-  }
-
-  setMode(mode) {
-    if (mode === this.mode) return;
-    this.mode = mode;
-    const collection = mode === 'collection';
-    this.dom.collection.classList.toggle('is-open', collection);
-    this.dom.hud.hidden = collection || !this.entered;
-    if (collection) {
-      this.closePanels();
-      this.renderCollection();
-      $('#collection-grid')?.focus?.();
-      this.announce('Collection mode. The space you were in is kept.');
-    } else if (this.entered) {
-      this.announce('Immersive mode.');
-    } else {
-      // Coming out of collection without ever entering: show the landing.
-      this.dom.landing.hidden = false;
-    }
-    $$('[data-action="mode-immersive"]').forEach((b) => b.setAttribute('aria-pressed', String(!collection)));
-    $$('[data-action="mode-collection"]').forEach((b) => b.setAttribute('aria-pressed', String(collection)));
-    this.syncRoute();
-  }
-
   /* --- entering / leaving ---------------------------------------------- */
 
   async enter({ space = 'shop', displayId = null } = {}) {
     if (this.transitioning) return;
     this.dom.landing.hidden = true;
-    this.dom.collection.classList.remove('is-open');
-    this.mode = 'immersive';
-    $$('[data-action="mode-immersive"]').forEach((b) => b.setAttribute('aria-pressed', 'true'));
-    $$('[data-action="mode-collection"]').forEach((b) => b.setAttribute('aria-pressed', 'false'));
     this.entered = true;
     this.dom.hud.hidden = false;
 
@@ -416,8 +361,6 @@ class App {
     this.entered = false;
     this.dom.hud.hidden = true;
     this.closePanels();
-    this.dom.collection.classList.remove('is-open');
-    this.mode = 'immersive';
     this.dom.landing.hidden = false;
     this.dom.landing.scrollTop = 0;
     history.replaceState(null, '', location.pathname);
@@ -1311,8 +1254,7 @@ class App {
 
   syncRoute() {
     let hash = '#/';
-    if (this.mode === 'collection') hash = '#/collection';
-    else if (this.space === 'garden') hash = '#/garden';
+    if (this.space === 'garden') hash = '#/garden';
     else if (this.selectedId) hash = `#/shop/${this.selectedId}`;
     else if (this.entered) hash = '#/shop';
     else hash = '';
@@ -1328,11 +1270,7 @@ class App {
       return;
     }
     const [head, id] = parts;
-    if (head === 'collection') {
-      this.entered = true;
-      this.dom.landing.hidden = true;
-      this.setMode('collection');
-    } else if (head === 'garden') {
+    if (head === 'garden') {
       this.enter({ space: 'garden' });
     } else if (head === 'shop') {
       this.enter({ space: 'shop', displayId: id || null });
@@ -1395,13 +1333,6 @@ class App {
         e.preventDefault();
         this.toLanding();
         break;
-      case 'mode-immersive':
-        if (!this.entered) this.enter({ space: this.space === 'garden' ? 'garden' : 'shop' });
-        else this.setMode('immersive');
-        break;
-      case 'mode-collection':
-        this.setMode('collection');
-        break;
       case 'toggle-space':
         this.transitionTo(this.space === 'garden' ? 'shop' : 'garden');
         break;
@@ -1434,10 +1365,6 @@ class App {
         break;
       case 'open-order':
         this.openOrderPanel();
-        break;
-      case 'filter':
-        this.collectionFilter = el.dataset.kind;
-        this.renderCollection();
         break;
       case 'pick':
         this.pickStem(id);
@@ -1537,15 +1464,13 @@ class App {
       } else if (this.rig?.mode === 'free') {
         this.rig.setMode('guided');
         this.goToStopIndex(this.stopIndex, { announce: false });
-      } else if (this.mode === 'collection') {
-        this.setMode('immersive');
       } else if (this.selectedId) {
         this.clearSelection();
       }
       return;
     }
 
-    if (!this.entered || this.mode === 'collection' || this.transitioning) return;
+    if (!this.entered || this.transitioning) return;
     if (this.rig?.mode === 'free') return;   // the rig handles movement keys
 
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -1636,7 +1561,6 @@ class App {
             <li>Swipe anywhere to look around.</li>
             <li>Tap a flower to move to it; tap again to gather a stem.</li>
             <li>Use the large arrows at the bottom to move between stops.</li>
-            <li>Switch to Collection at the top for a simple list.</li>
           ` : `
             <li>Drag to look around.</li>
             <li>Click a flower to move to it; click again to gather a stem.</li>
@@ -1661,8 +1585,10 @@ class App {
 
 /**
  * If the 3D space cannot start — no WebGL, a blocked CDN, an old device — the
- * visitor should still be able to see the flowers and place an order. Fall back
- * to Collection Mode rather than leaving a blank screen.
+ * visitor should still land somewhere useful rather than on a blank screen.
+ * The landing page is plain HTML and carries the featured arrangements, the
+ * prices, the delivery zones and every way of getting in touch, so that is
+ * where they go.
  */
 function fallback(reason, err) {
   if (document.body.dataset.fallback) return;
@@ -1670,26 +1596,27 @@ function fallback(reason, err) {
   console.error('[KUNEY]', reason, err);
 
   const loader = $('#loader');
-  if (loader) {
-    const status = role('loader-status');
-    if (status) status.textContent = reason;
-    loader.querySelector('.loader__bar')?.remove();
+  if (!loader) return;
 
-    const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center';
-    actions.innerHTML = `
-      <button class="btn" data-fallback="collection">View the collection</button>
-      <a class="btn btn--ghost" href="https://kuneyflowers.com/products/let-us-create-something-unique-florist-choice"
-         target="_blank" rel="noopener">Order online</a>
-    `;
-    actions.querySelector('[data-fallback="collection"]').addEventListener('click', () => {
-      loader.hidden = true;
-      $('#landing').hidden = true;
-      $('#hud').hidden = true;
-      $('#collection').classList.add('is-open');
-    });
-    loader.appendChild(actions);
-  }
+  const status = role('loader-status');
+  if (status) status.textContent = reason;
+  loader.querySelector('.loader__bar')?.remove();
+
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center';
+  actions.innerHTML = `
+    <button class="btn" data-fallback="landing">See the flowers</button>
+    <a class="btn btn--ghost" href="https://kuneyflowers.com/products/let-us-create-something-unique-florist-choice"
+       target="_blank" rel="noopener">Order online</a>
+  `;
+  actions.querySelector('[data-fallback="landing"]').addEventListener('click', () => {
+    loader.hidden = true;
+    $('#hud').hidden = true;
+    const landing = $('#landing');
+    landing.hidden = false;
+    landing.scrollTop = 0;
+  });
+  loader.appendChild(actions);
 }
 
 async function main() {

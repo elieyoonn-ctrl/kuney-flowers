@@ -7,8 +7,9 @@ left leads through a white threshold space into a walled garden they can plant
 and tend, day by day.
 
 Everything is generated in code — the travertine, the plaster, the jade marble,
-every petal. There is not a single image asset in the repository, so the whole
-site is a few hundred kilobytes plus three.js from a CDN.
+every petal. There is not a single image asset in the repository; the only
+things shipped are two self-hosted typefaces, and the only thing fetched at
+runtime is three.js.
 
 ---
 
@@ -33,7 +34,7 @@ Then:
 
 | Page | What it is |
 | --- | --- |
-| `/` | The shop, the garden and the landing page |
+| `/` | The landing page, the shop and the garden |
 | `/admin.html` | Owner panel — calendar stock, prices, copy, colours |
 | `/?admin=1` | The shop with in-place calendar editing turned on |
 
@@ -81,20 +82,6 @@ survive is the note explaining it, which is checked too.
 Gathering deliberately does *not* set the chosen colour. It used to, which was
 harmless when several colours could be picked at once; with a single choice it
 would silently overwrite a deliberate one, and would contradict the promise.
-
----
-
-## Two modes
-
-**Immersive** — the 3D room, with minimal chrome.
-
-**Collection** — an HTML grid of every arrangement, filterable, fully
-keyboard-navigable. Switching modes keeps the space you were in, and choosing a
-piece from the grid takes you back to it in the room.
-
-Collection Mode is also the fallback: if WebGL is unavailable or the CDN is
-blocked, the visitor is offered the collection and the purchase link instead of
-a blank screen.
 
 ---
 
@@ -176,11 +163,11 @@ this browser's localStorage.
 
 ## Adding photographs
 
-The landing hero and the collection cards are rendered from the live 3D room at
+The landing hero and the featured cards are rendered from the live 3D room at
 load, so the site looks finished with no assets. To use real photography
 instead, drop files into `images/` and set the path in the owner panel:
 
-- **Displays** → *Photo path* — overrides the card image, e.g. `images/peony-01.jpg`
+- **Displays** → *Photo path* — overrides the featured card image, e.g. `images/peony-01.jpg`
 - **Wall photographs** — the three frames on the back wall
 
 Any frame left without a photo shows a plaster placeholder with its title.
@@ -247,7 +234,9 @@ those numbers are editable in the owner panel.
   live region.
 - `prefers-reduced-motion` shortens camera moves, stops the hero drift, removes
   the floating motes and skips the print animation.
-- A skip link jumps straight to Collection Mode.
+- The landing page is plain HTML — the featured arrangements, prices, delivery
+  zones and every way of contacting the shop are reachable without entering the
+  3D space at all. It is also where a visitor is sent if WebGL is unavailable.
 
 ---
 
@@ -260,7 +249,9 @@ serve.mjs             zero-dependency static server
 data/content.json     published content overrides
 
 css/base.css          tokens, typography, buttons
-css/ui.css            landing, HUD, panels, invoice, collection
+css/fonts.css         @font-face for the two self-hosted typefaces
+fonts/                Inter + Cormorant Garamond, latin subset, woff2
+css/ui.css            landing, HUD, panels, invoice
 css/admin.css         owner panel
 
 js/content.js         DEFAULT_CONTENT — every editable value
@@ -311,6 +302,14 @@ on a display vase, the printer, or off the counter.
 **Why merged flower heads?** A peony is around fifty petals, each a parametric
 sheet. Merging every head into one buffer geometry keeps ninety stems in the
 room at a couple of hundred draw calls.
+
+**Why self-hosted fonts?** They were loaded from Google Fonts until
+`fonts.googleapis.com` became unreachable on a working machine and took the
+whole site down with it. A `<link rel="stylesheet">` is render-blocking, so
+Safari painted nothing at all: correct page title, no script error, blank white
+page, every version. 144 KB of woff2 in `fonts/` removes the only third-party
+dependency that could do that. The one that remains — three.js from a CDN —
+fails visibly and falls back to the landing page.
 
 **Why one Scene?** Spaces are `THREE.Group`s added and removed around a single
 scene and camera rig, so the shop stays in memory while you are in the garden

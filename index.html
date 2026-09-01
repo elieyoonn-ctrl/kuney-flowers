@@ -11,12 +11,55 @@
 <meta property="og:title" content="KUNEY FLOWERS — A Virtual Flower Shop" />
 <meta property="og:description" content="A quiet room for flowers. Walk through the shop, gather stems, and order a seasonal florist’s-choice bouquet." />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/fonts.css" />
 
 <link rel="stylesheet" href="css/base.css" />
 <link rel="stylesheet" href="css/ui.css" />
+
+<!-- Diagnostics: installed before the modules so it catches load failures too.
+     Silent unless something actually breaks. -->
+<script>
+(function () {
+  var shown = false;
+  function show(title, detail) {
+    if (shown) return;
+    shown = true;
+    var box = document.createElement('div');
+    box.setAttribute('role', 'alert');
+    box.style.cssText = 'position:fixed;inset:0;z-index:99999;overflow:auto;padding:6vh 5vw;' +
+      'background:#f4f1ec;color:#2c2a26;font:14px/1.6 ui-monospace,Menlo,monospace';
+    var esc = function (s) {
+      return String(s).replace(/[&<>]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+      });
+    };
+    box.innerHTML =
+      '<h1 style="font:300 28px/1.2 Georgia,serif;margin:0 0 .4em">Something broke</h1>' +
+      '<p style="margin:0 0 1.4em;font:13px/1.6 -apple-system,sans-serif;color:#55514a">' +
+      'Copy this and send it over — it says exactly what went wrong.</p>' +
+      '<pre style="white-space:pre-wrap;word-break:break-word;background:#fff;padding:1.2em;' +
+      'border:1px solid rgba(44,42,38,.2);border-radius:3px;margin:0">' +
+      esc(title) + '\n\n' + esc(detail) + '\n\n' +
+      esc(navigator.userAgent) + '</pre>';
+    (document.body || document.documentElement).appendChild(box);
+  }
+
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT' && e.target.src) {
+      show('A script failed to load', e.target.src);
+      return;
+    }
+    if (e.target && e.target.tagName === 'LINK') return;   // a missing font is not fatal
+    var where = e.filename ? e.filename.replace(location.origin, '') + ':' + e.lineno + ':' + e.colno : '';
+    show(e.message || 'Script error', [where, e.error && e.error.stack].filter(Boolean).join('\n'));
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    show('Unhandled promise rejection', (r && (r.stack || r.message)) || String(r));
+  });
+})();
+</script>
 
 <script type="importmap">
 {
@@ -28,8 +71,6 @@
 </script>
 </head>
 <body>
-
-<a class="skip-link" href="#/collection">Skip the 3D shop and view the collection</a>
 
 <div id="app">
 
@@ -43,11 +84,6 @@
       <a class="hud__brand" href="#" data-action="to-landing" data-role="hud-brand">KUNEY</a>
 
       <div class="hud__spacer"></div>
-
-      <div class="hud__group" role="group" aria-label="Viewing mode">
-        <button class="hud__tab" data-action="mode-immersive" aria-pressed="true">Immersive</button>
-        <button class="hud__tab" data-action="mode-collection" aria-pressed="false">Collection</button>
-      </div>
 
       <div class="hud__group">
         <button class="icon-btn" data-action="toggle-space" data-role="space-toggle"
@@ -160,22 +196,6 @@
     <div class="panel__foot" data-role="garden-foot"></div>
   </aside>
 
-  <!-- Collection mode ------------------------------------------------- -->
-  <section id="collection" aria-labelledby="collection-title">
-    <div class="coll__head">
-      <div>
-        <p class="eyebrow">Collection Mode</p>
-        <h2 id="collection-title">The Season’s Flowers</h2>
-      </div>
-      <div class="hud__group">
-        <button class="hud__tab" data-action="mode-immersive">Immersive</button>
-        <button class="hud__tab" data-action="mode-collection" aria-pressed="true">Collection</button>
-      </div>
-    </div>
-    <div class="coll__filters" data-role="coll-filters"></div>
-    <div class="coll__grid" id="collection-grid" data-role="coll-grid" tabindex="-1"></div>
-  </section>
-
   <!-- Invoice --------------------------------------------------------- -->
   <div id="invoice-overlay" role="dialog" aria-modal="true" aria-labelledby="inv-title" tabindex="-1">
     <div class="invoice-shell">
@@ -206,7 +226,6 @@
         <p class="hero__intro" data-role="hero-intro"></p>
         <div class="hero__actions">
           <button class="btn" data-action="enter" data-role="enter-btn">Enter KUNEY FLOWERS SHOP</button>
-          <button class="btn btn--ghost" data-action="mode-collection" data-role="collection-btn">View Collection</button>
           <button class="btn btn--ghost" data-action="enter-garden">Visit the Garden</button>
         </div>
       </div>
@@ -220,7 +239,6 @@
           <p class="eyebrow">Featured</p>
           <h2 id="featured-title">In the shop this week</h2>
         </div>
-        <button class="btn btn--ghost" data-action="mode-collection">See all</button>
       </div>
       <div class="featured__grid" data-role="featured-grid"></div>
     </section>
@@ -241,7 +259,6 @@
           <ul>
             <li><button class="u-link" data-action="enter">Enter the shop</button></li>
             <li><button class="u-link" data-action="enter-garden">The garden</button></li>
-            <li><button class="u-link" data-action="mode-collection">Collection</button></li>
           </ul>
         </div>
         <div>
