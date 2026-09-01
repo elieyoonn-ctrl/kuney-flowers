@@ -113,12 +113,14 @@ class App {
     this.clock.start();
     this.loop();
 
+    window.KUNEY_REPORT?.('boot: complete');
     this.applyRoute(location.hash, { initial: true });
     window.addEventListener('hashchange', () => this.applyRoute(location.hash));
   }
 
   status(text) {
     if (this.dom.loaderStatus) this.dom.loaderStatus.textContent = text;
+    window.KUNEY_REPORT?.(`boot: ${text}`);
   }
 
   setupRenderer() {
@@ -1594,6 +1596,7 @@ function fallback(reason, err) {
   if (document.body.dataset.fallback) return;
   document.body.dataset.fallback = '1';
   console.error('[KUNEY]', reason, err);
+  window.KUNEY_REPORT?.(`FALLBACK ${reason} :: ${err?.stack || err}`);
 
   const loader = $('#loader');
   if (!loader) return;

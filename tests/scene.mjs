@@ -577,6 +577,23 @@ check('the shop animates without producing NaN', () => {
   }
 });
 
+check('the room still builds when the owner has emptied things out', () => {
+  // An owner can legitimately delete every frame or every display, and a stale
+  // saved snapshot can arrive missing them entirely. Neither may throw.
+  const bare = JSON.parse(JSON.stringify(content));
+  bare.frames = [];
+  bare.displays = [];
+  const empty = buildShop(bare);
+  assert(empty.root.children.length > 20, 'the room itself should still be there');
+  assert(empty.displays.size === 0, 'no displays expected');
+  assert(empty.stops.length >= 4, 'the entrance and fixed stops should remain');
+
+  delete bare.frames;
+  delete bare.displays;
+  const missing = buildShop(bare);
+  assert(missing.root.children.length > 20, 'missing arrays should not stop the build');
+});
+
 /* --- calendar board ----------------------------------------------------- */
 
 check('the wall board renders at a sane size', () => {

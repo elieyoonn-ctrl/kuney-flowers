@@ -341,6 +341,31 @@ check('monthAvailability covers the whole month', () => {
   assert(m.firstWeekday === new Date(2026, 8, 1).getDay(), 'wrong first weekday');
 });
 
+check('broken saved content is repaired, not fatal', () => {
+  // What actually happened in Safari: a saved snapshot was missing `frames`,
+  // and buildShop threw on frames.slice() — a blank page with no explanation.
+  const c = store.getContent();
+  delete c.frames;
+  c.displays = 'not an array';
+  c.calendar.overrides = null;
+  c.calendar.closed = undefined;
+  delete c.garden.rewards;
+
+  const repaired = store.repair(c);
+  assert(repaired.includes('frames'), 'frames not repaired');
+  assert(repaired.includes('displays'), 'displays not repaired');
+  assert(repaired.includes('calendar.overrides'), 'overrides not repaired');
+  assert(repaired.includes('calendar.closed'), 'closed not repaired');
+  assert(repaired.includes('garden.rewards'), 'rewards not repaired');
+
+  assert(Array.isArray(c.frames) && c.frames.length > 0, 'frames should hold defaults');
+  assert(Array.isArray(c.displays) && c.displays.length > 0, 'displays should hold defaults');
+  assert(Array.isArray(c.calendar.closed), 'closed should be an array');
+  assert(c.calendar.overrides && typeof c.calendar.overrides === 'object', 'overrides should be an object');
+  // Valid content must be left completely alone.
+  assert(store.repair(c).length === 0, 'a second pass should find nothing to fix');
+});
+
 check('content export/import round-trips', () => {
   store.saveContent({ brand: { seasonName: 'Test Season' } });
   const json = store.exportContent();

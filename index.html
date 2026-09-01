@@ -44,6 +44,14 @@
     (document.body || document.documentElement).appendChild(box);
   }
 
+  // Posts diagnostics to the dev server so a blank screen can be read from the
+  // terminal. Local only — in production the on-page report is what matters.
+  var isDev = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  window.KUNEY_REPORT = function (what) {
+    if (!isDev) return;
+    try { fetch('/__log', { method: 'POST', body: String(what) }); } catch (_) {}
+  };
+
   window.addEventListener('error', function (e) {
     if (e.target && e.target.tagName === 'SCRIPT' && e.target.src) {
       show('A script failed to load', e.target.src);
@@ -51,21 +59,29 @@
     }
     if (e.target && e.target.tagName === 'LINK') return;   // a missing font is not fatal
     var where = e.filename ? e.filename.replace(location.origin, '') + ':' + e.lineno + ':' + e.colno : '';
-    show(e.message || 'Script error', [where, e.error && e.error.stack].filter(Boolean).join('\n'));
+    var detail = [where, e.error && e.error.stack].filter(Boolean).join('\n');
+    window.KUNEY_REPORT('ERROR ' + (e.message || 'script error') + ' @ ' + detail);
+    show(e.message || 'Script error', detail);
   }, true);
 
   window.addEventListener('unhandledrejection', function (e) {
     var r = e.reason;
-    show('Unhandled promise rejection', (r && (r.stack || r.message)) || String(r));
+    var detail = (r && (r.stack || r.message)) || String(r);
+    window.KUNEY_REPORT('REJECTION ' + detail);
+    show('Unhandled promise rejection', detail);
   });
 })();
 </script>
 
+<!-- three.js is vendored into the repository rather than fetched from a CDN.
+     A blocked or slow CDN meant the shop simply never started, with nothing on
+     screen to explain why; the site is worth more when it cannot be taken down
+     by someone else's network. Update by replacing the two files in vendor/. -->
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.166.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.0/examples/jsm/"
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
   }
 }
 </script>

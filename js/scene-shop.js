@@ -919,7 +919,7 @@ export function buildShop(content, { renderer } = {}) {
     color: 0x8c9a82, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
   });
 
-  for (const display of content.displays) {
+  for (const display of content.displays || []) {
     const slotList = SLOTS[display.kind] || SLOTS['vase-table'];
     const slot = slotList[display.slot % slotList.length];
     if (!slot) continue;
@@ -1006,7 +1006,7 @@ export function buildShop(content, { renderer } = {}) {
 
   const frameMounts = [];
   const frameMat = plasterMaterial(theme, { color: 0xf7f4ee });
-  content.frames.slice(0, 3).forEach((f, i) => {
+  (content.frames || []).slice(0, 3).forEach((f, i) => {
     const w = 0.78;
     const h = 1.04;
     const x = 2.0 + i * 1.15;

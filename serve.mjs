@@ -2,7 +2,7 @@
 // The app uses ES modules, so it must be served over http:// (file:// is blocked
 // by the browser's module loader). Run: npm start
 import { createServer } from 'node:http';
-import { createReadStream } from 'node:fs';
+import { createReadStream, appendFileSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 
@@ -42,6 +42,18 @@ async function resolveFile(urlPath) {
 }
 
 createServer(async (req, res) => {
+  // Dev-only: the page posts any script error here so a blank screen can be
+  // diagnosed from the terminal instead of guessed at.
+  if (req.method === 'POST' && (req.url || '').startsWith('/__log')) {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    const line = `[${new Date().toISOString()}] ${body}\n`;
+    appendFileSync(join(ROOT, 'client-errors.log'), line);
+    process.stdout.write(`\n  CLIENT: ${body}\n`);
+    res.writeHead(204).end();
+    return;
+  }
+
   const file = await resolveFile(req.url || '/');
   if (!file) {
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });

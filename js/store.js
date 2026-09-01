@@ -117,8 +117,67 @@ export async function load() {
   if (local && local.version === CONTENT_VERSION) content = merge(content, local);
 
   content.version = CONTENT_VERSION;
+  repair(content);
   loaded = true;
   return content;
+}
+
+/**
+ * Make sure saved content still has the shape the app relies on.
+ *
+ * Content can arrive from a stale browser snapshot, a hand-edited
+ * content.json, or an export from an older build, and a single missing array
+ * is enough to throw while the room is being built — which shows up as a blank
+ * page with no obvious cause. Anything missing or of the wrong type falls back
+ * to the default for that key alone, so one bad value cannot cost the rest.
+ *
+ * @returns {string[]} the keys that had to be repaired
+ */
+export function repair(target = content) {
+  const repaired = [];
+  const expect = (key, kind) => {
+    const value = target[key];
+    const ok = kind === 'array' ? Array.isArray(value)
+      : value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (!ok) {
+      target[key] = clone(DEFAULT_CONTENT[key]);
+      repaired.push(key);
+    }
+  };
+
+  for (const key of ['palette', 'occasions', 'sizes', 'delivery', 'terms', 'displays', 'frames']) {
+    expect(key, 'array');
+  }
+  for (const key of ['brand', 'contact', 'theme', 'invoice', 'calendar', 'garden']) {
+    expect(key, 'object');
+  }
+
+  // The calendar's own collections are addressed by key, so they matter too.
+  const cal = target.calendar;
+  if (!Array.isArray(cal.closed)) { cal.closed = []; repaired.push('calendar.closed'); }
+  if (!Array.isArray(cal.closedWeekdays)) { cal.closedWeekdays = []; repaired.push('calendar.closedWeekdays'); }
+  if (!cal.overrides || typeof cal.overrides !== 'object' || Array.isArray(cal.overrides)) {
+    cal.overrides = {};
+    repaired.push('calendar.overrides');
+  }
+  if (!Array.isArray(target.garden.rewards)) {
+    target.garden.rewards = clone(DEFAULT_CONTENT.garden.rewards);
+    repaired.push('garden.rewards');
+  }
+  if (!Array.isArray(target.garden.stageHours)) {
+    target.garden.stageHours = clone(DEFAULT_CONTENT.garden.stageHours);
+    repaired.push('garden.stageHours');
+  }
+  if (!Array.isArray(target.garden.stageNames)) {
+    target.garden.stageNames = clone(DEFAULT_CONTENT.garden.stageNames);
+    repaired.push('garden.stageNames');
+  }
+
+  if (repaired.length) {
+    console.warn('[KUNEY] restored defaults for:', repaired.join(', '));
+    globalThis.KUNEY_REPORT?.(`content repaired: ${repaired.join(', ')}`);
+  }
+  return repaired;
 }
 
 export function getContent() {
@@ -186,6 +245,7 @@ export function importContent(json) {
   const parsed = JSON.parse(json);
   content = merge(clone(DEFAULT_CONTENT), parsed);
   content.version = CONTENT_VERSION;
+  repair(content);
   writeJSON(KEY_CONTENT, content);
   emit();
   return content;
