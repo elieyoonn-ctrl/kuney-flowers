@@ -1006,11 +1006,104 @@ export function buildShop(content, { renderer } = {}) {
 
   const frameMounts = [];
   const frameMat = plasterMaterial(theme, { color: 0xf7f4ee });
+  const textureLoader = new THREE.TextureLoader();
+
+  /**
+   * Hang a photograph in a frame.
+   *
+   * The frame opening is portrait; a photograph of any shape is fitted inside
+   * it rather than stretched to fill, by scaling the plane down on one axis
+   * once the real pixel dimensions are known. If the file is missing the
+   * placeholder simply stays, so a wrong path degrades quietly instead of
+   * leaving a black rectangle on the wall.
+   */
+  function loadFramePhoto(mount, path) {
+    textureLoader.load(
+      path,
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 8;
+        texture.generateMipmaps = true;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+
+        const { width: ow, height: oh } = mount.opening;
+        const img = texture.image;
+        const ratio = (img?.width || 1) / (img?.height || 1);
+        const openRatio = ow / oh;
+        // Fit inside the opening, preserving the photograph's proportions.
+        const scaleX = ratio > openRatio ? 1 : ratio / openRatio;
+        const scaleY = ratio > openRatio ? openRatio / ratio : 1;
+        mount.mesh.scale.set(scaleX, scaleY, 1);
+
+        mount.material.map?.dispose();
+        mount.material.map = texture;
+        mount.material.color.set(0xffffff);
+        mount.material.needsUpdate = true;
+        mount.photo = path;
+      },
+      undefined,
+      () => {
+        console.warn(`[KUNEY] frame photo not found: ${path} — keeping the placeholder`);
+        globalThis.KUNEY_REPORT?.(`frame photo missing: ${path}`);
+      }
+    );
+  }
+
+  /** A soft plaster card bearing the title, shown until a photo is supplied. */
+  function framePlaceholder(title, caption) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 682;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ece7de';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(44,42,38,0.16)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+
+    ctx.fillStyle = 'rgba(44,42,38,0.42)';
+    ctx.textAlign = 'center';
+    ctx.font = '300 40px "Cormorant Garamond", Georgia, serif';
+    // Wrap the title across at most three lines.
+    const words = String(title || '').split(/\s+/);
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > canvas.width - 120 && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+
+    let ty = canvas.height / 2 - (lines.length - 1) * 26;
+    for (const l of lines.slice(0, 3)) {
+      ctx.fillText(l, canvas.width / 2, ty);
+      ty += 52;
+    }
+
+    if (caption) {
+      ctx.fillStyle = 'rgba(44,42,38,0.3)';
+      ctx.font = '400 20px Inter, Helvetica, Arial, sans-serif';
+      ctx.fillText(String(caption), canvas.width / 2, ty + 18);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
   (content.frames || []).slice(0, 3).forEach((f, i) => {
     const w = 0.78;
     const h = 1.04;
     const x = 2.0 + i * 1.15;
     const y = 1.92;
+    const openW = w - 0.09;
+    const openH = h - 0.09;
 
     const surround = new THREE.Mesh(slab(w, h, 0.045, { radius: 0.02, bevel: 0.01 }), frameMat);
     surround.rotation.x = Math.PI / 2;
@@ -1019,15 +1112,26 @@ export function buildShop(content, { renderer } = {}) {
     root.add(surround);
 
     const imageMat = new THREE.MeshStandardMaterial({
-      color: 0xece7de, roughness: 0.86, metalness: 0,
+      color: 0xffffff,
+      map: framePlaceholder(f.title, f.caption),
+      roughness: 0.86,
+      metalness: 0,
     });
-    const image = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.09, h - 0.09), imageMat);
+    const image = new THREE.Mesh(new THREE.PlaneGeometry(openW, openH), imageMat);
     image.position.set(x, y, -halfD + 0.056);
     image.userData = { frameId: f.id, label: f.title };
     root.add(image);
     interactive.push(image);
 
-    frameMounts.push({ id: f.id, data: f, mesh: image, material: imageMat });
+    const mount = {
+      id: f.id,
+      data: f,
+      mesh: image,
+      material: imageMat,
+      opening: { width: openW, height: openH },
+    };
+    frameMounts.push(mount);
+    if (f.photo) loadFramePhoto(mount, f.photo);
 
     const focus = new THREE.Vector3(x, y, -halfD + 0.06);
     stops.push({
@@ -1185,6 +1289,27 @@ export function buildShop(content, { renderer } = {}) {
       new THREE.Vector3(-halfW + 0.5, 0, -halfD + 0.5),
       new THREE.Vector3(halfW - 0.5, ROOM.height, halfD - 0.5)
     ),
+
+    /**
+     * Hang (or replace) a photograph in one of the wall frames.
+     * @param {string} frameId  id from content.frames
+     * @param {string} path     e.g. 'images/wrapped-01.jpg'; empty restores the
+     *                          plaster placeholder
+     */
+    setFramePhoto(frameId, path) {
+      const mount = frameMounts.find((m) => m.id === frameId);
+      if (!mount) return false;
+      if (!path) {
+        mount.material.map?.dispose();
+        mount.material.map = framePlaceholder(mount.data.title, mount.data.caption);
+        mount.material.needsUpdate = true;
+        mount.mesh.scale.set(1, 1, 1);
+        mount.photo = '';
+        return true;
+      }
+      loadFramePhoto(mount, path);
+      return true;
+    },
 
     /** Fade the halo under one display up and everything else down. */
     highlight(displayId) {

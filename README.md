@@ -42,7 +42,7 @@ Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
 any web host. There is no build step and no server-side code.
 
 ```bash
-npm test                  # 87 assertions + a DOM audit, no browser needed
+npm test                  # 92 assertions + a DOM audit, no browser needed
 ```
 
 ---
@@ -164,13 +164,21 @@ this browser's localStorage.
 ## Adding photographs
 
 The landing hero and the featured cards are rendered from the live 3D room at
-load, so the site looks finished with no assets. To use real photography
-instead, drop files into `images/` and set the path in the owner panel:
+load, so the site looks finished with no assets at all.
 
-- **Displays** → *Photo path* — overrides the featured card image, e.g. `images/peony-01.jpg`
-- **Wall photographs** — the three frames on the back wall
+To hang real photographs: **drop the files into `images/`**, then open
+`/admin.html` and pick them from the dropdown — the list is read from the folder,
+so there is no path to type, and a preview tells you at once whether the file was
+found.
 
-Any frame left without a photo shows a plaster placeholder with its title.
+- **Wall photographs** — the three frames on the back wall of the shop
+- **Displays** → *Photograph* — replaces a featured card's automatic still
+
+A frame with no photograph shows a soft plaster card with its title on it, so the
+wall is never blank. Photographs of any shape are fitted inside the frame rather
+than stretched, so a landscape image keeps its proportions.
+
+See `images/README.md` for sizes and the publishing step.
 
 ---
 

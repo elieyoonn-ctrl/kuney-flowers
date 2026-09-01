@@ -3,7 +3,7 @@
 // by the browser's module loader). Run: npm start
 import { createServer } from 'node:http';
 import { createReadStream, appendFileSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { stat, readdir } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname);
@@ -51,6 +51,21 @@ createServer(async (req, res) => {
     appendFileSync(join(ROOT, 'client-errors.log'), line);
     process.stdout.write(`\n  CLIENT: ${body}\n`);
     res.writeHead(204).end();
+    return;
+  }
+
+  // Dev-only: lets the owner panel offer the files really present in images/
+  // instead of asking someone to type a path correctly.
+  if ((req.url || '').startsWith('/__images')) {
+    let names = [];
+    try {
+      names = (await readdir(join(ROOT, 'images')))
+        .filter((n) => /\.(jpe?g|png|webp|avif)$/i.test(n))
+        .sort()
+        .map((n) => `images/${n}`);
+    } catch { /* no folder yet */ }
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(names));
     return;
   }
 

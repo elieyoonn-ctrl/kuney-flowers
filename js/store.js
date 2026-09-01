@@ -36,6 +36,10 @@ function merge(base, patch) {
   for (const [key, value] of Object.entries(patch)) {
     if (value === undefined) continue;
     const prev = out[key];
+    // A null over a list or a settings object is corruption, not intent — an
+    // owner clearing a field leaves an empty string or an empty array. Letting
+    // it through once cost a blank shop, because the room is built from these.
+    if (value === null && prev !== null && typeof prev === 'object') continue;
     if (
       value && typeof value === 'object' && !Array.isArray(value) &&
       prev && typeof prev === 'object' && !Array.isArray(prev)
@@ -111,13 +115,18 @@ export async function load() {
     // Fine — running from a host without the file, or offline.
   }
 
+  // Defaults plus whatever the site ships is the trustworthy baseline.
+  let base = clone(DEFAULT_CONTENT);
+  if (shipped) base = merge(base, shipped);
+  repair(base, DEFAULT_CONTENT);
+
   const local = readJSON(KEY_CONTENT);
-  content = clone(DEFAULT_CONTENT);
-  if (shipped) content = merge(content, shipped);
-  if (local && local.version === CONTENT_VERSION) content = merge(content, local);
+  content = (local && local.version === CONTENT_VERSION) ? merge(base, local) : base;
 
   content.version = CONTENT_VERSION;
-  repair(content);
+  // Anything the browser copy broke falls back to the shipped value, not to the
+  // factory default, so a stale snapshot cannot silently undo a publish.
+  repair(content, base);
   loaded = true;
   return content;
 }
@@ -133,14 +142,15 @@ export async function load() {
  *
  * @returns {string[]} the keys that had to be repaired
  */
-export function repair(target = content) {
+export function repair(target = content, fallback = DEFAULT_CONTENT) {
   const repaired = [];
+  const restore = (key) => clone(fallback[key] ?? DEFAULT_CONTENT[key]);
   const expect = (key, kind) => {
     const value = target[key];
     const ok = kind === 'array' ? Array.isArray(value)
       : value !== null && typeof value === 'object' && !Array.isArray(value);
     if (!ok) {
-      target[key] = clone(DEFAULT_CONTENT[key]);
+      target[key] = restore(key);
       repaired.push(key);
     }
   };
@@ -161,15 +171,15 @@ export function repair(target = content) {
     repaired.push('calendar.overrides');
   }
   if (!Array.isArray(target.garden.rewards)) {
-    target.garden.rewards = clone(DEFAULT_CONTENT.garden.rewards);
+    target.garden.rewards = clone((fallback.garden || DEFAULT_CONTENT.garden).rewards);
     repaired.push('garden.rewards');
   }
   if (!Array.isArray(target.garden.stageHours)) {
-    target.garden.stageHours = clone(DEFAULT_CONTENT.garden.stageHours);
+    target.garden.stageHours = clone((fallback.garden || DEFAULT_CONTENT.garden).stageHours);
     repaired.push('garden.stageHours');
   }
   if (!Array.isArray(target.garden.stageNames)) {
-    target.garden.stageNames = clone(DEFAULT_CONTENT.garden.stageNames);
+    target.garden.stageNames = clone((fallback.garden || DEFAULT_CONTENT.garden).stageNames);
     repaired.push('garden.stageNames');
   }
 

@@ -1294,10 +1294,14 @@ class App {
       this.pickAt(e.clientX, e.clientY);
     });
 
-    store.subscribe(() => {
+    store.subscribe((next) => {
       this.refreshBoard();
       this.calendarPanel?.render();
       this.renderOrderPanel();
+      // Photo paths edited in the owner panel take effect on the wall at once.
+      for (const f of next.frames || []) {
+        this.scenes.shop?.setFramePhoto(f.id, f.photo || '');
+      }
     });
   }
 

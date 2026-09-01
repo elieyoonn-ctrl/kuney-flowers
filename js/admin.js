@@ -131,6 +131,53 @@ function linesField(content, { path, label, help, addLabel = 'Add line' }) {
     </div>`;
 }
 
+/* Files found in images/. Populated by the dev server if it offers a listing;
+   otherwise the path is simply typed by hand. */
+let imageFiles = [];
+
+async function loadImageList() {
+  try {
+    const res = await fetch('/__images');
+    if (res.ok) imageFiles = await res.json();
+  } catch { /* not running on the dev server */ }
+  return imageFiles;
+}
+
+/** Path field with a picker of the files actually present in images/. */
+function photoField(content, path, label, help) {
+  const value = getPath(content, path) ?? '';
+  const options = imageFiles.length
+    ? `<select data-photo-pick="${esc(path)}" style="margin-top:.35rem">
+         <option value="">— choose a file from images/ —</option>
+         ${imageFiles.map((f) => `
+           <option value="${esc(f)}" ${f === value ? 'selected' : ''}>${esc(f.replace('images/', ''))}</option>
+         `).join('')}
+       </select>`
+    : '';
+  return `
+    <label class="field field--wide">
+      <span>${esc(label)}${help ? ` — <em style="font-style:normal;opacity:.75">${esc(help)}</em>` : ''}</span>
+      <input type="text" data-path="${esc(path)}" value="${esc(value)}"
+             placeholder="images/your-photo.jpg" />
+      ${options}
+    </label>`;
+}
+
+/** Shows the picture, or says plainly that the path does not resolve. */
+function photoPreview(value) {
+  if (!value) {
+    return `<p class="cal__adminnote">No photograph yet — the frame shows a plaster
+            card with the title on it until you add one.</p>`;
+  }
+  return `
+    <div style="display:flex;gap:.8rem;align-items:flex-start">
+      <img src="${esc(value)}" alt="" style="max-width:150px;border-radius:3px;border:1px solid rgba(44,42,38,.15)"
+           onload="this.nextElementSibling.textContent='Found — this is what hangs on the wall.'"
+           onerror="this.style.display='none';this.nextElementSibling.textContent='Not found at that path. Check the file is in images/ and the spelling matches exactly.';this.nextElementSibling.style.color='#b83a3f'" />
+      <p class="cal__adminnote" style="margin:0">Checking…</p>
+    </div>`;
+}
+
 /* --- sections ----------------------------------------------------------- */
 
 function section(id, title, blurb, body) {
@@ -318,7 +365,7 @@ function displaysSection(c) {
             ${textField(c, { path: `displays.${i}.slot`, label: 'Position number', type: 'number', min: 0, max: 6, step: 1 })}
             ${selectField(c, { path: `displays.${i}.bloom`, label: 'Bloom shape', options: blooms })}
             ${selectField(c, { path: `displays.${i}.colorId`, label: 'Colour', options: colours })}
-            ${textField(c, { path: `displays.${i}.photo`, label: 'Photo path', help: 'optional', wide: true })}
+            ${photoField(c, `displays.${i}.photo`, 'Photograph', 'optional — overrides the automatic still')}
           </div>
           ${areaField(c, { path: `displays.${i}.note`, label: 'Description', rows: 3 })}
           ${linesField(c, { path: `displays.${i}.varieties`, label: 'Varieties listed', addLabel: 'Add a variety' })}
@@ -348,9 +395,9 @@ function framesSection(c) {
             ${textField(c, { path: `frames.${i}.id`, label: 'ID' })}
             ${textField(c, { path: `frames.${i}.title`, label: 'Title' })}
             ${textField(c, { path: `frames.${i}.caption`, label: 'Caption' })}
-            ${textField(c, { path: `frames.${i}.photo`, label: 'Photo path' })}
+            ${photoField(c, `frames.${i}.photo`, 'Photograph')}
           </div>
-          ${f.photo ? `<img src="${esc(f.photo)}" alt="" style="max-width:180px;border-radius:3px" />` : ''}
+          ${photoPreview(f.photo)}
         </div>`).join('')}
     </div>
     <button class="btn btn--ghost" style="justify-self:start" data-admin="add" data-list="frames">Add a frame</button>`);
@@ -638,6 +685,16 @@ class AdminPanel {
 
     this.host.addEventListener('change', (e) => {
       const el = e.target;
+      if (el.dataset.photoPick) {
+        // Picking a file fills the text field and saves in one step.
+        const field = this.host.querySelector(`input[data-path="${el.dataset.photoPick}"]`);
+        if (field) {
+          field.value = el.value;
+          this.writePath(field);
+          this.render();
+        }
+        return;
+      }
       if (el.dataset.path) this.writePath(el);
     });
 
@@ -804,6 +861,6 @@ class AdminPanel {
 
 /* --- start -------------------------------------------------------------- */
 
-store.load().then((content) => {
+Promise.all([store.load(), loadImageList()]).then(([content]) => {
   new AdminPanel(content);
 });

@@ -78,6 +78,20 @@ export function installDom() {
       if (tag === 'canvas') return new StubCanvas();
       return { style: {}, setAttribute() {}, appendChild() {}, addEventListener() {} };
     },
+    // three.js's ImageLoader reaches for this to make an <img>. Nothing ever
+    // loads here, which is the point: a frame must survive its photo not
+    // arriving.
+    createElementNS(_ns, tag) {
+      if (tag === 'canvas') return new StubCanvas();
+      return {
+        style: {},
+        setAttribute() {},
+        addEventListener() {},
+        removeEventListener() {},
+        width: 0,
+        height: 0,
+      };
+    },
     createDocumentFragment() { return { appendChild() {} }; },
     querySelector() { return null; },
     querySelectorAll() { return []; },

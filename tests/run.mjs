@@ -366,6 +366,31 @@ check('broken saved content is repaired, not fatal', () => {
   assert(store.repair(c).length === 0, 'a second pass should find nothing to fix');
 });
 
+check('a null in saved content cannot clobber a real value', () => {
+  // This is what actually blanked the shop: the browser copy had frames: null,
+  // which overwrote a perfectly good array, and buildShop threw on .slice().
+  const json = store.exportContent();
+  store.importContent(JSON.stringify({ ...JSON.parse(json), frames: null, palette: null }));
+  const c = store.getContent();
+  assert(Array.isArray(c.frames) && c.frames.length > 0, 'frames lost to a null');
+  assert(Array.isArray(c.palette) && c.palette.length > 0, 'palette lost to a null');
+  // Clearing to an empty array is a legitimate edit and must still be honoured.
+  store.importContent(JSON.stringify({ ...JSON.parse(json), frames: [] }));
+  assert(Array.isArray(store.getContent().frames) && store.getContent().frames.length === 0,
+    'an owner clearing every frame should be respected');
+  store.importContent(json);
+});
+
+check('repair falls back to shipped content, not the factory default', () => {
+  const c = store.getContent();
+  const shipped = JSON.parse(JSON.stringify(c));
+  shipped.frames = [{ id: 'published', title: 'Published frame', caption: '', photo: 'images/x.jpg' }];
+  c.frames = 'corrupt';
+  store.repair(c, shipped);
+  assert(c.frames.length === 1 && c.frames[0].id === 'published',
+    'a corrupt browser copy should fall back to what the site publishes');
+});
+
 check('content export/import round-trips', () => {
   store.saveContent({ brand: { seasonName: 'Test Season' } });
   const json = store.exportContent();

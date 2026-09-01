@@ -577,6 +577,27 @@ check('the shop animates without producing NaN', () => {
   }
 });
 
+check('frames start with a titled placeholder and accept a photo', () => {
+  const withPhoto = JSON.parse(JSON.stringify(content));
+  withPhoto.frames = [
+    { id: 'a', title: 'No photo yet', caption: 'plaster', photo: '' },
+    { id: 'b', title: 'Has a photo', caption: 'hung', photo: 'images/whatever.jpg' },
+  ];
+  const s2 = buildShop(withPhoto);
+  assert(s2.frames.length === 2, `expected 2 frames, got ${s2.frames.length}`);
+
+  for (const mount of s2.frames) {
+    // Every frame shows something from the start — never a bare black plane.
+    assert(mount.material.map, `${mount.id}: no image on the frame`);
+    assert(mount.opening.width > 0 && mount.opening.height > 0, `${mount.id}: no opening size`);
+  }
+  // A photo path must be swappable at runtime for the owner panel to be live.
+  assert(typeof s2.setFramePhoto === 'function', 'setFramePhoto missing');
+  assert(s2.setFramePhoto('a', '') === true, 'clearing a photo should succeed');
+  assert(s2.setFramePhoto('nope', 'x.jpg') === false, 'unknown frame should report failure');
+  assert(s2.frames[0].material.map, 'clearing should restore the placeholder');
+});
+
 check('the room still builds when the owner has emptied things out', () => {
   // An owner can legitimately delete every frame or every display, and a stale
   // saved snapshot can arrive missing them entirely. Neither may throw.
