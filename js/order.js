@@ -2,10 +2,14 @@
    Order state.
 
    The important distinction, kept honest in one place: the stems a visitor
-   gathers in the virtual shop are a keepsake of the visit. The only things
-   this shop can actually cater for are COLOUR and OCCASION, both optional,
-   plus a SIZE and a DELIVERY DATE. Everything the invoice prints comes from
-   `summary()`, so the game layer can never leak into the real order.
+   gathers in the virtual shop are a keepsake of the visit and set nothing.
+   The only things this shop caters for are ONE COLOUR and ONE OCCASION, both
+   optional, plus a SIZE and a DELIVERY DATE.
+
+   `summary()` is the only thing the invoice may read, and it deliberately
+   carries no trace of the gathered stems — not the varieties, not the colours,
+   not even the count. The game layer cannot leak into the real order because
+   there is nothing there to leak.
    ========================================================================== */
 
 import { colorById } from './content.js';
@@ -33,18 +37,32 @@ export class Order {
     for (const fn of this._listeners) fn(this, reason);
   }
 
-  /* --- the two things we cater for -------------------------------------- */
+  /* --- the two things we cater for --------------------------------------
+     One colour and one occasion, each optional. Held in Sets so the invoice
+     and summary keep a stable shape, but never more than one member: pressing
+     a different chip replaces the choice, pressing the same one clears it.
+     ---------------------------------------------------------------------- */
 
-  toggleColor(id) {
-    if (this.colors.has(id)) this.colors.delete(id);
-    else this.colors.add(id);
+  selectColor(id) {
+    const already = this.colors.has(id);
+    this.colors.clear();
+    if (!already) this.colors.add(id);
     this._emit('colors');
   }
 
-  toggleOccasion(id) {
-    if (this.occasions.has(id)) this.occasions.delete(id);
-    else this.occasions.add(id);
+  selectOccasion(id) {
+    const already = this.occasions.has(id);
+    this.occasions.clear();
+    if (!already) this.occasions.add(id);
     this._emit('occasions');
+  }
+
+  get colorId() {
+    return [...this.colors][0] ?? null;
+  }
+
+  get occasionId() {
+    return [...this.occasions][0] ?? null;
   }
 
   setSize(id) {
@@ -59,11 +77,17 @@ export class Order {
 
   /* --- the game layer --------------------------------------------------- */
 
-  /** Gather a stem. Picking implies an interest in that colour, so it is
-   *  added to the palette selection — but the stem itself is never ordered. */
+  /**
+   * Gather a stem — a keepsake of the visit, nothing more.
+   *
+   * This deliberately does not touch the chosen colour. It used to add the
+   * stem's colour to the palette, which was harmless when several colours
+   * could be chosen at once; with a single choice it would silently overwrite
+   * a deliberate one, and it would contradict the promise that gathering sets
+   * nothing about the real bouquet.
+   */
   addPicked({ displayId, title, recipeId, hex, colorId }) {
     this.picked.push({ displayId, title, recipeId, hex, colorId, at: Date.now() });
-    if (colorId) this.colors.add(colorId);
     this._emit('picked');
     return this.picked.length;
   }
@@ -79,23 +103,13 @@ export class Order {
     this._emit('picked');
   }
 
-  /** Counts per colour of what was gathered, in palette order. */
-  pickedByColor() {
-    const counts = new Map();
-    for (const p of this.picked) {
-      counts.set(p.colorId, (counts.get(p.colorId) || 0) + 1);
-    }
-    return this.content.palette
-      .filter((c) => counts.has(c.id))
-      .map((c) => ({ ...c, count: counts.get(c.id) }));
-  }
-
-  pickedByVariety() {
-    const counts = new Map();
-    for (const p of this.picked) {
-      counts.set(p.title, (counts.get(p.title) || 0) + 1);
-    }
-    return [...counts.entries()].map(([title, count]) => ({ title, count }));
+  /**
+   * The distinct colours gathered, in palette order — used only for the little
+   * swatches on the in-shop keepsake counter. Never reaches the invoice.
+   */
+  pickedColors() {
+    const seen = new Set(this.picked.map((p) => p.colorId));
+    return this.content.palette.filter((c) => seen.has(c.id));
   }
 
   /* --- validity --------------------------------------------------------- */
@@ -172,9 +186,7 @@ export class Order {
       occasions,
       dateKey: this.dateKey,
       dateLong: this.dateKey ? store.formatLongDate(this.dateKey) : null,
-      gathered: this.picked.length,
-      gatheredByColor: this.pickedByColor(),
-      gatheredByVariety: this.pickedByVariety(),
+      // No gathered-stem data of any kind: see the note at the top of this file.
       delivery: content.delivery,
       terms: content.terms,
       note: content.invoice.note,

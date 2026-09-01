@@ -1,7 +1,7 @@
 # KUNEY FLOWERS
 
 A virtual 3D flower shop and garden. Visitors walk through a still, sunlit
-room, gather stems from the displays, choose a colour palette and an occasion,
+room, gather stems from the displays, choose a colour and an occasion,
 and print an invoice for a seasonal florist's-choice bouquet. A door on the
 left leads through a white threshold space into a walled garden they can plant
 and tend, day by day.
@@ -41,7 +41,7 @@ Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
 any web host. There is no build step and no server-side code.
 
 ```bash
-npm test                  # 83 assertions + a DOM audit, no browser needed
+npm test                  # 87 assertions + a DOM audit, no browser needed
 ```
 
 ---
@@ -53,7 +53,8 @@ npm test                  # 83 assertions + a DOM audit, no browser needed
 3. Moves between camera stops — Next/Previous, arrow keys, the floor plan, or
    by clicking a display directly.
 4. Clicks a flower once to move to it, again to gather a stem. The stem leaves
-   the display and drops into the glass vase on the long table.
+   the display and drops into the glass vase on the long table. This is play —
+   it changes nothing about the order.
 5. Opens the order panel: colour, occasion, size, delivery date.
 6. Reads the wall calendar to find a day with bouquets left.
 7. Confirms, and the bouquet is made: the gathered stems lift out of the water,
@@ -66,11 +67,20 @@ npm test                  # 83 assertions + a DOM audit, no browser needed
 
 ### The honest bit
 
-The stems a visitor gathers are a keepsake of the visit. The shop only commits
-to **colour** and **occasion**, both optional, plus a size and a date. That
-separation is enforced in `js/order.js`: `summary()` — the only thing the
-invoice can read — has no field for individual varieties, and a test asserts
-that a gathered variety name never reaches the WhatsApp message.
+The stems a visitor gathers are a keepsake of the visit and set nothing. The
+shop commits to **one colour** and **one occasion**, both optional, plus a size
+and a date.
+
+That separation is enforced rather than described. `summary()` in `js/order.js`
+is the only thing the invoice may read, and it carries no trace of the gathered
+stems — not the varieties, not their colours, not even the count. Tests
+serialise it and assert that no gathered variety or colour appears anywhere in
+it, and that none reaches the printed invoice or the WhatsApp message. What does
+survive is the note explaining it, which is checked too.
+
+Gathering deliberately does *not* set the chosen colour. It used to, which was
+harmless when several colours could be picked at once; with a single choice it
+would silently overwrite a deliberate one, and would contradict the promise.
 
 ---
 

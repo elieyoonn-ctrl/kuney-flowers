@@ -949,13 +949,6 @@
   flex: none;
 }
 
-.chip b {
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.65;
-  font-size: 0.72rem;
-}
-
 .chip--size {
   flex-direction: column;
   align-items: flex-start;
@@ -1381,17 +1374,6 @@
   margin: 0;
   text-align: right;
   font-size: 0.94rem;
-}
-
-.inv__row--soft dd {
-  font-size: 0.82rem;
-  color: rgba(0, 0, 0, 0.7);
-}
-
-.inv__aside {
-  display: block;
-  font-size: 0.68rem;
-  color: rgba(0, 0, 0, 0.45);
 }
 
 .inv__total {

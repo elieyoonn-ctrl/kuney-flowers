@@ -111,7 +111,7 @@ export const DEFAULT_CONTENT = {
     note:
       'Our florist will select only the finest seasonal flowers and create a one-of-a-kind bouquet. Out of respect for creative space, we do not list the individual floral materials selected. We respond to delivery enquiries only.',
     gameNote:
-      'The stems you gathered in the virtual shop are a keepsake of your visit. They guide the mood of your bouquet but do not set the variety or the count of the flowers delivered.',
+      'The stems you gathered in the virtual shop are a keepsake of your visit only. They do not set the variety or the count of the flowers in the bouquet delivered.',
     payLabel: 'Purchase online',
     whatsappLabel: 'Send to WhatsApp',
     saveLabel: 'Save invoice image',

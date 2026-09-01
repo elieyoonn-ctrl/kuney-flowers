@@ -767,7 +767,7 @@ class App {
       ` : `
         <div class="section">
           <h3>Gather <em>${remaining} stem${remaining === 1 ? '' : 's'} in the vase</em></h3>
-          <p class="prose">Take as many as you like — it costs nothing and changes nothing about your order. We only cater for colour and occasion; gathering ${esc(entry.colour.label.toLowerCase())} simply adds it to your palette.</p>
+          <p class="prose">Take as many as you like — the stems you gather are a keepsake of your visit and do not set the variety or the count of the bouquet delivered. Choose a colour and an occasion in your order if you would like to guide us.</p>
         </div>
       `}
     `;
@@ -843,7 +843,7 @@ class App {
     });
 
     this.toast(`${entry.data.title} — gathered. ${total} stem${total === 1 ? '' : 's'} in your vase.`);
-    this.announce(`Gathered ${entry.data.title}. ${entry.colour.label} added to your palette.`);
+    this.announce(`Gathered ${entry.data.title}. A keepsake of your visit — it does not change your order.`);
     if (this.dom.panels.detail.classList.contains('is-open') && this.selectedId === displayId) {
       this.openDetail(entry);
     }
@@ -868,12 +868,14 @@ class App {
 
       <div class="section">
         <h3>Colour <em data-role="colour-count"></em></h3>
-        <div class="chips" data-role="colour-chips"></div>
+        <div class="chips" data-role="colour-chips" role="group"
+             aria-label="Colour — choose one, or leave it to the florist"></div>
       </div>
 
       <div class="section">
-        <h3>Occasion <em>optional</em></h3>
-        <div class="chips" data-role="occasion-chips"></div>
+        <h3>Occasion <em data-role="occasion-count"></em></h3>
+        <div class="chips" data-role="occasion-chips" role="group"
+             aria-label="Occasion — choose one, or leave it unspecified"></div>
       </div>
 
       <div class="section">
@@ -925,25 +927,29 @@ class App {
     const o = this.order;
 
     role('order-lead').textContent =
-      'Two things guide our florist: a colour palette and an occasion. Both are optional — leave them to us and you will receive the best of the season.';
+      'Two things guide our florist: one colour and one occasion. Both are optional — leave them to us and you will receive the best of the season.';
 
-    const counts = new Map(o.pickedByColor().map((p) => [p.id, p.count]));
-    role('colour-count').textContent = o.colors.size
-      ? `${o.colors.size} chosen`
-      : 'optional';
+    // One choice each, and no stem counts: what a visitor gathered in the shop
+    // has no bearing on the bouquet, so showing tallies here would mislead.
+    const chosenColour = c.palette.find((p) => p.id === o.colorId);
+    role('colour-count').textContent = chosenColour ? chosenColour.label : 'optional — choose one';
 
     role('colour-chips').innerHTML = c.palette.map((p) => `
       <button class="chip" data-action="colour" data-id="${esc(p.id)}"
-              aria-pressed="${o.colors.has(p.id)}">
+              aria-pressed="${o.colorId === p.id}">
         <i style="background:${esc(p.hex)}"></i>
         <span>${esc(p.label)}</span>
-        ${counts.get(p.id) ? `<b>${counts.get(p.id)}</b>` : ''}
       </button>
     `).join('');
 
+    const chosenOccasion = c.occasions.find((x) => x.id === o.occasionId);
+    role('occasion-count').textContent = chosenOccasion
+      ? chosenOccasion.label
+      : 'optional — choose one';
+
     role('occasion-chips').innerHTML = c.occasions.map((oc) => `
       <button class="chip" data-action="occasion" data-id="${esc(oc.id)}"
-              aria-pressed="${o.occasions.has(oc.id)}">${esc(oc.label)}</button>
+              aria-pressed="${o.occasionId === oc.id}">${esc(oc.label)}</button>
     `).join('');
 
     role('size-chips').innerHTML = c.sizes.map((s) => `
@@ -957,14 +963,9 @@ class App {
     const size = o.size;
     role('order-readout').innerHTML = `
       <div><span>Bouquet</span><b>${size ? esc(size.label) : 'Not chosen'}</b></div>
-      <div><span>Colour</span><b>${o.colors.size
-        ? esc([...o.colors].map((id) => c.palette.find((p) => p.id === id)?.label).filter(Boolean).join(', '))
-        : 'Florist’s choice'}</b></div>
-      <div><span>Occasion</span><b>${o.occasions.size
-        ? esc([...o.occasions].map((id) => c.occasions.find((x) => x.id === id)?.label).filter(Boolean).join(', '))
-        : 'Not specified'}</b></div>
+      <div><span>Colour</span><b>${chosenColour ? esc(chosenColour.label) : 'Florist’s choice'}</b></div>
+      <div><span>Occasion</span><b>${chosenOccasion ? esc(chosenOccasion.label) : 'Not specified'}</b></div>
       <div><span>Delivery</span><b>${o.dateKey ? esc(store.formatLongDate(o.dateKey)) : 'Choose a date'}</b></div>
-      <div><span>Gathered</span><b>${o.picked.length} stem${o.picked.length === 1 ? '' : 's'}</b></div>
       <div class="readout--total"><span>Total</span><b>${size ? esc(store.money(size.price)) : '—'}</b></div>
     `;
 
@@ -984,7 +985,7 @@ class App {
     const n = this.order.picked.length;
     wrap.hidden = n === 0 || this.space !== 'shop';
     role('basket-count').textContent = `${n} stem${n === 1 ? '' : 's'} gathered`;
-    const colours = this.order.pickedByColor().slice(0, 5);
+    const colours = this.order.pickedColors().slice(0, 5);
     role('basket-swatches').innerHTML = colours
       .map((c) => `<i style="background:${esc(c.hex)}" title="${esc(c.label)}"></i>`)
       .join('');
@@ -1448,10 +1449,10 @@ class App {
         this.share(id);
         break;
       case 'colour':
-        this.order.toggleColor(id);
+        this.order.selectColor(id);
         break;
       case 'occasion':
-        this.order.toggleOccasion(id);
+        this.order.selectOccasion(id);
         break;
       case 'size':
         this.order.setSize(id);

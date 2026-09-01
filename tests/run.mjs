@@ -371,24 +371,71 @@ check('a sold-out date is rejected', () => {
   assert(o.missing().includes('an available delivery date'), `got: ${o.missing()}`);
 });
 
-check('gathering a stem adds its colour but never the variety', () => {
+check('only one colour can be chosen, and it stays optional', () => {
   const o = new Order(store.getContent());
-  o.addPicked({ displayId: 'peony-blush', title: 'Peony, Blush', recipeId: 'peony', hex: '#eec3cb', colorId: 'blush-pink' });
+  assert(o.colorId === null, 'nothing chosen to begin with');
+
+  o.selectColor('blush-pink');
+  assert(o.colorId === 'blush-pink', 'first choice not taken');
+  assert(o.colors.size === 1, 'exactly one colour should be held');
+
+  o.selectColor('red');
+  assert(o.colorId === 'red', 'a second choice should replace the first');
+  assert(o.colors.size === 1, `expected one colour, got ${o.colors.size}`);
+
+  o.selectColor('red');
+  assert(o.colorId === null, 'pressing the chosen colour again should clear it');
+  assert(o.colors.size === 0, 'clearing should leave nothing');
+});
+
+check('only one occasion can be chosen, and it stays optional', () => {
+  const o = new Order(store.getContent());
+  o.selectOccasion('birthday');
+  o.selectOccasion('newborn');
+  assert(o.occasionId === 'newborn', 'a second choice should replace the first');
+  assert(o.occasions.size === 1, `expected one occasion, got ${o.occasions.size}`);
+  o.selectOccasion('newborn');
+  assert(o.occasionId === null, 'pressing it again should clear it');
+});
+
+check('gathering stems changes nothing about the order', () => {
+  const o = new Order(store.getContent());
+  o.selectColor('white');
+  o.selectOccasion('graduation');
+
   o.addPicked({ displayId: 'peony-blush', title: 'Peony, Blush', recipeId: 'peony', hex: '#eec3cb', colorId: 'blush-pink' });
   o.addPicked({ displayId: 'dahlia-red', title: 'Dahlia, Deep Red', recipeId: 'dahlia', hex: '#b83a3f', colorId: 'red' });
-  assert(o.colors.has('blush-pink') && o.colors.has('red'), 'picking should add colours');
-  const byColour = o.pickedByColor();
-  assert(byColour.find((c) => c.id === 'blush-pink').count === 2, 'colour count wrong');
 
+  // Gathering must not touch a deliberate choice — with a single selection,
+  // the old auto-add would have silently overwritten it.
+  assert(o.colorId === 'white', `gathering changed the colour to ${o.colorId}`);
+  assert(o.occasionId === 'graduation', 'gathering changed the occasion');
+  assert(o.picked.length === 2, 'the stems should still be recorded as a keepsake');
+  assert(o.pickedColors().length === 2, 'keepsake swatches should list both colours');
+});
+
+check('the summary carries no trace of the gathered stems', () => {
+  const o = new Order(store.getContent());
+  o.selectColor('peach');
   o.setSize('standard');
   o.setDate(store.firstAvailableDate());
+  o.addPicked({ displayId: 'x', title: 'Peony, Blush', recipeId: 'peony', hex: '#eec3cb', colorId: 'blush-pink' });
+  o.addPicked({ displayId: 'y', title: 'Dahlia, Deep Red', recipeId: 'dahlia', hex: '#b83a3f', colorId: 'red' });
   o.confirm();
+
   const s = o.summary();
   assert(s.reference && /^KF-\d{6}-\d{4}$/.test(s.reference), `bad reference ${s.reference}`);
-  assert(s.gathered === 3, 'gathered count missing from summary');
-  // The critical invariant: the invoice must not enumerate floral materials.
-  assert(!('varieties' in s), 'summary must not carry varieties');
   assert(s.total === 1599, `wrong total ${s.total}`);
+  assert(s.colours.length === 1 && s.colours[0].id === 'peach', 'the chosen colour should carry');
+
+  // The invoice can only read summary(), so these absences are the guarantee.
+  for (const banned of ['gathered', 'gatheredByColor', 'gatheredByVariety', 'picked', 'varieties']) {
+    assert(!(banned in s), `summary must not carry "${banned}"`);
+  }
+  const serialised = JSON.stringify(s);
+  assert(!serialised.includes('Peony, Blush'), 'a gathered variety leaked into the summary');
+  assert(!serialised.includes('Dahlia'), 'a gathered variety leaked into the summary');
+  assert(!serialised.includes('blush-pink'), 'a gathered colour leaked into the summary');
 });
 
 check('confirm is refused until the order is ready', () => {
@@ -397,22 +444,41 @@ check('confirm is refused until the order is ready', () => {
   assert(o.reference === null, 'no reference before confirming');
 });
 
-check('invoice text carries the order but not the stems', async () => {
+check('every invoice rendering carries the order but not the stems', async () => {
   const invoice = await import('../js/invoice.js');
-  const o = new Order(store.getContent());
+  const content = store.getContent();
+  const o = new Order(content);
   o.setSize('extravagant');
-  o.toggleColor('peach');
-  o.toggleOccasion('birthday');
+  o.selectColor('peach');
+  o.selectOccasion('birthday');
   o.setDate(store.firstAvailableDate());
   o.addPicked({ displayId: 'x', title: 'Secret Variety', recipeId: 'rose', hex: '#fff', colorId: 'white' });
   o.confirm();
-  const text = invoice.text(o.summary());
-  assert(text.includes('Extravagant'), 'size missing');
-  assert(text.includes('Peach'), 'colour missing');
-  assert(text.includes('Birthday'), 'occasion missing');
+  const summary = o.summary();
+
+  const text = invoice.text(summary);
+  assert(text.includes('Extravagant'), 'size missing from the message');
+  assert(text.includes('Peach'), 'colour missing from the message');
+  assert(text.includes('Birthday'), 'occasion missing from the message');
   assert(!text.includes('Secret Variety'), 'variety leaked into the WhatsApp message');
-  const link = invoice.whatsappLink(o.summary(), store.getContent());
+  assert(!/stem/i.test(text), 'the message mentions stems');
+
+  const markup = invoice.html(summary, content);
+  assert(markup.includes('Extravagant') && markup.includes('Peach'), 'invoice is missing the order');
+  assert(!markup.includes('Secret Variety'), 'variety leaked into the printed invoice');
+  assert(!/Gathered/i.test(markup), 'the invoice still lists gathered stems');
+  // The keepsake note must survive, since it is what sets expectations.
+  assert(markup.includes('keepsake'), 'the keepsake note is missing from the invoice');
+
+  const link = invoice.whatsappLink(summary, content);
   assert(link.startsWith('https://wa.me/85296124061?text='), `bad link: ${link.slice(0, 60)}`);
+});
+
+check('the keepsake note says what it needs to say', () => {
+  const note = store.getContent().invoice.gameNote.toLowerCase();
+  assert(note.includes('keepsake'), 'note should call the stems a keepsake');
+  assert(note.includes('variety'), 'note should say it does not set the variety');
+  assert(note.includes('count'), 'note should say it does not set the count');
 });
 
 /* --- garden ------------------------------------------------------------ */

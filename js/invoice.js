@@ -38,22 +38,11 @@ function escapeHtml(str) {
 export function html(summary, content) {
   const inv = content.invoice;
   const colours = summary.colours.length
-    ? summary.colours.map((c) => escapeHtml(c.label)).join(' · ')
+    ? escapeHtml(summary.colours[0].label)
     : 'Florist’s choice';
   const occasions = summary.occasions.length
-    ? summary.occasions.map((o) => escapeHtml(o.label)).join(' · ')
+    ? escapeHtml(summary.occasions[0].label)
     : 'Not specified';
-
-  const gathered = summary.gatheredByColor.length
-    ? `
-      <div class="inv__row inv__row--soft">
-        <dt>Gathered in the virtual shop</dt>
-        <dd>
-          ${summary.gatheredByColor.map((c) => `${escapeHtml(c.label)} ×${c.count}`).join(', ')}
-          <span class="inv__aside">${summary.gathered} stem${summary.gathered === 1 ? '' : 's'}</span>
-        </dd>
-      </div>`
-    : '';
 
   return `
     <article class="inv" aria-labelledby="inv-title">
@@ -76,7 +65,7 @@ export function html(summary, content) {
           <dd>${escapeHtml(summary.size?.label || '—')} — seasonal, florist’s choice</dd>
         </div>
         <div class="inv__row">
-          <dt>Colour palette</dt>
+          <dt>Colour</dt>
           <dd>${colours}</dd>
         </div>
         <div class="inv__row">
@@ -87,7 +76,6 @@ export function html(summary, content) {
           <dt>Delivery date</dt>
           <dd>${escapeHtml(summary.dateLong || '—')}</dd>
         </div>
-        ${gathered}
       </dl>
 
       <div class="inv__total">
@@ -163,7 +151,7 @@ export function canvas(summary, content) {
   const termLines = summary.terms.map((t, i) => wrap(`${i + 1}. ${t}`, noteFont, INNER - 14));
   const termCount = termLines.reduce((n, l) => n + l.length, 0);
 
-  const rows = 4 + (summary.gatheredByColor.length ? 1 : 0);
+  const rows = 4;   // bouquet, colour, occasion, delivery date
   const H =
     186 +                          // header + title
     rows * 42 +                     // detail rows
@@ -229,7 +217,7 @@ export function canvas(summary, content) {
   y += 22;
 
   // Detail rows
-  const row = (label, value, soft = false) => {
+  const row = (label, value) => {
     ctx.font = `400 11px ${SANS}`;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.letterSpacing = '1.6px';
@@ -237,8 +225,8 @@ export function canvas(summary, content) {
     ctx.fillText(label.toUpperCase(), M, y + 16);
     ctx.letterSpacing = '0px';
 
-    ctx.font = soft ? `400 13px ${SANS}` : `400 15px ${SANS}`;
-    ctx.fillStyle = soft ? 'rgba(0,0,0,0.72)' : '#000';
+    ctx.font = `400 15px ${SANS}`;
+    ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
     ctx.fillText(value, W - M, y + 16);
 
@@ -247,20 +235,9 @@ export function canvas(summary, content) {
   };
 
   row('Bouquet', `${summary.size?.label || '—'} — seasonal, florist’s choice`);
-  row('Colour palette', summary.colours.length
-    ? summary.colours.map((c) => c.label).join(' · ')
-    : 'Florist’s choice');
-  row('Occasion', summary.occasions.length
-    ? summary.occasions.map((o) => o.label).join(' · ')
-    : 'Not specified');
+  row('Colour', summary.colours.length ? summary.colours[0].label : 'Florist’s choice');
+  row('Occasion', summary.occasions.length ? summary.occasions[0].label : 'Not specified');
   row('Delivery date', summary.dateLong || '—');
-  if (summary.gatheredByColor.length) {
-    row(
-      'Gathered in the virtual shop',
-      `${summary.gatheredByColor.map((c) => `${c.label} ×${c.count}`).join(', ')}`,
-      true
-    );
-  }
 
   // Total
   y += 14;
@@ -374,8 +351,8 @@ export function text(summary) {
     summary.reference ? `Ref ${summary.reference}` : null,
     '',
     `Bouquet: ${summary.size?.label || '—'} (${money(summary.total, summary.currency)})`,
-    `Colour palette: ${summary.colours.length ? summary.colours.map((c) => c.label).join(', ') : 'Florist’s choice'}`,
-    `Occasion: ${summary.occasions.length ? summary.occasions.map((o) => o.label).join(', ') : 'Not specified'}`,
+    `Colour: ${summary.colours.length ? summary.colours[0].label : 'Florist’s choice'}`,
+    `Occasion: ${summary.occasions.length ? summary.occasions[0].label : 'Not specified'}`,
     `Delivery date: ${summary.dateLong || '—'}`,
     '',
     'I would like to pay by bank transfer — please send me the details.',
