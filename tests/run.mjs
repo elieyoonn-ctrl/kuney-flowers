@@ -207,6 +207,7 @@ check('olive tree builds trunk and canopy', () => {
 /* --- availability ------------------------------------------------------ */
 
 const store = await import('../js/store.js');
+const { Order } = await import('../js/order.js');
 const content = await store.load();
 
 const key = (offset) => store.dateKey(store.addDays(new Date(), offset));
@@ -216,59 +217,122 @@ check('dateKey is local time, not UTC', () => {
   assert(store.dateKey(d) === '2026-01-01', `got ${store.dateKey(d)}`);
 });
 
-check('lead time blocks today, allows tomorrow', () => {
-  store.saveContent({ calendar: { leadTimeDays: 1, dailyLimit: 8, closedWeekdays: [], closed: [], overrides: {} } });
-  assert(store.availability(key(0)).tooSoon, 'today should be too soon');
-  assert(store.availability(key(-3)).past, 'past days flagged');
-  assert(store.availability(key(2)).selectable, 'day after tomorrow should be open');
+check('the shipped defaults are the shop\u2019s actual rules', () => {
+  // Three bouquets a day, open every day, three days\u2019 notice.
+  const cal = store.getContent().calendar;
+  assert(cal.dailyLimit === 3, `daily limit should be 3, got ${cal.dailyLimit}`);
+  assert(cal.leadTimeDays === 3, `lead time should be 3 days, got ${cal.leadTimeDays}`);
+  assert((cal.closedWeekdays || []).length === 0,
+    `no weekly rest day expected, got ${JSON.stringify(cal.closedWeekdays)}`);
+  assert((cal.closed || []).length === 0, 'no days should ship pre-closed');
+  assert(Object.keys(cal.overrides || {}).length === 0, 'no overrides should ship');
+});
+
+check('Sundays are orderable', () => {
+  // Walk forward to the first Sunday that clears the lead time.
+  for (let i = 3; i < 17; i += 1) {
+    const k = key(i);
+    if (store.parseDateKey(k).getDay() !== 0) continue;
+    const day = store.availability(k);
+    assert(day.selectable, `Sunday ${k} should be orderable but was not`);
+    return;
+  }
+  throw new Error('no Sunday found in the next fortnight');
+});
+
+check('three days\u2019 notice: today and the next two are blocked', () => {
+  assert(store.availability(key(-1)).past, 'yesterday should be past');
+  for (const offset of [0, 1, 2]) {
+    const day = store.availability(key(offset));
+    assert(!day.selectable, `day +${offset} should not be selectable`);
+    assert(day.tooSoon, `day +${offset} should be flagged as too soon`);
+  }
+  const first = store.availability(key(3));
+  assert(first.selectable, 'the third day from today should be the earliest orderable');
+  assert(first.remaining === 3, `expected 3 bouquets, got ${first.remaining}`);
+  assert(store.earliestOrderDate() === key(3),
+    `earliestOrderDate should be ${key(3)}, got ${store.earliestOrderDate()}`);
 });
 
 check('a day override wins over the daily limit', () => {
-  store.setDayLimit(key(3), 2);
-  assert(store.availability(key(3)).remaining === 2, 'override not applied');
-  store.setDayLimit(key(3), null);
-  assert(store.availability(key(3)).remaining === 8, 'override not cleared');
+  store.setDayLimit(key(5), 2);
+  assert(store.availability(key(5)).remaining === 2, 'override not applied');
+  store.setDayLimit(key(5), null);
+  assert(store.availability(key(5)).remaining === 3, 'override not cleared');
 });
 
-check('zero stock sells the day out and blocks selection', () => {
-  store.setDayLimit(key(4), 0);
-  const day = store.availability(key(4));
+check('setting a day to zero is what sells it out', () => {
+  const k = key(6);
+  assert(store.availability(k).selectable, 'should start available');
+  store.setDayLimit(k, 0);
+  const day = store.availability(k);
   assert(day.soldOut, 'should be sold out');
   assert(!day.selectable, 'sold-out days must not be selectable');
+  store.setDayLimit(k, null);
+  assert(store.availability(k).selectable, 'clearing the override should reopen it');
 });
 
 check('closing a day sells it out regardless of the number', () => {
-  store.setDayLimit(key(5), 9);
-  store.toggleClosed(key(5));
-  assert(store.availability(key(5)).soldOut, 'closed day should be sold out');
-  store.toggleClosed(key(5));
-  assert(store.availability(key(5)).selectable, 'reopening should restore it');
+  store.setDayLimit(key(7), 9);
+  store.toggleClosed(key(7));
+  assert(store.availability(key(7)).soldOut, 'closed day should be sold out');
+  store.toggleClosed(key(7));
+  assert(store.availability(key(7)).selectable, 'reopening should restore it');
+  store.setDayLimit(key(7), null);
 });
 
-check('a rest weekday closes every matching day', () => {
-  const target = store.parseDateKey(key(6)).getDay();
+check('a weekly rest day still works if one is ever set', () => {
+  // Not used by default — the shop is open every day — but the owner panel
+  // offers it, so it has to behave.
+  const target = store.parseDateKey(key(8)).getDay();
   store.saveContent({ calendar: { closedWeekdays: [target] } });
-  assert(store.availability(key(6)).soldOut, 'rest day should be sold out');
-  assert(store.availability(key(13)).soldOut, 'same weekday next week too');
+  assert(store.availability(key(8)).soldOut, 'rest day should be sold out');
+  assert(store.availability(key(15)).soldOut, 'same weekday next week too');
+  // An explicit number reopens one such day without reopening the rest.
+  store.setDayLimit(key(8), 2);
+  assert(store.availability(key(8)).selectable, 'an override should reopen a rest day');
+  assert(store.availability(key(15)).soldOut, 'the following week should stay shut');
+  store.setDayLimit(key(8), null);
   store.saveContent({ calendar: { closedWeekdays: [] } });
 });
 
-check('orders decrement the remaining count', () => {
-  const k = key(7);
-  store.setDayLimit(k, 2);
-  store.recordOrder(k);
-  assert(store.availability(k).remaining === 1, 'first order not counted');
-  store.recordOrder(k);
-  assert(store.availability(k).soldOut, 'second order should sell it out');
+check('only the owner changes availability, never a visitor', () => {
+  // A visitor confirming an order and following the purchase link must not
+  // move the numbers: the shop is told about real orders out of band, and the
+  // owner lowers the day themselves. Anything else would show one customer a
+  // different count from the next.
+  const k = key(9);
+  const before = store.availability(k).remaining;
+  assert(before === 3, `expected the daily limit, got ${before}`);
+
+  const o = new Order(store.getContent());
+  o.setSize('standard');
+  o.setDate(k);
+  o.confirm();
+
+  assert(store.availability(k).remaining === before,
+    'confirming an order changed the day\u2019s availability');
+  assert(store.availability(k).selectable, 'the day should still be selectable');
+  assert(typeof store.recordOrder === 'undefined',
+    'recordOrder should be gone — availability is owner-set only');
 });
 
-check('firstAvailableDate skips blocked days', () => {
-  store.saveContent({ calendar: { dailyLimit: 4, leadTimeDays: 1, closed: [], overrides: {}, closedWeekdays: [] } });
-  memory.delete('kuney.orders.v3');
+check('firstAvailableDate respects the lead time and skips closed days', () => {
+  store.saveContent({ calendar: { dailyLimit: 3, leadTimeDays: 3, closed: [], overrides: {}, closedWeekdays: [] } });
+  assert(store.firstAvailableDate() === key(3),
+    `expected ${key(3)}, got ${store.firstAvailableDate()}`);
+
+  // Close the first three orderable days; it should walk past them.
+  store.setDayLimit(key(3), 0);
+  store.setDayLimit(key(4), 0);
+  store.toggleClosed(key(5));
   const first = store.firstAvailableDate();
-  assert(first, 'should find a date');
+  assert(first === key(6), `expected ${key(6)}, got ${first}`);
   assert(store.availability(first).selectable, 'returned date must be selectable');
-  assert(first >= key(1), `too early: ${first}`);
+
+  store.setDayLimit(key(3), null);
+  store.setDayLimit(key(4), null);
+  store.toggleClosed(key(5));
 });
 
 check('monthAvailability covers the whole month', () => {
@@ -286,8 +350,6 @@ check('content export/import round-trips', () => {
 });
 
 /* --- order ------------------------------------------------------------- */
-
-const { Order } = await import('../js/order.js');
 
 check('order needs a size and an available date, nothing else', () => {
   const o = new Order(store.getContent());

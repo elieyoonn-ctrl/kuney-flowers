@@ -511,12 +511,12 @@ class CalendarEditor {
                    value="${cal.dailyLimit}" />
           </label>
           <label class="field">
-            <span>Order lead time (days ahead)</span>
+            <span>Days' notice needed — earliest is ${esc(store.formatLongDate(store.earliestOrderDate()))}</span>
             <input type="number" min="0" max="30" step="1" data-path="calendar.leadTimeDays"
                    value="${cal.leadTimeDays}" />
           </label>
           <label class="field">
-            <span>Weekly rest day</span>
+            <span>Weekly rest day — leave as None to open every day</span>
             <select data-path="calendar.closedWeekdays" data-weekday="1">
               <option value="" ${!(cal.closedWeekdays || []).length ? 'selected' : ''}>None</option>
               ${WEEKDAYS.map((w, i) => `
@@ -552,9 +552,11 @@ class CalendarEditor {
         </div>
 
         <div class="hint-box">
-          Type a number to set that day. <strong>Default</strong> removes the override and
-          falls back to the daily limit. <strong>Closed</strong> marks the day sold out
-          regardless of the number — customers can no longer choose it.
+          Type a number to set that day. <strong>Default</strong> removes it and falls back
+          to the daily limit. <strong>Closed</strong> marks the day sold out whatever number
+          is against it. A day shows as <strong>sold out</strong> only when you set it to
+          <strong>0</strong> or close it — customers placing orders never change these
+          numbers, so what you type here is exactly what they see.
         </div>
       </div>`;
   }

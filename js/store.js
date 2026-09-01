@@ -7,14 +7,13 @@
      3. localStorage      (this browser's admin edits)
 
    Everything is behind this module deliberately: swapping localStorage for a
-   real API later means rewriting `load`, `saveContent` and `syncOrders` only.
+   real API later means rewriting `load` and `saveContent` only.
    ========================================================================== */
 
 import { DEFAULT_CONTENT, CONTENT_VERSION } from './content.js';
 
 const KEY_CONTENT = 'kuney.content.v3';
 const KEY_GARDEN = 'kuney.garden.v3';
-const KEY_ORDERS = 'kuney.orders.v3';
 const KEY_ADMIN = 'kuney.admin';
 
 let content = clone(DEFAULT_CONTENT);
@@ -212,28 +211,21 @@ export function setAdmin(on) {
 
 /* --- availability ------------------------------------------------------- */
 
-/** Orders placed in this browser, used to decrement the visible stock so the
- *  calendar reacts immediately. A server-backed build would read this from the
- *  API instead — same shape: { 'YYYY-MM-DD': count }. */
-function localOrders() {
-  return readJSON(KEY_ORDERS) || {};
-}
-
-export function recordOrder(key) {
-  const orders = localOrders();
-  orders[key] = (orders[key] || 0) + 1;
-  writeJSON(KEY_ORDERS, orders);
-  emit();
-}
-
 /**
- * Bouquets the shop will make on a given day, before orders are subtracted.
+ * Bouquets the shop will make on a given day.
+ *
+ * This is *only* what the owner has set. A visitor placing an order does not
+ * change it: real orders arrive through the shop or WhatsApp, and the owner
+ * lowers the day's number when they want it to show as sold out. Decrementing
+ * it in the browser would have been theatre — it would only ever have counted
+ * that one visitor's own clicks, so different customers would see different
+ * numbers for the same day.
  *
  * Precedence matters and is deliberate:
  *   1. an explicitly closed day is shut, whatever number is set against it
  *   2. otherwise a per-day number wins — including on a weekly rest day, so
- *      the owner can open a Sunday for one date
- *   3. then the weekly rest day
+ *      the owner can open one Sunday without opening them all
+ *   3. then the weekly rest day, if one is set
  *   4. then the standing daily limit
  */
 export function baseLimitFor(key) {
@@ -247,7 +239,13 @@ export function baseLimitFor(key) {
   return Math.max(0, Number(cal.dailyLimit) || 0);
 }
 
-/** Full availability picture for one day. */
+/**
+ * Full availability picture for one day.
+ *
+ * `leadTimeDays` is counted from today, so a lead time of 3 makes today,
+ * tomorrow and the day after unselectable, and the third day from now the
+ * earliest a visitor can choose.
+ */
 export function availability(key) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -257,18 +255,22 @@ export function availability(key) {
 
   const past = day < today;
   const tooSoon = !past && day < earliest;
-  const base = baseLimitFor(key);
-  const remaining = Math.max(0, base - (localOrders()[key] || 0));
+  const remaining = baseLimitFor(key);
 
   return {
     key,
-    base,
+    base: remaining,
     remaining,
     past,
     tooSoon,
     soldOut: !past && !tooSoon && remaining <= 0,
     selectable: !past && !tooSoon && remaining > 0,
   };
+}
+
+/** The earliest date a visitor may choose, given the lead time. */
+export function earliestOrderDate() {
+  return dateKey(addDays(new Date(), Number(content.calendar.leadTimeDays) || 0));
 }
 
 /** Availability for a whole month. `month` is 0-indexed. */

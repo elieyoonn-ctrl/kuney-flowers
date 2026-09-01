@@ -289,19 +289,26 @@ export const DEFAULT_CONTENT = {
   ],
 
   /* --- Availability calendar --------------------------------------------
-     `dailyLimit`   default bouquets per day
-     `overrides`    { 'YYYY-MM-DD': remaining }  — wins over dailyLimit
-     `closed`       ['YYYY-MM-DD']               — hard sold out / rest day
-     `leadTimeDays` earliest orderable day, counted from today
+     `dailyLimit`     bouquets per day, every day
+     `overrides`      { 'YYYY-MM-DD': number } — set a single day; 0 = sold out
+     `closed`         ['YYYY-MM-DD']           — shut, whatever number is set
+     `closedWeekdays` [0..6] weekly rest days; empty means the shop is open
+                      every day, including Sunday
+     `leadTimeDays`   counted from today, so 3 blocks today, tomorrow and the
+                      day after, making the third day from now the earliest a
+                      visitor can choose
+
+     A day only shows as sold out when the owner sets it to 0 or closes it.
+     Visitors placing orders never change these numbers — see store.js.
      ---------------------------------------------------------------------- */
   calendar: {
-    dailyLimit: 8,
-    leadTimeDays: 1,
-    closedWeekdays: [0],
+    dailyLimit: 3,
+    leadTimeDays: 3,
+    closedWeekdays: [],
     overrides: {},
     closed: [],
     heading: 'Delivery Availability',
-    subheading: 'Remaining bouquets per day',
+    subheading: 'Bouquets available per day',
   },
 
   /* --- Virtual garden ---------------------------------------------------- */

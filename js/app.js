@@ -1071,7 +1071,7 @@ class App {
 
     role('invoice-actions').innerHTML = `
       <a class="btn btn--pay" href="${esc(c.contact.productUrl)}" target="_blank" rel="noopener"
-         data-action="paid">${esc(c.invoice.payLabel)}</a>
+         >${esc(c.invoice.payLabel)}</a>
       <button class="btn" data-action="save-invoice">${esc(c.invoice.saveLabel)}</button>
       <a class="btn" href="${esc(invoiceView.whatsappLink(summary, c))}" target="_blank" rel="noopener"
          >${esc(c.invoice.whatsappLabel)}</a>
@@ -1130,15 +1130,6 @@ class App {
       this.toast(`Saved ${name}. Send it to us on WhatsApp to pay by transfer.`);
     } catch {
       this.toast('Could not save the image — please screenshot the invoice instead.', 'warn');
-    }
-  }
-
-  /** Called when the visitor follows the purchase link — hold the day's stock. */
-  markOrdered() {
-    if (this.order.dateKey) {
-      store.recordOrder(this.order.dateKey);
-      this.refreshBoard();
-      this.calendarPanel?.render();
     }
   }
 
@@ -1470,9 +1461,6 @@ class App {
         break;
       case 'save-invoice':
         this.saveInvoice();
-        break;
-      case 'paid':
-        this.markOrdered();
         break;
       case 'close-invoice':
         this.closeInvoice();

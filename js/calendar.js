@@ -160,12 +160,14 @@ export function renderBoard(content, year, month, { selectedKey = null } = {}) {
     ctx.stroke();
   });
 
-  /* Footer key */
+  /* Footer key — the concrete earliest date is more use than the lead time. */
   ctx.textAlign = 'left';
   ctx.font = '400 16px Inter, Helvetica, Arial, sans-serif';
   ctx.fillStyle = faint;
+  const earliest = store.parseDateKey(store.earliestOrderDate())
+    .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   ctx.fillText(
-    `Daily limit ${cal.dailyLimit} · orders from ${cal.leadTimeDays} day${cal.leadTimeDays === 1 ? '' : 's'} ahead`,
+    `${cal.dailyLimit} bouquet${cal.dailyLimit === 1 ? '' : 's'} a day · earliest delivery ${earliest}`,
     62,
     CANVAS_H - 34
   );
@@ -390,7 +392,10 @@ export class CalendarPanel {
         ? `Delivery ${store.formatLongDate(this.selected)} — ${day.remaining} bouquet${day.remaining === 1 ? '' : 's'} still available.`
         : `${store.formatLongDate(this.selected)} is not available.`;
     } else {
-      note.textContent = `Choose a delivery date. Orders open ${cal.leadTimeDays} day${cal.leadTimeDays === 1 ? '' : 's'} ahead; days marked sold out are closed.`;
+      const lead = Number(cal.leadTimeDays) || 0;
+      note.textContent = lead > 0
+        ? `Choose a delivery date. We need ${lead} day${lead === 1 ? '' : 's'} to prepare, so the earliest is ${store.formatLongDate(store.earliestOrderDate())}.`
+        : 'Choose a delivery date. Days marked sold out are no longer available.';
     }
 
     const adminBox = this.el.querySelector('[data-role="admin"]');

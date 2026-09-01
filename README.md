@@ -41,7 +41,7 @@ Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
 any web host. There is no build step and no server-side code.
 
 ```bash
-npm test                  # 81 assertions + a DOM audit, no browser needed
+npm test                  # 83 assertions + a DOM audit, no browser needed
 ```
 
 ---
@@ -111,15 +111,29 @@ A plaster board on the back wall, drawn to a canvas from live data, showing
 bouquets remaining per day. Navigating to it zooms in and opens an accessible
 HTML version with real buttons.
 
+### Current rules
+
+- **3 bouquets a day**
+- **Open every day**, Sunday included
+- **3 days' notice** — today and the next two cannot be chosen; the third day
+  from now is the earliest
+- A day shows **sold out only when you set it to 0 or close it**
+
 Availability resolves in this order — the precedence is deliberate and tested:
 
 1. A day on the **closed** list is shut, whatever number is against it.
 2. Otherwise a **per-day number** wins, including on a weekly rest day, so you
-   can open one Sunday without opening them all.
-3. Then the **weekly rest day**.
+   could open one Sunday without opening them all.
+3. Then the **weekly rest day**, if one is set (none is, by default).
 4. Then the standing **daily limit**.
 
 A day at zero shows `SOLD OUT`, struck through, and cannot be selected.
+
+**Visitors never change these numbers.** Real orders reach you through the shop
+link or WhatsApp; you then lower the day yourself. An earlier version
+decremented the count when a visitor followed the purchase link, which was
+theatre — it only ever counted that one browser's clicks, so two customers would
+have seen different numbers for the same day.
 
 ### Editing it
 
