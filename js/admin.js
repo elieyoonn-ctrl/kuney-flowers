@@ -186,6 +186,8 @@ function themeSection(c) {
       ${colorField(c, { path: 'theme.island', label: 'Jade island' })}
       ${colorField(c, { path: 'theme.islandVein', label: 'Island veining' })}
       ${colorField(c, { path: 'theme.terracotta', label: 'Terracotta pot' })}
+      ${colorField(c, { path: 'theme.wrapPaper', label: 'Wrapping paper' })}
+      ${colorField(c, { path: 'theme.ribbon', label: 'Ribbon' })}
       ${colorField(c, { path: 'theme.daylight', label: 'Daylight' })}
       ${textField(c, { path: 'theme.daylightIntensity', label: 'Daylight strength', type: 'number', min: 0, max: 8, step: 0.1 })}
     </div>`);

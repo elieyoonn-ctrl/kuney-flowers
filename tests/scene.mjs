@@ -165,6 +165,21 @@ check('the entrance is inside the walkable bounds and not in a collider', () => 
   assert(!blocked, 'the visitor would spawn inside something');
 });
 
+/** Moving furniture is the usual way a camera stop ends up inside a counter. */
+check('no camera stop stands inside the furniture', () => {
+  const radius = 0.34;   // matches CameraRig's playerRadius
+  for (const stop of shop.stops) {
+    if (stop.kind === 'portal') continue;   // the portal stop sits in the doorway
+    const [x, , z] = stop.position;
+    const blocked = shop.colliders.find((b) =>
+      x + radius > b.min.x && x - radius < b.max.x &&
+      z + radius > b.min.z && z - radius < b.max.z &&
+      b.max.y > 0.5);
+    assert(!blocked,
+      `stop "${stop.id}" at (${x.toFixed(2)}, ${z.toFixed(2)}) is inside a collider`);
+  }
+});
+
 check('the ceiling oculus lines up with the daylight', () => {
   const ceiling = shop.root.children.find((c) => c.isMesh && c.geometry.type === 'ShapeGeometry');
   assert(ceiling, 'no ceiling found');
@@ -255,6 +270,277 @@ check('gathering stems fills the vase and clearing empties it', () => {
   shop.clearVase();
   assert(holder.children.length === 0, 'clearVase left stems behind');
   assert(shop.vase.water.visible === false, 'water should drain with the stems');
+});
+
+/* --- the wrapping moment ------------------------------------------------ */
+
+/** Run the shop's clock forward, as the render loop would. */
+function tick(seconds, step = 1 / 60) {
+  const frames = Math.ceil(seconds / step);
+  for (let i = 0; i < frames; i += 1) shop.update(step, i * step);
+}
+
+function drawnSegments(mesh) {
+  return mesh.geometry.drawRange.count;
+}
+
+check('there is nothing to wrap in an empty shop', () => {
+  shop.clearVase();
+  assert(shop.wrap() === 0, 'wrapping an empty vase should be a no-op');
+  assert(shop.isWrapped === false, 'no wrap state without stems');
+});
+
+check('wrapping takes the stems out of the vase and into the bouquet', () => {
+  shop.clearVase();
+  for (let i = 0; i < 6; i += 1) shop.addPickedStem('peony', '#eec3cb', i);
+  const holder = shop.vase.holder;
+  const bouquet = shop.bouquet.group;
+  const permanent = 4;   // two sheets, ribbon, tails
+
+  assert(holder.children.length === 6, 'stems should start in the vase');
+  const duration = shop.wrap();
+  assert(duration > 2 && duration < 8, `implausible duration ${duration}`);
+  assert(holder.children.length === 0, 'stems should leave the vase');
+  assert(bouquet.children.length === permanent + 6, 'stems should join the bouquet');
+  assert(shop.isWrapped, 'wrap state not set');
+});
+
+check('the paper sweeps around, in whole segments only', () => {
+  const inner = shop.bouquet.paperInner;
+  const total = inner.userData.indexTotal;
+  assert(total > 0 && total % 6 === 0, `odd index count ${total}`);
+  assert(drawnSegments(inner) === 0, 'no paper before the sweep starts');
+
+  const samples = [];
+  for (let i = 0; i < 24; i += 1) {
+    tick(0.1);
+    samples.push(drawnSegments(inner));
+  }
+  for (const n of samples) {
+    assert(n % 6 === 0, `partial triangle drawn: ${n} indices`);
+    assert(n <= total, `drew past the end: ${n} of ${total}`);
+  }
+  // Monotonic: paper only ever comes further around.
+  for (let i = 1; i < samples.length; i += 1) {
+    assert(samples[i] >= samples[i - 1], 'the paper unwrapped itself');
+  }
+  assert(samples.some((n) => n > 0 && n < total), 'never caught the paper mid-sweep');
+});
+
+check('the sequence completes: paper closed, tied, and laid down', () => {
+  tick(4.2);
+  const b = shop.bouquet;
+  assert(drawnSegments(b.paperInner) === b.paperInner.userData.indexTotal,
+    'the inner sheet never closed');
+  assert(drawnSegments(b.paperOuter) === b.paperOuter.userData.indexTotal,
+    'the outer sheet never closed');
+  assert(b.paperInner.visible && b.paperOuter.visible, 'paper should be visible');
+  assert(b.ribbon.visible, 'no ribbon');
+  assert(b.tails.visible, 'no ribbon tails');
+  assert(b.state.phase === 'wrapped', `phase stuck at ${b.state.phase}`);
+  // Laid over on its side, along the island's long axis.
+  assert(Math.abs(b.group.rotation.z) > 1.2, `not laid down: rotation.z ${b.group.rotation.z}`);
+  assert(Math.abs(b.group.rotation.x) < 0.01, 'should not tip toward the viewer');
+});
+
+check('the finished bouquet rests on the island, not through it or off it', () => {
+  const box = new THREE.Box3();
+  shop.root.updateMatrixWorld(true);
+  const b = shop.bouquet.group;
+  box.setFromObject(b);
+
+  // Above the marble, and not floating.
+  assert(box.min.y > ROOM.island.height - 0.05,
+    `bouquet sinks into the island: min y ${box.min.y.toFixed(3)} vs top ${ROOM.island.height}`);
+  assert(box.min.y < ROOM.island.height + 0.09,
+    `bouquet floats above the island by ${(box.min.y - ROOM.island.height).toFixed(3)}m`);
+
+  // Inside the island footprint, with a little tolerance for petal overhang.
+  const halfW = ROOM.island.width / 2 + 0.12;
+  const halfD = ROOM.island.depth / 2 + 0.12;
+  assert(box.min.x > ROOM.island.x - halfW && box.max.x < ROOM.island.x + halfW,
+    `bouquet overhangs the ends: x ${box.min.x.toFixed(2)}..${box.max.x.toFixed(2)}`);
+  assert(box.min.z > ROOM.island.z - halfD && box.max.z < ROOM.island.z + halfD,
+    `bouquet overhangs front or back: z ${box.min.z.toFixed(2)}..${box.max.z.toFixed(2)}`);
+
+  // And clear of the printer, which is about to run.
+  const printerBox = new THREE.Box3().setFromObject(shop.printer);
+  assert(!box.intersectsBox(printerBox), 'the bouquet was laid on top of the printer');
+});
+
+/**
+ * The one that matters. The island carries the displays, the paper roll, the
+ * shears, the vase and the printer, and a wrapped bouquet is nearly a metre
+ * long — placing it took several attempts before it stopped landing on top of
+ * a display vase. Every gatherable flower, at every plausible count, must come
+ * to rest on clear marble.
+ */
+check('a finished bouquet never lands on anything, whatever was gathered', () => {
+  const island = {
+    x0: ROOM.island.x - ROOM.island.width / 2,
+    x1: ROOM.island.x + ROOM.island.width / 2,
+    z0: ROOM.island.z - ROOM.island.depth / 2,
+    z1: ROOM.island.z + ROOM.island.depth / 2,
+  };
+  const blooms = [...new Set(
+    content.displays.filter((d) => d.pickable !== false).map((d) => d.bloom)
+  )];
+  assert(blooms.length >= 5, 'expected several gatherable flower types');
+
+  const obstacles = { 'the vase': shop.vase.hero, 'the printer': shop.printer };
+  for (const d of shop.displays.values()) {
+    if (d.data.kind === 'vase-table') obstacles[d.id] = d.group;
+  }
+
+  const box = new THREE.Box3();
+  let cases = 0;
+
+  for (const bloom of blooms) {
+    for (const count of [1, 6, 12, 18]) {
+      shop.clearVase();
+      for (let i = 0; i < count; i += 1) shop.addPickedStem(bloom, '#eec3cb', i);
+      shop.wrap({ instant: true });
+      shop.root.updateMatrixWorld(true);
+      box.setFromObject(shop.bouquet.group);
+      cases += 1;
+
+      for (const [name, obj] of Object.entries(obstacles)) {
+        const other = new THREE.Box3().setFromObject(obj);
+        assert(!box.intersectsBox(other),
+          `${bloom} ×${count} was laid on ${name}`);
+      }
+
+      assert(box.min.y > ROOM.island.height - 0.02,
+        `${bloom} ×${count} sinks into the marble`);
+
+      // Petals may overhang the counter a little; a whole bouquet may not.
+      const overhang = Math.max(
+        0,
+        island.x0 - box.min.x, box.max.x - island.x1,
+        island.z0 - box.min.z, box.max.z - island.z1
+      );
+      assert(overhang < 0.06,
+        `${bloom} ×${count} hangs ${overhang.toFixed(3)}m off the island`);
+    }
+  }
+
+  assert(cases >= 20, `only covered ${cases} cases`);
+  shop.clearVase();
+});
+
+check('the paper actually covers the stem cuts', () => {
+  shop.clearVase();
+  for (let i = 0; i < 6; i += 1) shop.addPickedStem('peony', '#eec3cb', i);
+  shop.wrap({ instant: true });
+  shop.root.updateMatrixWorld(true);
+  const paper = new THREE.Box3().setFromObject(shop.bouquet.paperInner);
+  const stems = shop.bouquet.group.children.filter((c) => c.name === 'stem');
+  assert(stems.length > 0, 'no stems in the bouquet');
+  for (const stem of stems) {
+    const base = stem.getWorldPosition(new THREE.Vector3());
+    // Cut ends must sit inside the cone, not poke out below it.
+    assert(base.y > paper.min.y - 0.02,
+      `a stem cut hangs below the paper by ${(paper.min.y - base.y).toFixed(3)}m`);
+  }
+});
+
+check('reduced motion jumps straight to the wrapped state', () => {
+  shop.clearVase();
+  for (let i = 0; i < 4; i += 1) shop.addPickedStem('rose', '#f7d9e0', i);
+  assert(shop.wrap({ instant: true }) === 0, 'instant wrap should report no duration');
+  const b = shop.bouquet;
+  assert(b.state.phase === 'wrapped', 'phase should be wrapped immediately');
+  assert(drawnSegments(b.paperInner) === b.paperInner.userData.indexTotal, 'paper not closed');
+  assert(b.ribbon.visible && Math.abs(b.group.rotation.z) > 1.2, 'not in the resting pose');
+});
+
+check('gathering again after a wrap opens the bouquet back up', () => {
+  const holder = shop.vase.holder;
+  const b = shop.bouquet;
+  assert(b.state.phase === 'wrapped', 'expected a wrapped bouquet to start from');
+
+  shop.addPickedStem('dahlia', '#b83a3f', 99);
+  assert(b.state.phase === 'idle', 'the wrap should have been undone');
+  assert(holder.children.length === 5, `stems should be back in the vase, got ${holder.children.length}`);
+  assert(!b.ribbon.visible && !b.paperInner.visible, 'paper and ribbon should be put away');
+  assert(b.group.position.lengthSq() < 1e-6, 'the bouquet did not return to the vase');
+  assert(Math.abs(b.group.rotation.z) < 1e-6, 'the bouquet is still lying down');
+  assert(drawnSegments(b.paperInner) === 0, 'the paper is still drawn');
+});
+
+check('stems return to the poses they had before wrapping', () => {
+  shop.clearVase();
+  for (let i = 0; i < 5; i += 1) shop.addPickedStem('lisianthus', '#a58ac0', i);
+  tick(0.7);   // let the drop-in animations finish
+  const before = shop.vase.holder.children.map((s) => ({
+    x: s.position.x, y: s.position.y, z: s.position.z, rz: s.rotation.z,
+  }));
+
+  shop.wrap();
+  tick(4.2);
+  shop.resetWrap();
+
+  const after = shop.vase.holder.children.map((s) => ({
+    x: s.position.x, y: s.position.y, z: s.position.z, rz: s.rotation.z,
+  }));
+  assert(after.length === before.length, 'lost a stem in the round trip');
+  before.forEach((b, i) => {
+    for (const key of ['x', 'y', 'z', 'rz']) {
+      near(after[i][key], b[key], 1e-6, `stem ${i} ${key} not restored`);
+    }
+  });
+});
+
+check('clearing the vase also clears any wrap', () => {
+  shop.clearVase();
+  for (let i = 0; i < 3; i += 1) shop.addPickedStem('rose', '#fff', i);
+  shop.wrap({ instant: true });
+  shop.clearVase();
+  assert(shop.bouquet.state.phase === 'idle', 'wrap survived clearVase');
+  assert(shop.vase.holder.children.length === 0, 'stems survived clearVase');
+  assert(shop.bouquet.group.children.length === 4, 'stems left behind in the bouquet');
+  assert(!shop.bouquet.ribbon.visible, 'ribbon left visible');
+});
+
+check('the wrap never produces a non-finite transform', () => {
+  shop.clearVase();
+  for (let i = 0; i < 7; i += 1) shop.addPickedStem('ranunculus', '#f6c9a8', i);
+  shop.wrap();
+  for (let i = 0; i < 300; i += 1) {
+    shop.update(1 / 60, i / 60);
+    const g = shop.bouquet.group;
+    for (const v of [g.position.x, g.position.y, g.position.z,
+      g.rotation.x, g.rotation.y, g.rotation.z, g.scale.x]) {
+      assert(Number.isFinite(v), 'bouquet transform went non-finite');
+    }
+    for (const stem of g.children) {
+      assert(Number.isFinite(stem.position.x) && Number.isFinite(stem.rotation.z),
+        'stem transform went non-finite');
+    }
+  }
+  shop.clearVase();
+});
+
+check('the wrapping shears and paper roll sit on the island', () => {
+  shop.root.updateMatrixWorld(true);
+  const halfW = ROOM.island.width / 2;
+  const halfD = ROOM.island.depth / 2;
+  let checked = 0;
+  for (const child of shop.root.children) {
+    const isRoll = child.isMesh && child.geometry?.type === 'CylinderGeometry'
+      && Math.abs(child.rotation.z - Math.PI / 2) < 0.01;
+    if (!isRoll && !(child.isGroup && child.children.length === 4
+      && child.position.y > ROOM.island.height - 0.01
+      && child.position.y < ROOM.island.height + 0.05)) continue;
+    const box = new THREE.Box3().setFromObject(child);
+    if (box.max.y > ROOM.island.height + 0.3) continue;   // not on the island
+    checked += 1;
+    assert(box.min.x > ROOM.island.x - halfW && box.max.x < ROOM.island.x + halfW,
+      `a working tool overhangs the island ends: x ${box.min.x.toFixed(2)}..${box.max.x.toFixed(2)}`);
+    assert(box.min.z > ROOM.island.z - halfD && box.max.z < ROOM.island.z + halfD,
+      `a working tool overhangs the island sides: z ${box.min.z.toFixed(2)}..${box.max.z.toFixed(2)}`);
+  }
+  assert(checked >= 1, 'found neither the paper roll nor the shears');
 });
 
 check('the printer runs its cycle and resets', () => {

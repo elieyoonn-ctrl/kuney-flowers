@@ -41,6 +41,7 @@ class App {
     this.entered = false;
     this.transitioning = false;
     this.pickedStems = new Map();   // displayId → [hidden stem objects]
+    this._orderTimers = [];         // wrap → print → invoice, cancellable
 
     this.order = new Order(content);
     this.scenes = {};
@@ -1020,18 +1021,47 @@ class App {
     this.order.confirm();
     this.closePanel('order');
 
-    // Send the printer on the long table to work, and move the camera to watch.
-    if (this.space === 'shop') {
-      this.scenes.shop.print();
+    if (this.space !== 'shop') {
+      // Confirmed from the garden — no bench to wrap on, so go straight to it.
+      setTimeout(() => this.showInvoice(), reducedMotion() ? 200 : 500);
+      return;
+    }
+
+    const shop = this.scenes.shop;
+    const quiet = reducedMotion();
+
+    // Beat one: the gathered stems are wrapped and tied on the marble.
+    const wrapTime = shop.wrap({ instant: quiet });
+    if (wrapTime > 0) {
+      // Framed on the wrapping bench: the vase on the right of shot, the clear
+      // marble to its left where the finished bouquet is laid down.
+      this.rig.goTo({
+        id: 'wrapping',
+        position: [0.72, 1.38, 2.52],
+        target: [0.55, 1.02, 1.55],
+      }, { duration: 1.1 });
+      this.announce('Wrapping your bouquet.');
+    }
+
+    // Beat two: the printer issues the invoice.
+    const toPrinter = () => {
+      shop.print();
       this.rig.goTo({
         id: 'printing',
         position: [1.62, 1.42, 2.66],
         target: [1.86, 1.02, 1.72],
-      }, { duration: reducedMotion() ? 0.4 : 1.2 });
-    }
+      }, { duration: quiet ? 0.4 : 1.2 });
+      setTimeout(() => this.showInvoice(), quiet ? 400 : 2100);
+    };
 
-    const delay = reducedMotion() ? 400 : 2100;
-    setTimeout(() => this.showInvoice(), delay);
+    this._orderTimers.forEach(clearTimeout);
+    this._orderTimers = [];
+    if (wrapTime > 0) {
+      // Hold a moment on the finished bouquet before turning to the printer.
+      this._orderTimers.push(setTimeout(toPrinter, (wrapTime + 0.6) * 1000));
+    } else {
+      toPrinter();
+    }
   }
 
   showInvoice() {

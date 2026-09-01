@@ -41,7 +41,7 @@ Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
 any web host. There is no build step and no server-side code.
 
 ```bash
-npm test                  # 67 assertions + a DOM audit, no browser needed
+npm test                  # 81 assertions + a DOM audit, no browser needed
 ```
 
 ---
@@ -56,9 +56,11 @@ npm test                  # 67 assertions + a DOM audit, no browser needed
    the display and drops into the glass vase on the long table.
 5. Opens the order panel: colour, occasion, size, delivery date.
 6. Reads the wall calendar to find a day with bouquets left.
-7. Prints the invoice — the printer on the island feeds the paper out, then the
-   black-and-white invoice opens with buttons to buy online, save the image, or
-   send it to WhatsApp.
+7. Confirms, and the bouquet is made: the gathered stems lift out of the water,
+   draw together, take two sheets of paper and a ribbon, and are laid on the
+   marble. Then the printer feeds the invoice out and the black-and-white
+   docket opens, with buttons to buy online, save the image, or send it to
+   WhatsApp.
 8. Walks through the plaster door into the garden, sows a seed, and comes back
    tomorrow to water it.
 
@@ -272,6 +274,15 @@ to exist before the photographs did, and to be re-tintable from an admin panel.
 Every surface is a canvas texture built from value-noise fbm, with normal maps
 derived from the height field — which is what makes travertine read as stone
 under raking light.
+
+**The wrapping beat.** The paper's sweep is `setDrawRange`, not geometry
+rebuilt per frame: an open-ended `CylinderGeometry` emits its indices in order
+around theta, so revealing them progressively *is* the paper coming around.
+Where the finished bouquet comes to rest is measured at wrap time rather than
+hard-coded — a bouquet laid on its side has to clear its own radius, and that
+depends on the paper cone and on whatever the visitor gathered. A test lays
+every gatherable flower at 1, 6, 12 and 18 stems and asserts none of them lands
+on a display vase, the printer, or off the counter.
 
 **Why merged flower heads?** A peony is around fifty petals, each a parametric
 sheet. Merging every head into one buffer geometry keeps ninety stems in the

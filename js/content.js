@@ -51,6 +51,8 @@ export const DEFAULT_CONTENT = {
     island: '#4f6b5a',
     islandVein: '#9fb9a4',
     terracotta: '#b5866b',
+    wrapPaper: '#efe7d8',
+    ribbon: '#8c9a82',
     daylight: '#fff6e8',
     daylightIntensity: 3.1,
     accent: '#8c9a82',

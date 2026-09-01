@@ -32,10 +32,15 @@ const EYE = 1.58;
 
 /* Layout slots, in world space. `from` is the direction the camera stands in. */
 const SLOTS = {
+  /* Two along the front-left, the third pushed to the back rail. The front of
+     the counter from about x = -0.9 rightward is kept clear as the wrapping
+     bench, which is where a finished bouquet is laid down. */
   'vase-table': [
-    { pos: [-1.70, ROOM.island.height, 1.52], profile: 'bulb', from: [0.1, 0, 1] },
-    { pos: [-0.85, ROOM.island.height, 1.66], profile: 'cylinder', from: [0, 0, 1] },
-    { pos: [0.02, ROOM.island.height, 1.48], profile: 'bud', from: [-0.1, 0, 1] },
+    { pos: [-1.85, ROOM.island.height, 1.62], profile: 'bulb', from: [0.1, 0, 1] },
+    { pos: [-1.15, ROOM.island.height, 1.74], profile: 'cylinder', from: [0, 0, 1] },
+    // On the back rail, so it has to be viewed from further off: the whole
+    // depth of the counter is between the visitor and the flowers.
+    { pos: [-0.30, ROOM.island.height, 1.20], profile: 'bud', from: [-0.1, 0, 1], distance: 1.85 },
   ],
   shelf: [
     { pos: [7.78, 1.04, -0.62], profile: 'bud', from: [-1, 0, 0.1] },
@@ -603,14 +608,46 @@ export function buildShop(content, { renderer } = {}) {
   );
 
   // Wrapping paper and shears, to say the island is worked at.
+  // The roll lies along X, so it is centred well inside the island's left end
+  // rather than overhanging it.
+  const paperMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(theme.wrapPaper || '#efe7d8'),
+    roughness: 0.9,
+    metalness: 0,
+    side: THREE.DoubleSide,
+  });
   const paperRoll = new THREE.Mesh(
     new THREE.CylinderGeometry(0.045, 0.045, 0.62, 20),
-    new THREE.MeshStandardMaterial({ color: 0xefe7d8, roughness: 0.9 })
+    paperMat
   );
   paperRoll.rotation.z = Math.PI / 2;
-  paperRoll.position.set(-2.35, ROOM.island.height + 0.045, 1.95);
+  // Pushed to the back of the counter, out of the wrapping bench.
+  paperRoll.position.set(-1.50, ROOM.island.height + 0.045, 1.18);
   paperRoll.castShadow = true;
   root.add(paperRoll);
+
+  const shears = new THREE.Group();
+  for (const side of [-1, 1]) {
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, 0.004, 0.011),
+      new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.28, metalness: 0.75 })
+    );
+    blade.position.set(0.07, 0, side * 0.006);
+    blade.rotation.y = side * 0.06;
+    blade.castShadow = true;
+    shears.add(blade);
+
+    const handle = new THREE.Mesh(
+      new THREE.TorusGeometry(0.021, 0.005, 8, 18),
+      new THREE.MeshStandardMaterial({ color: 0x2f2d29, roughness: 0.5 })
+    );
+    handle.position.set(-0.02, 0, side * 0.012);
+    handle.rotation.y = Math.PI / 2;
+    shears.add(handle);
+  }
+  shears.position.set(-0.92, ROOM.island.height + 0.006, 1.20);
+  shears.rotation.y = -0.5;
+  root.add(shears);
 
   /* --- the customer's vase (hero glass) -------------------------------- */
 
@@ -636,6 +673,219 @@ export function buildShop(content, { renderer } = {}) {
   const stemHolder = new THREE.Group();
   stemHolder.name = 'gathered';
   vaseGroup.add(stemHolder);
+
+  /* --- the wrapping station -------------------------------------------- --
+     When an order is confirmed the gathered stems lift out of the vase, a
+     sheet of paper sweeps around them, a ribbon cinches, and the finished
+     bouquet settles onto the marble beside the vase.
+
+     `bouquetGroup` shares the vase's transform exactly, so stems can be
+     reparented into it mid-sequence without anything appearing to move. The
+     paper's sweep is done with setDrawRange rather than by rebuilding the
+     geometry each frame: an open-ended CylinderGeometry emits its indices in
+     order around theta, so revealing them progressively *is* the wrap.
+     ---------------------------------------------------------------------- */
+
+  const bouquetGroup = new THREE.Group();
+  bouquetGroup.name = 'bouquet';
+  vaseGroup.add(bouquetGroup);
+
+  const WRAP = {
+    height: 0.34,
+    rBottom: 0.032,
+    rTop: 0.125,
+    segments: 44,
+    lift: 0.15,
+    // Stems are cut at y = 0.1 and lift by 0.15, so the paper has to start at
+    // the cut end (0.20) and rise over the lower stems — not at the group
+    // origin, which is down inside the vase.
+    coneBase: 0.20,
+    ribbonY: 0.30,
+    /* Where the finished bouquet comes to rest, relative to the vase.
+
+       It is laid flat along the island's long axis, in the clear span kept
+       between the last display and the customer's vase — the wrapping bench.
+       Tipping it toward the viewer instead would cantilever the flower heads
+       half a metre past the front edge, which reads as falling off.
+
+       `y` is measured at wrap time — see `settleHeight` — because a bouquet on
+       its side has to clear its own radius, and that depends on the paper cone
+       and on whatever the visitor happened to gather. */
+    /* A tilt about +Z lays the stems toward -X, so the pivot sits at the right
+       end of the bench, just clear of the vase, and the bouquet extends left. */
+    rest: { x: -0.18, y: 0.02, z: 0.12, tilt: 1.45, turn: 0.34 },
+    clearance: 0.004,
+  };
+
+  function wrapCone(scale, opacity) {
+    const geo = new THREE.CylinderGeometry(
+      WRAP.rTop * scale, WRAP.rBottom * scale, WRAP.height * scale,
+      WRAP.segments, 1, true
+    );
+    const mesh = new THREE.Mesh(geo, paperMat.clone());
+    mesh.material.transparent = true;
+    mesh.material.opacity = opacity;
+    mesh.castShadow = true;
+    mesh.visible = false;
+    mesh.userData.indexTotal = geo.index.count;
+    geo.setDrawRange(0, 0);
+    return mesh;
+  }
+
+  bouquetGroup.rotation.order = 'YZX';
+
+  // Two sheets, the second trailing the first, for a double-wrapped look.
+  const paperInner = wrapCone(1, 1);
+  paperInner.position.y = WRAP.coneBase + WRAP.height / 2;
+  bouquetGroup.add(paperInner);
+
+  const paperOuter = wrapCone(1.1, 0.96);
+  paperOuter.position.y = WRAP.coneBase + 0.02 + (WRAP.height * 1.1) / 2;
+  paperOuter.rotation.y = 1.9;
+  bouquetGroup.add(paperOuter);
+
+  const ribbon = new THREE.Mesh(
+    new THREE.TorusGeometry(0.052, 0.0055, 8, 26),
+    new THREE.MeshStandardMaterial({
+      color: new THREE.Color(theme.ribbon || '#8c9a82'),
+      roughness: 0.62,
+      metalness: 0,
+    })
+  );
+  ribbon.rotation.x = Math.PI / 2;
+  ribbon.position.y = WRAP.ribbonY;
+  ribbon.visible = false;
+  ribbon.castShadow = true;
+  bouquetGroup.add(ribbon);
+
+  // The trailing tails of the bow.
+  const tails = new THREE.Group();
+  for (const side of [-1, 1]) {
+    const tail = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.008, 0.075),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color(theme.ribbon || '#8c9a82'),
+        roughness: 0.62,
+        side: THREE.DoubleSide,
+      })
+    );
+    tail.position.set(side * 0.012, -0.036, 0.048);
+    tail.rotation.set(0.3, 0, side * 0.22);
+    tails.add(tail);
+  }
+  tails.position.y = WRAP.ribbonY;
+  tails.visible = false;
+  bouquetGroup.add(tails);
+
+  /** Live state of the wrapping sequence. */
+  const wrapState = { phase: 'idle', t: 0, duration: 0, stems: [] };
+
+  const WRAP_TIMELINE = {
+    gather: [0.00, 0.95],   // stems rise out of the water and draw together
+    sheet: [0.70, 2.15],   // the first sheet sweeps around
+    second: [1.15, 2.55],   // the second follows it
+    tie: [2.45, 3.15],   // ribbon cinches
+    settle: [3.05, 4.00],   // laid down on the marble
+  };
+  const WRAP_DURATION = 4.0;
+
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const span = ([from, to], t) => clamp01((t - from) / (to - from));
+
+  /** Snapshot each stem's pose so the gather can interpolate away from it. */
+  function captureStemPoses() {
+    wrapState.stems = bouquetGroup.children
+      .filter((child) => child.name === 'stem')
+      .map((stem) => ({
+        stem,
+        from: stem.position.clone(),
+        fromRot: { x: stem.rotation.x, z: stem.rotation.z },
+      }));
+  }
+
+  function applyWrap(t) {
+    // --- stems gather into a hand-held bunch ---
+    const gather = easeOut(span(WRAP_TIMELINE.gather, t));
+    for (const entry of wrapState.stems) {
+      const { stem, from, fromRot } = entry;
+      // Draw in toward the axis and stand upright, keeping a little of the fan.
+      // Gripped fairly tight: a loose bunch spreads wide enough to overhang
+      // the counter, and a hand-tie is gripped tight anyway.
+      stem.position.x = from.x * (1 - gather * 0.78);
+      stem.position.z = from.z * (1 - gather * 0.78);
+      stem.position.y = from.y + WRAP.lift * gather;
+      stem.rotation.x = fromRot.x * (1 - gather * 0.70);
+      stem.rotation.z = fromRot.z * (1 - gather * 0.70);
+    }
+
+    // --- the paper comes around ---
+    const reveal = (mesh, progress) => {
+      const total = mesh.userData.indexTotal;
+      // Indices come in groups of six per radial segment; snap to whole
+      // segments so a partially drawn triangle never flickers.
+      const segments = Math.floor((total / 6) * progress);
+      mesh.geometry.setDrawRange(0, segments * 6);
+      mesh.visible = segments > 0;
+    };
+    reveal(paperInner, easeInOut(span(WRAP_TIMELINE.sheet, t)));
+    reveal(paperOuter, easeInOut(span(WRAP_TIMELINE.second, t)));
+
+    // The bunch turns in the hand while it is being wrapped.
+    const turning = span([WRAP_TIMELINE.sheet[0], WRAP_TIMELINE.second[1]], t);
+    bouquetGroup.rotation.y = easeInOut(turning) * WRAP.rest.turn;
+
+    // --- ribbon ---
+    const tie = span(WRAP_TIMELINE.tie, t);
+    if (tie > 0) {
+      ribbon.visible = true;
+      // Drops on from above, then cinches tight.
+      const drop = easeOut(clamp01(tie / 0.55));
+      const cinch = easeInOut(clamp01((tie - 0.45) / 0.55));
+      ribbon.scale.setScalar((1.5 - drop * 0.5) - cinch * 0.14);
+      ribbon.position.y = WRAP.ribbonY + (1 - drop) * 0.10;
+      tails.visible = cinch > 0.25;
+      tails.scale.setScalar(0.4 + cinch * 0.6);
+    } else {
+      ribbon.visible = false;
+      tails.visible = false;
+    }
+
+    // --- laid down on the wrapping bench ---
+    const settle = easeInOut(span(WRAP_TIMELINE.settle, t));
+    bouquetGroup.position.set(
+      WRAP.rest.x * settle,
+      WRAP.rest.y * settle,
+      WRAP.rest.z * settle
+    );
+    bouquetGroup.rotation.z = WRAP.rest.tilt * settle;
+  }
+
+  function advanceWrap(dt) {
+    wrapState.t = Math.min(WRAP_DURATION, wrapState.t + dt);
+    applyWrap(wrapState.t);
+    if (wrapState.t >= WRAP_DURATION) wrapState.phase = 'wrapped';
+  }
+
+  const measureBox = new THREE.Box3();
+
+  /**
+   * How far to raise the bouquet so that, once tipped onto its side, its lowest
+   * point just touches the marble. Done by measuring the finished pose rather
+   * than by guessing a constant: the paper cone's radius and the size of the
+   * flower heads both push the resting height up, and both change with what
+   * the visitor gathered.
+   */
+  function settleHeight() {
+    WRAP.rest.y = 0;
+    applyWrap(WRAP_DURATION);
+    root.updateMatrixWorld(true);
+    measureBox.setFromObject(bouquetGroup);
+    // vaseGroup sits on the island top, so local y = 0 is the marble surface.
+    const lowest = measureBox.min.y - ROOM.island.height;
+    return Number.isFinite(lowest) ? WRAP.clearance - lowest : 0.02;
+  }
 
   // Invisible click target so the vase is easy to select on a phone.
   const vaseHit = new THREE.Mesh(
@@ -733,7 +983,7 @@ export function buildShop(content, { renderer } = {}) {
 
     const focus = new THREE.Vector3(slot.pos[0], headHeight, slot.pos[2]);
     const stop = CameraRig.focusStop(focus, {
-      distance: isFloor ? 1.75 : display.kind === 'shelf' ? 1.3 : 1.35,
+      distance: slot.distance ?? (isFloor ? 1.75 : display.kind === 'shelf' ? 1.3 : 1.35),
       from: new THREE.Vector3().fromArray(slot.from),
       eyeHeight: THREE.MathUtils.clamp(headHeight + 0.06, 1.32, 1.72),
       id: display.id,
@@ -929,6 +1179,7 @@ export function buildShop(content, { renderer } = {}) {
     calendarMaterial: calMat,
     envTexture,
     vase: { group: vaseGroup, holder: stemHolder, water, hero: heroVase },
+    bouquet: { group: bouquetGroup, paperInner, paperOuter, ribbon, tails, state: wrapState },
     printer,
     bounds: new THREE.Box3(
       new THREE.Vector3(-halfW + 0.5, 0, -halfD + 0.5),
@@ -965,6 +1216,8 @@ export function buildShop(content, { renderer } = {}) {
         p.lamp.emissiveIntensity = 0.35 + Math.sin(progress * 40) * 0.3;
         if (p.printing === 0) p.lamp.emissiveIntensity = 0.35;
       }
+
+      if (wrapState.phase === 'running') advanceWrap(dt);
     },
 
     print() {
@@ -978,8 +1231,71 @@ export function buildShop(content, { renderer } = {}) {
       printer.userData.lamp.emissiveIntensity = 0.35;
     },
 
+    /**
+     * Wrap the gathered stems: they rise out of the water, draw together, take
+     * two sheets of paper and a ribbon, and are laid on the marble.
+     * @param {{instant?: boolean}} opts `instant` jumps to the finished state,
+     *        for anyone who prefers reduced motion.
+     * @returns {number} seconds the sequence will take — 0 if there is nothing
+     *        to wrap, so the caller can go straight to the printer.
+     */
+    wrap({ instant = false } = {}) {
+      if (stemHolder.children.length === 0 && bouquetGroup.children.length <= 4) return 0;
+      if (wrapState.phase !== 'idle') return 0;
+
+      // Take the stems out of the vase's holder and into the bouquet, which
+      // shares the same transform — nothing appears to move.
+      for (const stem of [...stemHolder.children]) bouquetGroup.add(stem);
+      captureStemPoses();
+      WRAP.rest.y = settleHeight();
+
+      if (instant) {
+        wrapState.phase = 'wrapped';
+        wrapState.t = WRAP_DURATION;
+        applyWrap(WRAP_DURATION);
+        return 0;
+      }
+
+      wrapState.phase = 'running';
+      wrapState.t = 0;
+      applyWrap(0);
+      return WRAP_DURATION;
+    },
+
+    /** Undo the wrap so more stems can be gathered. */
+    resetWrap() {
+      if (wrapState.phase === 'idle') return;
+      for (const entry of wrapState.stems) {
+        entry.stem.position.copy(entry.from);
+        entry.stem.rotation.x = entry.fromRot.x;
+        entry.stem.rotation.z = entry.fromRot.z;
+        stemHolder.add(entry.stem);
+      }
+      wrapState.stems = [];
+      wrapState.phase = 'idle';
+      wrapState.t = 0;
+
+      bouquetGroup.position.set(0, 0, 0);
+      bouquetGroup.rotation.set(0, 0, 0);
+      for (const sheet of [paperInner, paperOuter]) {
+        sheet.visible = false;
+        sheet.geometry.setDrawRange(0, 0);
+      }
+      ribbon.visible = false;
+      ribbon.scale.setScalar(1);
+      ribbon.position.y = WRAP.ribbonY;
+      tails.visible = false;
+    },
+
+    get isWrapped() {
+      return wrapState.phase !== 'idle';
+    },
+
     /** Drop a picked stem into the customer's vase. */
     addPickedStem(recipeId, hex, index) {
+      // Gathering again after a wrap means the bouquet is being opened up.
+      if (wrapState.phase !== 'idle') api.resetWrap();
+
       const stem = createStem(recipeId, hex, {
         rng,
         scale: 0.94,
@@ -1001,20 +1317,29 @@ export function buildShop(content, { renderer } = {}) {
       const endY = stem.position.y;
       stem.position.y = startY;
       let t = 0;
+      const stop = () => {
+        const i = tickers.indexOf(anim);
+        if (i >= 0) tickers.splice(i, 1);
+      };
       const anim = (_e, dt) => {
+        // If the stem has been taken for wrapping, get out of the way rather
+        // than fighting the wrap for control of its position.
+        if (stem.parent !== stemHolder) {
+          stem.position.y = endY;
+          stop();
+          return;
+        }
         t = Math.min(1, t + dt / 0.55);
         const e = 1 - Math.pow(1 - t, 3);
         stem.position.y = startY + (endY - startY) * e;
-        if (t >= 1) {
-          const i = tickers.indexOf(anim);
-          if (i >= 0) tickers.splice(i, 1);
-        }
+        if (t >= 1) stop();
       };
       tickers.push(anim);
       return stem;
     },
 
     clearVase() {
+      api.resetWrap();
       for (const child of [...stemHolder.children]) {
         stemHolder.remove(child);
         child.traverse((o) => o.geometry?.dispose?.());
