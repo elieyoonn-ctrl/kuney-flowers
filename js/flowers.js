@@ -11,8 +11,10 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { turned } from './geometry.js';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /* --- attribute helpers -------------------------------------------------- */
 
@@ -176,6 +178,14 @@ function stemGeometry({ height = 0.5, radius = 0.0035, bend = 0.05, lean = 0, rn
  *   'globe'    dotted sphere, no petals (craspedia)
  *   'spathe'   single spathe + spadix (anthurium)
  *   'branch'   bare woody branching, sparse blossom
+ *   'umbel'    florets packed over a shallow dome (hydrangea)
+ *   'daisy'    flat rings of strap petals around a raised disc (gerbera)
+ *   'raceme'   large flat flowers spaced up an arching stem (orchid)
+ *   'trumpet'  one furled funnel + spadix (calla)
+ *
+ * `vivid` lifts the stock colour's saturation before it is used; `shade` and
+ * `shadeMix` darken the petal's base so a head has depth in it rather than
+ * reading as one flat tint.
  */
 export const RECIPES = {
   rose: {
@@ -183,16 +193,19 @@ export const RECIPES = {
     head: 'layered',
     stem: { height: 0.52, radius: 0.0042, bend: 0.045 },
     layers: [
-      { count: 5, radius: 0.004, pitch: 0.18, scale: 0.5 },
-      { count: 6, radius: 0.011, pitch: 0.5, scale: 0.72 },
-      { count: 7, radius: 0.019, pitch: 0.82, scale: 0.9 },
-      { count: 8, radius: 0.027, pitch: 1.12, scale: 1 },
-      { count: 8, radius: 0.033, pitch: 1.42, scale: 0.96 },
+      { count: 6, radius: 0.004, pitch: 0.16, scale: 0.46 },
+      { count: 7, radius: 0.010, pitch: 0.44, scale: 0.66 },
+      { count: 8, radius: 0.017, pitch: 0.74, scale: 0.84 },
+      { count: 9, radius: 0.024, pitch: 1.02, scale: 0.96 },
+      { count: 10, radius: 0.031, pitch: 1.3, scale: 1 },
+      { count: 9, radius: 0.037, pitch: 1.58, scale: 0.94 },
     ],
     petal: { length: 0.036, width: 0.033, taper: 0.8, cup: 0.75, curl: -0.15, notch: 0.15 },
     leaves: 3,
     leaf: { length: 0.055, width: 0.026, serrate: 0.25 },
-    tipShift: 0.14,
+    tipShift: 0.1,
+    vivid: 1.24,
+    shadeMix: 0.2,
   },
   peony: {
     label: 'Peony',
@@ -209,6 +222,8 @@ export const RECIPES = {
     leaves: 3,
     leaf: { length: 0.07, width: 0.028, serrate: 0.35 },
     tipShift: 0.22,
+    vivid: 1.2,
+    shadeMix: 0.16,
   },
   ranunculus: {
     label: 'Ranunculus',
@@ -226,32 +241,39 @@ export const RECIPES = {
     head: 'radial',
     stem: { height: 0.5, radius: 0.0048, bend: 0.04 },
     layers: [
-      { count: 8, radius: 0.008, pitch: 0.55, scale: 0.5 },
-      { count: 11, radius: 0.018, pitch: 0.95, scale: 0.72 },
-      { count: 14, radius: 0.028, pitch: 1.25, scale: 0.9 },
-      { count: 16, radius: 0.036, pitch: 1.5, scale: 1 },
+      { count: 9, radius: 0.006, pitch: 0.34, scale: 0.42 },
+      { count: 11, radius: 0.013, pitch: 0.66, scale: 0.58 },
+      { count: 14, radius: 0.021, pitch: 0.98, scale: 0.76 },
+      { count: 17, radius: 0.029, pitch: 1.24, scale: 0.9 },
+      { count: 19, radius: 0.037, pitch: 1.46, scale: 1 },
+      { count: 16, radius: 0.043, pitch: 1.64, scale: 0.94 },
     ],
     petal: { length: 0.038, width: 0.017, taper: 2.2, cup: 1.15, curl: 0.1 },
     core: { radius: 0.006, color: '#2a1f1c' },
     leaves: 2,
     leaf: { length: 0.06, width: 0.03, serrate: 0.3 },
-    tipShift: -0.28,
+    tipShift: -0.24,
+    vivid: 1.3,
+    shadeMix: 0.24,
   },
   lisianthus: {
     label: 'Lisianthus',
     head: 'layered',
     stem: { height: 0.5, radius: 0.0036, bend: 0.05 },
     layers: [
-      { count: 5, radius: 0.006, pitch: 0.4, scale: 0.6 },
-      { count: 6, radius: 0.016, pitch: 0.85, scale: 0.85 },
-      { count: 6, radius: 0.024, pitch: 1.2, scale: 1 },
+      { count: 5, radius: 0.005, pitch: 0.34, scale: 0.54 },
+      { count: 6, radius: 0.013, pitch: 0.7, scale: 0.76 },
+      { count: 7, radius: 0.021, pitch: 1.04, scale: 0.94 },
+      { count: 7, radius: 0.028, pitch: 1.34, scale: 1 },
     ],
     petal: { length: 0.034, width: 0.03, taper: 0.85, cup: 0.55, curl: -0.05, ruffle: 0.3 },
     core: { radius: 0.005, color: '#e8e0b8' },
     buds: 2,
     leaves: 2,
     leaf: { length: 0.05, width: 0.018 },
-    tipShift: 0.2,
+    tipShift: 0.18,
+    vivid: 1.22,
+    shadeMix: 0.18,
   },
   sweetpea: {
     label: 'Sweet Pea',
@@ -268,13 +290,20 @@ export const RECIPES = {
     label: 'Delphinium',
     head: 'spike',
     stem: { height: 0.72, radius: 0.005, bend: 0.03 },
-    spike: { count: 22, from: 0.42, radius: 0.03 },
-    petal: { length: 0.016, width: 0.014, taper: 1.1, cup: 0.7, curl: -0.1 },
-    petalsPerFloret: 5,
+    spike: { count: 34, from: 0.34, radius: 0.034 },
+    // 204 florets to a spike, each 17 mm: coarse, for the same reason as the
+    // hydrangea above.
+    petal: {
+      length: 0.017, width: 0.015, taper: 1.1, cup: 0.7, curl: -0.1,
+      segU: 4, segV: 2,
+    },
+    petalsPerFloret: 6,
     core: { radius: 0.0035, color: '#f0ead2' },
     leaves: 2,
     leaf: { length: 0.05, width: 0.03, serrate: 0.5 },
-    tipShift: 0.16,
+    tipShift: 0.14,
+    vivid: 1.3,
+    shadeMix: 0.14,
   },
   craspedia: {
     label: 'Craspedia',
@@ -287,11 +316,14 @@ export const RECIPES = {
   tropical: {
     label: 'Anthurium',
     head: 'spathe',
-    stem: { height: 0.56, radius: 0.0045, bend: 0.05 },
-    spathe: { length: 0.1, width: 0.085 },
+    stem: { height: 0.6, radius: 0.0048, bend: 0.05 },
+    spathe: { length: 0.115, width: 0.098 },
     leaves: 1,
-    leaf: { length: 0.12, width: 0.075 },
-    tipShift: -0.15,
+    leaf: { length: 0.13, width: 0.082 },
+    tipShift: -0.12,
+    vivid: 1.34,
+    shadeMix: 0.12,
+    gloss: 1,
   },
   branches: {
     label: 'Branch',
@@ -301,6 +333,116 @@ export const RECIPES = {
     petal: { length: 0.014, width: 0.013, taper: 0.9, cup: 0.5, curl: -0.1 },
     leaves: 0,
     tipShift: 0.3,
+  },
+
+  /* --- and the rest of the stock ---------------------------------------- */
+
+  hydrangea: {
+    label: 'Hydrangea',
+    head: 'umbel',
+    // Short and thick: a mophead is heavy and is cut with very little stem.
+    stem: { height: 0.4, radius: 0.0062, bend: 0.03 },
+    umbel: { count: 78, radius: 0.062, dome: 0.62 },
+    /* Coarsely tessellated on purpose. There are 312 of these petals in a
+       single mophead and each is 14 mm across, so the sheet is dropped from
+       9x5 to 4x2 — invisible at any distance you can see the flower from, and
+       it takes the head from 28k triangles to 5k. */
+    petal: {
+      length: 0.014, width: 0.013, taper: 1.05, cup: 0.28, curl: -0.06, notch: 0.1,
+      segU: 4, segV: 2,
+    },
+    petalsPerFloret: 4,
+    leaves: 2,
+    leaf: { length: 0.085, width: 0.055, serrate: 0.3 },
+    tipShift: 0.16,
+    vivid: 1.16,
+    shadeMix: 0.14,
+  },
+
+  gerbera: {
+    label: 'Gerbera',
+    head: 'daisy',
+    // Long, leafless, faintly furred stems — the reason they stand so well in
+    // a tall glass cylinder.
+    stem: { height: 0.62, radius: 0.0046, bend: 0.05 },
+    rings: [
+      { count: 21, radius: 0.020, pitch: 1.44, scale: 1 },
+      { count: 18, radius: 0.016, pitch: 1.28, scale: 0.86 },
+      { count: 14, radius: 0.012, pitch: 1.06, scale: 0.62 },
+    ],
+    petal: { length: 0.042, width: 0.013, taper: 1.9, cup: 0.42, curl: 0.06, notch: 0.1 },
+    disc: { radius: 0.014, flatten: 0.42, color: '#3b2b1e', pollen: '#c9a961', pips: 34 },
+    leaves: 0,
+    tipShift: 0.08,
+    vivid: 1.32,
+    shadeMix: 0.22,
+  },
+
+  tulip: {
+    label: 'Tulip',
+    head: 'layered',
+    stem: { height: 0.52, radius: 0.0058, bend: 0.07 },
+    // Two whorls of three: the classic six-tepal cup, held nearly closed.
+    layers: [
+      { count: 3, radius: 0.014, pitch: 0.2, scale: 1 },
+      { count: 3, radius: 0.021, pitch: 0.34, scale: 0.94 },
+    ],
+    petal: { length: 0.058, width: 0.044, taper: 0.72, cup: 1.25, curl: -0.04, notch: 0.05 },
+    leaves: 2,
+    leaf: { length: 0.15, width: 0.052 },
+    tipShift: 0.12,
+    vivid: 1.28,
+    shadeMix: 0.2,
+  },
+
+  orchid: {
+    label: 'Orchid',
+    head: 'raceme',
+    // A long arching cane with the flowers spaced along its upper half.
+    stem: { height: 0.66, radius: 0.0042, bend: 0.15 },
+    raceme: { count: 6, from: 0.4 },
+    petal: { length: 0.03, width: 0.026, taper: 1.0, cup: 0.2, curl: -0.08 },
+    lip: {
+      color: '#c8628c',
+      petal: { length: 0.019, width: 0.02, taper: 0.7, cup: 0.85, curl: -0.3, notch: 0.3 },
+    },
+    leaves: 0,
+    tipShift: 0.1,
+    vivid: 1.12,
+    shadeMix: 0.1,
+  },
+
+  calla: {
+    label: 'Calla Lily',
+    head: 'trumpet',
+    stem: { height: 0.6, radius: 0.0068, bend: 0.09 },
+    trumpet: { height: 0.1, radius: 0.036, furl: 0.94 },
+    spadix: { color: '#e8c65a' },
+    // The recurved point at the tip of the spathe.
+    petal: { length: 0.03, width: 0.024, taper: 2.4, cup: 0.5, curl: 0.5 },
+    leaves: 0,
+    tipShift: 0.14,
+    vivid: 1.2,
+    shadeMix: 0.16,
+    gloss: 1,
+  },
+
+  iris: {
+    label: 'Iris',
+    head: 'layered',
+    stem: { height: 0.66, radius: 0.0055, bend: 0.04 },
+    // Three falls hanging past the horizontal, three standards arching up.
+    layers: [
+      { count: 3, radius: 0.008, pitch: 0.34, scale: 0.84 },
+      { count: 3, radius: 0.017, pitch: 2.18, scale: 1 },
+    ],
+    petal: { length: 0.05, width: 0.036, taper: 0.78, cup: 0.62, curl: -0.22, ruffle: 0.35 },
+    core: { radius: 0.007, color: '#e0b24a' },
+    leaves: 1,
+    leaf: { length: 0.14, width: 0.022 },
+    tipShift: 0.1,
+    vivid: 1.3,
+    shadeMix: 0.24,
   },
 };
 
@@ -326,6 +468,25 @@ function petalMaterial() {
     );
   }
   return materialCache.get('petal');
+}
+
+/** Lacquered petals — anthurium and calla read as waxed, not papery. */
+function lacquerMaterial() {
+  if (!materialCache.has('lacquer')) {
+    materialCache.set(
+      'lacquer',
+      new THREE.MeshPhysicalMaterial({
+        vertexColors: true,
+        roughness: 0.22,
+        metalness: 0,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.12,
+        sheen: 0.2,
+        side: THREE.DoubleSide,
+      })
+    );
+  }
+  return materialCache.get('lacquer');
 }
 
 function foliageMaterial() {
@@ -366,7 +527,7 @@ function placePetal(geo, { radius, pitch, yaw, scale, y = 0 }) {
 
 function buildLayered(recipe, colors, openness, rng) {
   const parts = [];
-  const base = petalGeometry({ ...recipe.petal, baseColor: colors.base, tipColor: colors.tip });
+  const base = petalGeometry({ ...recipe.petal, baseColor: colors.deep, tipColor: colors.tip });
   let index = 0;
   recipe.layers.forEach((layer, li) => {
     // Outer layers open first; inner ones stay furled until fully open.
@@ -397,7 +558,7 @@ function buildLayered(recipe, colors, openness, rng) {
 
 function buildSpiral(recipe, colors, openness, rng) {
   const parts = [];
-  const base = petalGeometry({ ...recipe.petal, baseColor: colors.base, tipColor: colors.tip });
+  const base = petalGeometry({ ...recipe.petal, baseColor: colors.deep, tipColor: colors.tip });
   const { count, radius, dome } = recipe.spiral;
   const n = Math.max(6, Math.round(count * (0.4 + openness * 0.6)));
   for (let i = 0; i < n; i += 1) {
@@ -425,7 +586,7 @@ function buildRadial(recipe, colors, openness, rng) {
 
 function floretGeometry(recipe, colors, openness, rng, count, scale = 1) {
   const parts = [];
-  const base = petalGeometry({ ...recipe.petal, baseColor: colors.base, tipColor: colors.tip });
+  const base = petalGeometry({ ...recipe.petal, baseColor: colors.deep, tipColor: colors.tip });
   for (let i = 0; i < count; i += 1) {
     const yaw = i * ((Math.PI * 2) / count) + rng() * 0.3;
     parts.push(
@@ -526,7 +687,7 @@ function buildSpathe(recipe, colors, openness, rng) {
     notch: 0.05,
     segU: 12,
     segV: 7,
-    baseColor: colors.base,
+    baseColor: colors.deep,
     tipColor: colors.tip,
   });
   spathe.applyMatrix4(
@@ -599,16 +760,229 @@ function buildBranch(recipe, colors, openness, rng, stem) {
   return parts;
 }
 
+/**
+ * Hydrangea. Scores of four-petalled florets packed over a shallow dome, laid
+ * out by phyllotaxis so the mophead has no seams or bald patches in it.
+ */
+function buildUmbel(recipe, colors, openness, rng) {
+  const parts = [];
+  const { count, radius, dome } = recipe.umbel;
+  const n = Math.max(10, Math.round(count * (0.4 + openness * 0.6)));
+  const floret = floretGeometry(recipe, colors, openness, rng, recipe.petalsPerFloret, 1);
+  if (!floret) return parts;
+
+  const r = radius * (0.45 + openness * 0.55);
+  for (let i = 0; i < n; i += 1) {
+    const t = (i + 0.5) / n;
+    // Even area over the dome: sqrt puts as many florets at the rim as at
+    // the crown, which is what stops the middle from looking crowded.
+    const phi = Math.asin(Math.min(1, Math.sqrt(t)));
+    const rr = r * Math.sin(phi);
+    const yaw = i * GOLDEN;
+    const s = (0.82 + rng() * 0.3) * (1 - t * 0.18);
+    parts.push(
+      floret.clone().applyMatrix4(
+        new THREE.Matrix4().compose(
+          new THREE.Vector3(Math.sin(yaw) * rr, r * dome * Math.cos(phi), Math.cos(yaw) * rr),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(phi * 0.92, yaw, 0)),
+          new THREE.Vector3(s, s, s)
+        )
+      )
+    );
+  }
+  floret.dispose();
+  return parts;
+}
+
+/**
+ * Gerbera. Rings of narrow strap petals held almost flat, around a raised disc
+ * of dark florets ringed with pollen — the disc is what tells a gerbera from
+ * any other daisy, so it is built rather than faked with a dark dot.
+ */
+function buildDaisy(recipe, colors, openness, rng) {
+  const parts = [];
+  const petal = petalGeometry({ ...recipe.petal, baseColor: colors.deep, tipColor: colors.tip });
+  let index = 0;
+
+  for (const ring of recipe.rings) {
+    const pitch = ring.pitch * (0.32 + openness * 0.68);
+    const radius = ring.radius * (0.55 + openness * 0.45);
+    for (let i = 0; i < ring.count; i += 1) {
+      const yaw = index * GOLDEN + rng() * 0.05;
+      index += 1;
+      parts.push(
+        placePetal(petal, {
+          radius,
+          pitch: pitch + (rng() - 0.5) * 0.08,
+          yaw,
+          scale: ring.scale * (0.94 + rng() * 0.12),
+        })
+      );
+    }
+  }
+  petal.dispose();
+
+  const d = recipe.disc;
+  const disc = new THREE.SphereGeometry(d.radius, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+  disc.scale(1, d.flatten, 1);
+  parts.push(withColor(disc, new THREE.Color(d.color).convertSRGBToLinear()));
+
+  const pip = new THREE.SphereGeometry(d.radius * 0.1, 5, 4);
+  withColor(pip, new THREE.Color(d.pollen || d.color).convertSRGBToLinear());
+  const pips = Math.round(d.pips * (0.4 + openness * 0.6));
+  for (let i = 0; i < pips; i += 1) {
+    const t = (i + 0.5) / pips;
+    const rr = d.radius * (0.32 + Math.sqrt(t) * 0.62);
+    const yaw = i * GOLDEN;
+    parts.push(
+      pip.clone().applyMatrix4(
+        new THREE.Matrix4().setPosition(
+          Math.sin(yaw) * rr,
+          d.radius * d.flatten * Math.sqrt(1 - Math.min(1, (rr / d.radius) ** 2)) * 0.95,
+          Math.cos(yaw) * rr
+        )
+      )
+    );
+  }
+  pip.dispose();
+  return parts;
+}
+
+/**
+ * Orchid. Large flat flowers spaced up the arching cane, each five broad
+ * tepals around a contrasting lip, and each turned to face out from the stem.
+ */
+function buildRaceme(recipe, colors, openness, rng, stem) {
+  const parts = [];
+  const { count, from } = recipe.raceme;
+  const n = Math.max(2, Math.round(count * (0.45 + openness * 0.55)));
+
+  const tepal = petalGeometry({ ...recipe.petal, baseColor: colors.deep, tipColor: colors.tip });
+  const lipColor = new THREE.Color(recipe.lip.color).convertSRGBToLinear();
+  const lip = petalGeometry({
+    ...recipe.lip.petal,
+    baseColor: lipColor,
+    tipColor: lipColor.clone().lerp(colors.tip, 0.45),
+  });
+
+  const flowerParts = [];
+  for (let k = 0; k < 5; k += 1) {
+    flowerParts.push(placePetal(tepal, {
+      radius: 0.006,
+      pitch: 1.5,
+      yaw: k * ((Math.PI * 2) / 5) + 0.3,
+      scale: k < 2 ? 1 : 0.9,     // the two upper tepals are the broadest
+    }));
+  }
+  flowerParts.push(placePetal(lip, { radius: 0.004, pitch: 1.62, yaw: Math.PI, scale: 1 }));
+  const flower = safeMerge(flowerParts);
+  tepal.dispose();
+  lip.dispose();
+  if (!flower) return parts;
+
+  for (let i = 0; i < n; i += 1) {
+    const t = from + (1 - from) * (i / Math.max(1, n - 1));
+    const on = stem.curve.getPointAt(THREE.MathUtils.clamp(t, 0, 1));
+    // Alternating sides up the cane, as a raceme actually sets its buds.
+    const yaw = i * 2.4 + rng() * 0.2;
+    // Open at the bottom, still budding at the tip.
+    const s = 1.05 - (t - from) / (1 - from) * 0.42;
+    parts.push(
+      flower.clone().applyMatrix4(
+        new THREE.Matrix4().compose(
+          new THREE.Vector3(on.x + Math.sin(yaw) * 0.012, on.y, on.z + Math.cos(yaw) * 0.012),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI * 0.46, yaw, 0)),
+          new THREE.Vector3(s, s, s)
+        )
+      )
+    );
+  }
+  flower.dispose();
+  return parts;
+}
+
+/**
+ * Calla. One spathe furled into a funnel, done as a lathe stopped just short
+ * of a full turn — the gap is the overlap where the spathe wraps past itself,
+ * which is exactly the seam a real calla has.
+ */
+function buildTrumpet(recipe, colors, openness, rng) {
+  const parts = [];
+  const { height, radius, furl } = recipe.trumpet;
+  const flare = 0.42 + openness * 0.58;
+
+  const funnel = turned(
+    [
+      [radius * 0.06, 0],
+      [radius * 0.2, height * 0.15],
+      [radius * 0.5 * flare, height * 0.44],
+      [radius * 0.84 * flare, height * 0.74],
+      [radius * flare, height * 0.93],
+      [radius * 0.97 * flare, height],
+    ],
+    { segments: 30, thetaStart: 0, thetaLength: Math.PI * 2 * furl, smooth: 3 }
+  );
+  // Deeper in the throat, paler at the flared edge.
+  const count = funnel.attributes.position.count;
+  const colorArr = new Float32Array(count * 3);
+  const pos = funnel.attributes.position;
+  for (let i = 0; i < count; i += 1) {
+    const c = colors.deep.clone().lerp(colors.tip, clamp01(pos.getY(i) / height) ** 1.3);
+    colorArr[i * 3] = c.r;
+    colorArr[i * 3 + 1] = c.g;
+    colorArr[i * 3 + 2] = c.b;
+  }
+  funnel.setAttribute('color', new THREE.BufferAttribute(colorArr, 3));
+  parts.push(funnel);
+
+  // The recurved point the spathe finishes in.
+  const point = petalGeometry({ ...recipe.petal, baseColor: colors.deep, tipColor: colors.tip });
+  parts.push(
+    point.clone().applyMatrix4(
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(0, height * 0.9, radius * flare * 0.92),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.55, 0, 0)),
+        new THREE.Vector3(1, 1, 1)
+      )
+    )
+  );
+  point.dispose();
+
+  const spadix = new THREE.CylinderGeometry(radius * 0.1, radius * 0.07, height * 0.72, 8);
+  withColor(spadix, new THREE.Color(recipe.spadix.color).convertSRGBToLinear());
+  spadix.translate(0, height * 0.44, 0);
+  parts.push(spadix);
+
+  return parts;
+}
+
 /* --- assembly ----------------------------------------------------------- */
 
 function paletteFor(hex, recipe) {
-  const base = new THREE.Color(hex).convertSRGBToLinear();
+  // Vividness first, in sRGB where the stock colours were chosen. Cut flowers
+  // are saturated things, and ACES tone mapping pulls some of that back out
+  // again, so the swatch has to start stronger than it should end.
+  const srgb = new THREE.Color(hex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  srgb.getHSL(hsl);
+  srgb.setHSL(hsl.h, clamp01(hsl.s * (recipe.vivid ?? 1)), hsl.l);
+
+  const base = srgb.clone().convertSRGBToLinear();
   const tip = base.clone();
   const shift = recipe.tipShift ?? 0.15;
   if (shift >= 0) tip.lerp(new THREE.Color(0xffffff).convertSRGBToLinear(), shift);
   else tip.lerp(new THREE.Color(0x2b1418).convertSRGBToLinear(), -shift);
+
+  // The petal's own base sits in the shade of the head above it. Without this
+  // a bloom is one flat tint and reads as cut paper however many petals it has.
+  const deep = base.clone().lerp(
+    new THREE.Color(recipe.shade || '#40352c').convertSRGBToLinear(),
+    recipe.shadeMix ?? 0
+  );
+
   return {
     base,
+    deep,
     tip,
     leaf: new THREE.Color('#5f7355').convertSRGBToLinear(),
     leafTip: new THREE.Color('#8ba17c').convertSRGBToLinear(),
@@ -689,6 +1063,10 @@ export function createStem(recipeId, hex, opts = {}) {
     case 'spike': parts = buildSpike(recipe, colors, openness, rng, stem); break;
     case 'floret': parts = buildFloret(recipe, colors, openness, rng, stem); break;
     case 'branch': parts = buildBranch(recipe, colors, openness, rng, stem); break;
+    case 'umbel': parts = buildUmbel(recipe, colors, openness, rng); break;
+    case 'daisy': parts = buildDaisy(recipe, colors, openness, rng); break;
+    case 'trumpet': parts = buildTrumpet(recipe, colors, openness, rng); break;
+    case 'raceme': parts = buildRaceme(recipe, colors, openness, rng, stem); break;
     default: parts = buildLayered(recipe, colors, openness, rng);
   }
 
@@ -700,10 +1078,10 @@ export function createStem(recipeId, hex, opts = {}) {
 
   const headGeo = safeMerge(parts);
   if (headGeo) {
-    const head = new THREE.Mesh(headGeo, petalMaterial());
+    const head = new THREE.Mesh(headGeo, recipe.gloss ? lacquerMaterial() : petalMaterial());
     head.name = 'head';
-    // Spikes, florets and branches are already positioned along the stem.
-    if (!['spike', 'floret', 'branch'].includes(recipe.head)) {
+    // Spikes, florets, racemes and branches are already positioned along the stem.
+    if (!['spike', 'floret', 'branch', 'raceme'].includes(recipe.head)) {
       head.position.copy(stem.tip);
       head.scale.setScalar(scale);
       // Let the head follow the stem's lean so it never looks pinned on.
@@ -747,6 +1125,65 @@ export function createBunch(recipeId, hex, count, opts = {}) {
     stem.userData.index = i;
     group.add(stem);
   }
+  return group;
+}
+
+/**
+ * A stock bunch holding several colours of one variety.
+ *
+ * Each colour takes a contiguous wedge of the vase rather than being shuffled
+ * through it, because that is how a florist actually buckets stock and how it
+ * reads in the shop: blocks of one colour you can see the shape of, not a
+ * speckle of everything. Radius inside the wedge is staggered so a group has a
+ * front rank and depth behind it.
+ *
+ * @param {string} recipeId key of RECIPES
+ * @param {{hex:string,id?:string,colorId?:string,label?:string,count:number}[]} groups
+ * @returns {THREE.Group} one child per stem, each carrying its own colour
+ */
+export function createGroupedBunch(recipeId, groups, opts = {}) {
+  const {
+    rng = Math.random, spread = 0.055, lift = 0, scale = 1, tilt = 0.26,
+    // Cut to the vessel rather than to the variety: stock in one vase is all
+    // one length whatever it is, and it is how a shelf bunch is kept clear of
+    // the board above it without shrinking the blooms to match.
+    height,
+  } = opts;
+  const group = new THREE.Group();
+  group.name = 'bunch';
+
+  const counts = groups.map((g) => Math.max(0, Math.round(g.count) || 0));
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total === 0) return group;
+
+  let placed = 0;
+  let index = 0;
+  groups.forEach((g, gi) => {
+    const n = counts[gi];
+    const from = (placed / total) * Math.PI * 2;
+    const to = ((placed + n) / total) * Math.PI * 2;
+    for (let i = 0; i < n; i += 1) {
+      const yaw = from + (to - from) * ((i + 0.5) / n) + (rng() - 0.5) * 0.3;
+      const r = spread * (0.28 + rng() * 0.72);
+      const stem = createStem(recipeId, g.hex, {
+        rng,
+        scale: scale * (0.84 + rng() * 0.3),
+        openness: 0.7 + rng() * 0.3,
+        ...(height ? { height } : {}),
+      });
+      stem.position.set(Math.cos(yaw) * r * 0.4, lift, Math.sin(yaw) * r * 0.4);
+      const leanAmount = (r / spread) * tilt;
+      stem.rotation.z = -Math.cos(yaw) * leanAmount;
+      stem.rotation.x = Math.sin(yaw) * leanAmount;
+      stem.userData.index = index;
+      // Colour groups arrive straight from the content, where the key is `id`.
+      stem.userData.colorId = g.colorId ?? g.id;
+      stem.userData.colorLabel = g.label;
+      group.add(stem);
+      index += 1;
+    }
+    placed += n;
+  });
   return group;
 }
 

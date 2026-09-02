@@ -24,6 +24,12 @@ const BLOOMS = [
   { value: 'peony', label: 'Peony' },
   { value: 'ranunculus', label: 'Ranunculus' },
   { value: 'dahlia', label: 'Dahlia' },
+  { value: 'hydrangea', label: 'Hydrangea' },
+  { value: 'gerbera', label: 'Gerbera' },
+  { value: 'tulip', label: 'Tulip' },
+  { value: 'iris', label: 'Iris' },
+  { value: 'calla', label: 'Calla Lily' },
+  { value: 'orchid', label: 'Orchid' },
   { value: 'lisianthus', label: 'Lisianthus' },
   { value: 'sweetpea', label: 'Sweet Pea' },
   { value: 'delphinium', label: 'Delphinium' },
@@ -228,8 +234,10 @@ function themeSection(c) {
       ${colorField(c, { path: 'theme.wall', label: 'Wall tone' })}
       ${colorField(c, { path: 'theme.plaster', label: 'Plaster' })}
       ${colorField(c, { path: 'theme.concrete', label: 'Concrete column' })}
-      ${colorField(c, { path: 'theme.island', label: 'Jade island' })}
-      ${colorField(c, { path: 'theme.islandVein', label: 'Island veining' })}
+      ${colorField(c, { path: 'theme.island', label: 'Long table stone' })}
+      ${colorField(c, { path: 'theme.islandVein', label: 'Table strata' })}
+      ${colorField(c, { path: 'theme.tableGlow', label: 'Under-table light' })}
+      ${colorField(c, { path: 'theme.curtain', label: 'Window linen' })}
       ${colorField(c, { path: 'theme.terracotta', label: 'Terracotta pot' })}
       ${colorField(c, { path: 'theme.wrapPaper', label: 'Wrapping paper' })}
       ${colorField(c, { path: 'theme.ribbon', label: 'Ribbon' })}
@@ -346,10 +354,13 @@ function displaysSection(c) {
   const colours = c.palette.map((p) => ({ value: p.id, label: p.label }));
 
   return section('sec-displays', 'Flower displays',
-    `The flowers in the room. <strong>Bloom</strong> chooses the 3D flower shape,
-     <strong>colour</strong> tints it and adds that colour to a customer's palette
-     when they gather a stem. Leave <strong>photo</strong> blank to use an automatic
-     still of the 3D arrangement, or point it at a file in <code>images/</code>.`,
+    `The flowers in the room. <strong>Bloom</strong> chooses the 3D flower shape and
+     <strong>colour</strong> is the palette colour the display is filed under.
+     Which colours actually stand in the vase, and how many stems of each, is the
+     <code>colors</code> list on the display in <code>js/content.js</code> — a vase
+     holds several colours of one variety. Leave <strong>photo</strong> blank to use
+     an automatic still of the 3D arrangement, or point it at a file in
+     <code>images/</code>.`,
     `<div class="repeat" data-repeat="displays">
       ${list(c.displays).map((d, i) => `
         <div class="repeat__item">
@@ -361,7 +372,7 @@ function displaysSection(c) {
             ${textField(c, { path: `displays.${i}.id`, label: 'ID', help: 'used in share links' })}
             ${textField(c, { path: `displays.${i}.title`, label: 'Name' })}
             ${selectField(c, { path: `displays.${i}.kind`, label: 'Where it sits', options: kinds })}
-            ${textField(c, { path: `displays.${i}.slot`, label: 'Position number', type: 'number', min: 0, max: 6, step: 1 })}
+            ${textField(c, { path: `displays.${i}.slot`, label: 'Position number', type: 'number', min: 0, max: 10, step: 1 })}
             ${selectField(c, { path: `displays.${i}.bloom`, label: 'Bloom shape', options: blooms })}
             ${selectField(c, { path: `displays.${i}.colorId`, label: 'Colour', options: colours })}
             ${photoField(c, `displays.${i}.photo`, 'Photograph', 'optional — overrides the automatic still')}

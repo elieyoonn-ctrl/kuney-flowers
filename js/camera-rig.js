@@ -8,6 +8,11 @@
            direction within a limited cone, then relaxes back to centre.
    free    arrow keys / WASD walk, drag looks freely, AABBs block walls.
 
+   The two coexist rather than being modes you switch between: touching a
+   movement key, or clicking the floor, hands over to free walking on the spot,
+   and the guided stop list is still there to be stepped through afterwards.
+   Nothing about the tour is lost by walking off it.
+
    Roll is never touched — the horizon stays level in both modes.
    ========================================================================== */
 
@@ -15,6 +20,13 @@ import * as THREE from 'three';
 
 const EASE = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const TAU = Math.PI * 2;
+
+/* Every key that means "move me", checked as a set so touching any of them can
+   hand guided viewing over to free walking. */
+const MOVE_KEYS = [
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  'KeyW', 'KeyA', 'KeyS', 'KeyD',
+];
 
 /** Shortest signed angular difference, so a pan never takes the long way. */
 function angleDelta(from, to) {
@@ -54,6 +66,11 @@ export class CameraRig {
 
     this.colliders = [];
     this.bounds = opts.bounds ?? null;
+
+    /* Cleared while a space transition is playing. The threshold walk is a
+       scripted dolly with no colliders and no bounds, so letting a held arrow
+       key take the camera over mid-transition would walk it out of the world. */
+    this.walkEnabled = true;
 
     this.stop = null;
     this._tween = null;
@@ -138,6 +155,11 @@ export class CameraRig {
     return this._pointer.moved > threshold;
   }
 
+  /** True while a pointer is held down — i.e. mid look-around. */
+  get isDragging() {
+    return this._pointer.active;
+  }
+
   dispose() {
     for (const [target, type, handler, options] of this._listeners) {
       target.removeEventListener(type, handler, options);
@@ -147,7 +169,14 @@ export class CameraRig {
 
   /* --- modes ----------------------------------------------------------- */
 
-  setMode(mode) {
+  /** True while any walk or turn key is down and walking is allowed. */
+  get isWalking() {
+    if (!this.walkEnabled) return false;
+    const k = this._keys;
+    return MOVE_KEYS.some((code) => k.has(code));
+  }
+
+  setMode(mode, reason = 'button') {
     if (mode === this.mode) return;
     if (mode === 'free') {
       // Fold the guided look offsets into the absolute orientation so the
@@ -163,7 +192,7 @@ export class CameraRig {
       this._tween = null;
     }
     this.mode = mode;
-    this.onModeChange(mode);
+    this.onModeChange(mode, reason);
   }
 
   /* --- guided movement -------------------------------------------------- */
@@ -217,6 +246,81 @@ export class CameraRig {
   jumpTo(stop) {
     this.goTo(stop, { duration: 0.001 });
     this.update(0.002);
+  }
+
+  /**
+   * Walk to a point on the floor.
+   *
+   * The same eased move as a guided stop, with two differences that matter:
+   * the visitor's own look direction is kept — the point was clicked, so they
+   * are already looking at it, and turning the camera for them would be
+   * disorienting — and the walk ends in free mode rather than parked at a
+   * stop's framing. The guided stop list is untouched, so Next still works
+   * from wherever they end up.
+   *
+   * @param {THREE.Vector3} point where on the floor to stand
+   * @returns {number} seconds the walk will take, 0 if it is not worth making
+   */
+  walkTo(point, opts = {}) {
+    const destination = this._reachable(point);
+    const distance = this.position.distanceTo(destination);
+    if (distance < 0.14) return 0;
+
+    let duration = opts.duration
+      ?? THREE.MathUtils.clamp(0.32 + distance * 0.2, 0.4, 2.2);
+    if (prefersReducedMotion()) duration = Math.min(duration, 0.4);
+
+    // Fold any guided look offset into the absolute orientation now, so the
+    // hand-off to free look at the end of the walk does not jump the view.
+    const yaw = this.yaw + (this.mode === 'guided' ? this.lookYaw : 0);
+    const pitch = this.pitch + (this.mode === 'guided' ? this.lookPitch : 0);
+    this.lookYaw = 0;
+    this.lookPitch = 0;
+    this.stop = null;
+
+    this._tween = {
+      t: 0,
+      duration,
+      fromPos: this.position.clone(),
+      toPos: destination,
+      fromYaw: yaw,
+      toYaw: yaw,
+      fromPitch: pitch,
+      toPitch: pitch,
+      stop: null,
+      onArrive: opts.onArrive,
+      endFree: true,
+    };
+    return duration;
+  }
+
+  /**
+   * The furthest point along the straight line to `point` that can actually be
+   * stood on. Walked in short steps rather than solved, because the colliders
+   * are a plain list of boxes and the room is small: clicking the floor behind
+   * the counter should walk you up to the counter, not through it.
+   */
+  _reachable(point) {
+    const from = this.position;
+    const dx = point.x - from.x;
+    const dz = point.z - from.z;
+    const total = Math.hypot(dx, dz);
+    const best = new THREE.Vector3(from.x, this.eyeHeight, from.z);
+    if (total < 1e-4) return best;
+
+    const step = 0.15;
+    for (let d = step; d <= total; d += step) {
+      const t = Math.min(1, d / total);
+      const x = from.x + dx * t;
+      const z = from.z + dz * t;
+      if (this._blocked(x, z)) break;
+      if (this.bounds && (
+        x < this.bounds.min.x || x > this.bounds.max.x ||
+        z < this.bounds.min.z || z > this.bounds.max.z
+      )) break;
+      best.set(x, this.eyeHeight, z);
+    }
+    return best;
   }
 
   get isMoving() {
@@ -287,6 +391,15 @@ export class CameraRig {
 
     if (this._tween) {
       const tw = this._tween;
+      // A movement key during a move means "let me steer" — abandon the rest
+      // of the tween rather than fighting the visitor for the camera.
+      if (this.isWalking) {
+        this._tween = null;
+        this.setMode('free', 'keys');
+        this._move(step);
+        this.apply();
+        return;
+      }
       tw.t = Math.min(1, tw.t + step / tw.duration);
       const e = EASE(tw.t);
       this.position.lerpVectors(tw.fromPos, tw.toPos, e);
@@ -294,10 +407,16 @@ export class CameraRig {
       this.pitch = tw.fromPitch + (tw.toPitch - tw.fromPitch) * e;
       if (tw.t >= 1) {
         this._tween = null;
+        if (tw.endFree) this.setMode('free', 'walk');
         tw.onArrive?.(tw.stop);
         this.onArrive(tw.stop);
       }
     } else if (this.mode === 'free') {
+      this._move(step);
+    } else if (this.isWalking) {
+      // Free walking is always available, not something to be turned on first:
+      // pressing an arrow key walks, from a guided stop as readily as anywhere.
+      this.setMode('free', 'keys');
       this._move(step);
     } else {
       // Relax the look offsets back toward the stop's framing.

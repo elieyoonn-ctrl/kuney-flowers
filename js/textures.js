@@ -186,6 +186,119 @@ export function travertine(baseHex = '#e3dbcd', { size = 512, tiles = 2 } = {}) 
   });
 }
 
+/**
+ * Tumbled travertine, laid as large-format slabs — the shop floor.
+ *
+ * The difference from `travertine` above is deliberate and is the whole point:
+ * that one draws dark grout lines and repeats the same grain in every square,
+ * which is what makes a floor read as *tile*. Tumbled stone has no grout. The
+ * slabs are laid tight and their edges are worn pale and slightly dished, so
+ * the joint is a soft chalky seam rather than a drawn line. Each slab also
+ * gets its own offset into the noise field, so no two carry the same figure.
+ */
+export function tumbledTravertine(baseHex = '#e6dece', { size = 1024, slabs = 3 } = {}) {
+  return memo(`tumbled:${baseHex}:${slabs}`, () => {
+    const base = hexToRgb(baseHex);
+    const warm = mixRgb(base, [206, 184, 152], 0.5);    // ochre bedding planes
+    const dark = mixRgb(base, [132, 116, 94], 0.5);     // open pores
+    const pale = mixRgb(base, [255, 253, 246], 0.7);    // worn, chalky edges
+
+    const { canvas, height, size: s } = generate(size, (u, v) => {
+      // One offset per slab, so the figure never repeats slab to slab.
+      const su = Math.floor(u * slabs);
+      const sv = Math.floor(v * slabs);
+      const ou = u + hash(su, sv, 917) * 7.3;
+      const ov = v + hash(su, sv, 431) * 5.1;
+
+      // Bedding planes: the noise is stretched along u so the grain lies in
+      // long horizontal drifts rather than in blobs.
+      const drift = fbm(ou * 0.55, ov * 3.4, { frequency: 2.2, octaves: 4, seed: 13 });
+      const bands = fbm(ou * 0.32, ov * 6.2, { frequency: 3, octaves: 5, seed: 29 });
+      const grain = fbm(ou, ov, { frequency: 7, octaves: 5, seed: 11 });
+
+      // Vugs — the open pores that say travertine rather than limestone.
+      // Elongated with the bedding, and genuinely recessed in the height field.
+      const pores = fbm(ou * 0.8, ov * 2.6, { frequency: 26, octaves: 2, seed: 57 });
+      const vug = Math.max(0, pores - 0.6) * 2.6;
+
+      let h = 0.58 + bands * 0.2 + grain * 0.16 - vug * 0.55;
+
+      let rgb = mixRgb(base, pale, bands * 0.46 + grain * 0.2);
+      rgb = mixRgb(rgb, warm, Math.pow(drift, 1.7) * 0.4);
+      rgb = mixRgb(rgb, dark, Math.min(0.55, vug * 0.5));
+
+      // The tumbled edge. A high power keeps it to the last few per cent of
+      // the slab, and it lightens rather than darkens — no grout.
+      const eu = Math.abs(((u * slabs) % 1) - 0.5) * 2;
+      const ev = Math.abs(((v * slabs) % 1) - 0.5) * 2;
+      const edge = Math.pow(Math.max(eu, ev), 16);
+      rgb = mixRgb(rgb, pale, edge * 0.5);
+      h -= edge * 0.34;
+
+      return { rgb, h };
+    });
+
+    return {
+      map: toTexture(canvas, { repeat: 1 }),
+      normalMap: toTexture(normalFromHeight(height, s, 1.25), { srgb: false }),
+      // Matte throughout — honed, not polished — with the pores rougher still.
+      roughnessMap: toTexture(grayscaleFromHeight(height, s, 0.94, 0.7), { srgb: false }),
+    };
+  });
+}
+
+/**
+ * Banded onyx for the long table: horizontal mineral strata in cream, honey
+ * and sage, each bed with its own character and a crisp seam between them.
+ *
+ * Bands run along the texture's v axis, so a mesh whose UVs put v on world Y
+ * gets strata that lie flat — which is how the stone was quarried and how it
+ * reads in the reference.
+ */
+export function bandedOnyx(baseHex = '#ded2ba', veinHex = '#94a291', { size = 512 } = {}) {
+  return memo(`onyx:${baseHex}:${veinHex}`, () => {
+    const base = hexToRgb(baseHex);
+    const vein = hexToRgb(veinHex);
+    const pale = mixRgb(base, [253, 248, 238], 0.72);
+    const honey = mixRgb(base, [178, 142, 100], 0.55);
+    const deep = mixRgb(base, [84, 78, 62], 0.62);
+
+    const BANDS = 26;
+
+    const { canvas, height, size: s } = generate(size, (u, v) => {
+      // The strata wander a little, as bedding does; nothing is ruler-straight.
+      const wander = fbm(u, v, { frequency: 1.6, octaves: 3, seed: 17 });
+      const y = v * BANDS + wander * 2.4 + Math.sin(u * 3.1) * 0.3;
+      const bed = Math.floor(y);
+      const within = y - bed;
+      const character = hash(bed, 3, 205);
+      const fine = fbm(u * 0.4, v * 5, { frequency: 22, octaves: 3, seed: 61 });
+
+      let rgb;
+      if (character < 0.28) {
+        rgb = mixRgb(pale, vein, 0.5 + fine * 0.32);        // sage bed
+      } else if (character < 0.52) {
+        rgb = mixRgb(base, honey, 0.3 + fine * 0.42);       // honey bed
+      } else {
+        rgb = mixRgb(pale, base, fine * 0.72);              // cream bed
+      }
+
+      // A dark mineral seam at each bedding plane, thin and slightly recessed.
+      const seam = Math.pow(1 - Math.abs(within - 0.5) * 2, 9);
+      rgb = mixRgb(rgb, deep, seam * (0.2 + character * 0.35));
+
+      return { rgb, h: fine * 0.5 + seam * 0.5 };
+    });
+
+    return {
+      map: toTexture(canvas),
+      normalMap: toTexture(normalFromHeight(height, s, 0.55), { srgb: false }),
+      // Polished, but the seams catch: the raw edge needs somewhere to be dull.
+      roughnessMap: toTexture(grayscaleFromHeight(height, s, 0.1, 0.42), { srgb: false }),
+    };
+  });
+}
+
 /** Soft lime plaster — very low contrast, trowel-swept. */
 export function plaster(baseHex = '#f6f3ed', { size = 512 } = {}) {
   return memo(`plaster:${baseHex}`, () => {

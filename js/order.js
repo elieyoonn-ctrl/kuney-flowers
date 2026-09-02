@@ -12,7 +12,7 @@
    there is nothing there to leak.
    ========================================================================== */
 
-import { colorById } from './content.js';
+import { colorById, stockColorById } from './content.js';
 import * as store from './store.js';
 
 export class Order {
@@ -104,12 +104,25 @@ export class Order {
   }
 
   /**
-   * The distinct colours gathered, in palette order — used only for the little
-   * swatches on the in-shop keepsake counter. Never reaches the invoice.
+   * The distinct colours gathered, in the order they were gathered — used only
+   * for the little swatches on the in-shop keepsake counter. Never reaches the
+   * invoice.
+   *
+   * A gathered stem's colour is a *stock* colour, which is a longer list than
+   * the customer palette; resolving against both is what keeps the swatches
+   * from silently emptying when someone gathers an orange tulip.
    */
   pickedColors() {
-    const seen = new Set(this.picked.map((p) => p.colorId));
-    return this.content.palette.filter((c) => seen.has(c.id));
+    const out = [];
+    const seen = new Set();
+    for (const p of this.picked) {
+      if (seen.has(p.colorId)) continue;
+      seen.add(p.colorId);
+      const colour = stockColorById(this.content, p.colorId)
+        || (p.hex ? { id: p.colorId, label: p.colorId, hex: p.hex } : null);
+      if (colour) out.push(colour);
+    }
+    return out;
   }
 
   /* --- validity --------------------------------------------------------- */

@@ -10,7 +10,14 @@
    Adding a key here makes it available everywhere via store.getContent().
    ========================================================================== */
 
-export const CONTENT_VERSION = 3;
+/* Bumped to 4 when the shop was restocked.
+   A saved browser copy holds a whole content object, `displays` included, and
+   arrays are replaced wholesale rather than merged — so a snapshot taken
+   before the restock would have put the old ten displays back into the new
+   slots and quietly undone the room. The version gate is how this codebase
+   says "that snapshot is not about this shop any more"; the old key is left
+   untouched in localStorage rather than overwritten. */
+export const CONTENT_VERSION = 4;
 
 export const DEFAULT_CONTENT = {
   version: CONTENT_VERSION,
@@ -42,12 +49,15 @@ export const DEFAULT_CONTENT = {
 
   /* Interior mood — surfaced in the admin so the space can be re-tinted. */
   theme: {
-    floor: '#e3dbcd',
-    wall: '#f2eee7',
+    floor: '#e6dece',
+    wall: '#f3efe8',
     plaster: '#f6f3ed',
     concrete: '#cfc9be',
-    island: '#4f6b5a',
-    islandVein: '#9fb9a4',
+    // The long table: banded onyx, cream strata with sage beds running through.
+    island: '#ded2ba',
+    islandVein: '#94a291',
+    tableGlow: '#ffe4bd',
+    curtain: '#dbd0bd',
     terracotta: '#b5866b',
     wrapPaper: '#efe7d8',
     ribbon: '#8c9a82',
@@ -55,6 +65,28 @@ export const DEFAULT_CONTENT = {
     daylightIntensity: 3.1,
     accent: '#8c9a82',
   },
+
+  /* --- Flower stock colours ---------------------------------------------
+     Kept apart from `palette` on purpose. `palette` is what a customer may
+     *ask* for and drives the order chips and the invoice; this is what is
+     standing in the buckets on any given day. Mixing the two would put
+     twenty chips in the order panel and promise things we do not promise.
+     ---------------------------------------------------------------------- */
+  stockColors: [
+    { id: 'stock-red', label: 'Red', hex: '#c62430' },
+    { id: 'stock-pink', label: 'Pink', hex: '#e8699b' },
+    { id: 'stock-soft-pink', label: 'Soft Pink', hex: '#f3b3c6' },
+    { id: 'stock-blush', label: 'Blush', hex: '#eec3cb' },
+    { id: 'stock-peach', label: 'Peach', hex: '#f6a473' },
+    { id: 'stock-orange', label: 'Orange', hex: '#ee7420' },
+    { id: 'stock-yellow', label: 'Yellow', hex: '#f2c01e' },
+    { id: 'stock-green', label: 'Green', hex: '#8dab5e' },
+    { id: 'stock-light-blue', label: 'Light Blue', hex: '#8cc2e8' },
+    { id: 'stock-dark-blue', label: 'Dark Blue', hex: '#2f4ea6' },
+    { id: 'stock-purple', label: 'Purple', hex: '#8b5cb6' },
+    { id: 'stock-white', label: 'White', hex: '#f8f5ef' },
+    { id: 'stock-pastel', label: 'Dreamy Pastel', hex: '#e7d8ea' },
+  ],
 
   /* --- The two things we can actually cater for -------------------------- */
 
@@ -132,36 +164,203 @@ export const DEFAULT_CONTENT = {
   ],
 
   /* --- Displays in the 3D shop ------------------------------------------
-     `kind`  vase-table | shelf | floor | frame
-     `slot`  index into the layout positions defined per kind in scene-shop.js
-     `photo` optional path, e.g. 'images/peony-01.jpg' — overrides the auto still
-     `bloom` procedural flower recipe id from js/flowers.js
+     `kind`   vase-table | shelf | floor
+     `slot`   index into the layout positions defined per kind in scene-shop.js
+     `photo`  optional path, e.g. 'images/peony-01.jpg' — overrides the auto still
+     `bloom`  procedural flower recipe id from js/flowers.js
+     `colors` the colour groups standing in this vase, as
+              { id: <stockColors id>, count: <stems> }. A vase may hold several
+              colours of one variety, never several varieties: that is how the
+              stock is actually bucketed, and it is what lets a visitor see the
+              shape of a colour rather than a speckle of everything.
+     `colorId` the palette colour the display is filed under — the halo tint and
+              what the admin panel edits. Where `colors` is present it is what
+              actually gets built.
      ---------------------------------------------------------------------- */
 
   displays: [
+    /* --- the long table: three deep, lush arrangements ------------------ */
     {
       id: 'garden-rose',
-      title: 'Garden Rose, Ivory',
-      varieties: ['Rosa “Patience”', 'Astrantia major', 'Silver eucalyptus'],
+      title: 'Garden Rose — Pink, White & Purple',
+      varieties: ['Rosa “Keira”', 'Rosa “Patience”', 'Rosa “Blue Moon”'],
       note:
-        'Cupped ivory heads opening slowly over a week, cut with astrantia for a soft, unstudied edge.',
+        'Cupped heads that open slowly over a week. Cut in three tones and bucketed together, because the pinks read pinker beside the white.',
       kind: 'vase-table',
       slot: 0,
       bloom: 'rose',
-      colorId: 'white',
+      colorId: 'soft-pink',
+      colors: [
+        { id: 'stock-soft-pink', count: 6 },
+        { id: 'stock-white', count: 6 },
+        { id: 'stock-purple', count: 6 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'rose-warm',
+      title: 'Garden Rose — Red, Orange & Yellow',
+      varieties: ['Rosa “Hearts”', 'Rosa “Free Spirit”', 'Rosa “Golden Mustard”'],
+      note:
+        'The warm end of the rose bench. Heavy, many-petalled heads in scarlet, terracotta and old gold.',
+      kind: 'vase-table',
+      slot: 1,
+      bloom: 'rose',
+      colorId: 'red',
+      colors: [
+        { id: 'stock-red', count: 6 },
+        { id: 'stock-orange', count: 6 },
+        { id: 'stock-yellow', count: 6 },
+      ],
       photo: '',
       pickable: true,
     },
     {
       id: 'peony-blush',
-      title: 'Peony, Blush',
-      varieties: ['Paeonia lactiflora “Sarah Bernhardt”', 'Nigella pods'],
+      title: 'Peony, Blush & White',
+      varieties: ['Paeonia lactiflora “Sarah Bernhardt”', 'Paeonia “Duchesse de Nemours”'],
       note:
-        'The shortest season we keep. Heavy, layered heads in the palest blush, cut just as the bud gives.',
+        'The shortest season we keep. Heavy, layered heads in the palest blush and in cream, cut just as the bud gives.',
       kind: 'vase-table',
-      slot: 1,
+      slot: 2,
       bloom: 'peony',
       colorId: 'blush-pink',
+      colors: [
+        { id: 'stock-blush', count: 6 },
+        { id: 'stock-white', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+
+    /* --- the wall shelves: compact, one or two colours each -------------- */
+    {
+      id: 'gerbera-bright',
+      title: 'Gerbera, Red & Pink',
+      varieties: ['Gerbera jamesonii', 'Gerbera “Sundance”'],
+      note: 'Flat, graphic faces on long bare stems, around a dark velvet disc.',
+      kind: 'shelf',
+      slot: 0,
+      bloom: 'gerbera',
+      colorId: 'red',
+      colors: [
+        { id: 'stock-red', count: 5 },
+        { id: 'stock-pink', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'gerbera-warm',
+      title: 'Gerbera, Peach & Yellow',
+      varieties: ['Gerbera “Apricot Bliss”', 'Gerbera “Sunburst”'],
+      note: 'The softer half of the gerbera shelf — apricot through to butter yellow.',
+      kind: 'shelf',
+      slot: 1,
+      bloom: 'gerbera',
+      colorId: 'peach',
+      colors: [
+        { id: 'stock-peach', count: 5 },
+        { id: 'stock-yellow', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'tulip-warm',
+      title: 'Tulip, Red & Orange',
+      varieties: ['Tulipa “Ile de France”', 'Tulipa “Cairo”'],
+      note: 'Six tepals held in a closed cup, on a thick stem that keeps moving in water.',
+      kind: 'shelf',
+      slot: 2,
+      bloom: 'tulip',
+      colorId: 'red',
+      colors: [
+        { id: 'stock-red', count: 5 },
+        { id: 'stock-orange', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'tulip-cool',
+      title: 'Tulip, Pink & Purple',
+      varieties: ['Tulipa “Dynasty”', 'Tulipa “Purple Prince”'],
+      note: 'Cut tight and left to open in the room — they will lean toward the window by morning.',
+      kind: 'shelf',
+      slot: 3,
+      bloom: 'tulip',
+      colorId: 'soft-pink',
+      colors: [
+        { id: 'stock-pink', count: 5 },
+        { id: 'stock-purple', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'lisianthus-purple',
+      title: 'Lisianthus, Purple, Pink & White',
+      varieties: ['Eustoma “Rosita Lavender”', 'Eustoma “Alissa Pink”', 'Eustoma “Croma White”'],
+      note: 'Rose-like without the weight, holding a fortnight in a cool room.',
+      kind: 'shelf',
+      slot: 4,
+      bloom: 'lisianthus',
+      colorId: 'purple',
+      colors: [
+        { id: 'stock-purple', count: 5 },
+        { id: 'stock-pink', count: 5 },
+        { id: 'stock-white', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'iris-mixed',
+      title: 'Iris, Purple & Yellow',
+      varieties: ['Iris germanica', 'Iris “Golden Panther”'],
+      note: 'Three falls hanging past the horizontal, three standards arching up, and a gold beard between them.',
+      kind: 'shelf',
+      slot: 5,
+      bloom: 'iris',
+      colorId: 'purple',
+      colors: [
+        { id: 'stock-purple', count: 5 },
+        { id: 'stock-yellow', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'calla-mixed',
+      title: 'Calla Lily, White & Yellow',
+      varieties: ['Zantedeschia aethiopica', 'Zantedeschia “Florex Gold”'],
+      note: 'One furled spathe on a thick, faintly translucent stem. Architectural, and it lasts.',
+      kind: 'shelf',
+      slot: 6,
+      bloom: 'calla',
+      colorId: 'white',
+      colors: [
+        { id: 'stock-white', count: 5 },
+        { id: 'stock-yellow', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'orchid-mixed',
+      title: 'Orchid, White & Pink',
+      varieties: ['Phalaenopsis amabilis', 'Phalaenopsis “Pink Girl”'],
+      note: 'Flowers spaced up an arching cane, each one flat and wide with a contrasting lip.',
+      kind: 'shelf',
+      slot: 7,
+      bloom: 'orchid',
+      colorId: 'white',
+      colors: [
+        { id: 'stock-white', count: 5 },
+        { id: 'stock-pink', count: 5 },
+      ],
       photo: '',
       pickable: true,
     },
@@ -170,10 +369,11 @@ export const DEFAULT_CONTENT = {
       title: 'Ranunculus, Peach',
       varieties: ['Ranunculus “Clooney Hanoi”', 'Scabiosa stellata'],
       note: 'Tissue-thin petals in warm apricot, wound tight around a dark eye.',
-      kind: 'vase-table',
-      slot: 2,
+      kind: 'shelf',
+      slot: 8,
       bloom: 'ranunculus',
       colorId: 'peach',
+      colors: [{ id: 'stock-peach', count: 8 }],
       photo: '',
       pickable: true,
     },
@@ -183,45 +383,10 @@ export const DEFAULT_CONTENT = {
       varieties: ['Lathyrus odoratus', 'Ammi majus'],
       note: 'Scented, fluttering, faintly translucent. Best appreciated up close.',
       kind: 'shelf',
-      slot: 0,
+      slot: 9,
       bloom: 'sweetpea',
       colorId: 'dreamy-pastel',
-      photo: '',
-      pickable: true,
-    },
-    {
-      id: 'delphinium-blue',
-      title: 'Delphinium, Blue',
-      varieties: ['Delphinium elatum', 'Eryngium planum'],
-      note: 'A vertical, almost architectural blue — the only true blue we carry.',
-      kind: 'shelf',
-      slot: 1,
-      bloom: 'delphinium',
-      colorId: 'blue',
-      photo: '',
-      pickable: true,
-    },
-    {
-      id: 'lisianthus-purple',
-      title: 'Lisianthus, Purple',
-      varieties: ['Eustoma “Rosita Lavender”', 'Clematis vine'],
-      note: 'Rose-like without the weight, holding a fortnight in a cool room.',
-      kind: 'shelf',
-      slot: 2,
-      bloom: 'lisianthus',
-      colorId: 'purple',
-      photo: '',
-      pickable: true,
-    },
-    {
-      id: 'dahlia-red',
-      title: 'Dahlia, Deep Red',
-      varieties: ['Dahlia “Karma Choc”', 'Cotinus foliage'],
-      note: 'Near-black at the centre, opening to oxblood. Cut for drama.',
-      kind: 'shelf',
-      slot: 3,
-      bloom: 'dahlia',
-      colorId: 'red',
+      colors: [{ id: 'stock-pastel', count: 8 }],
       photo: '',
       pickable: true,
     },
@@ -231,21 +396,28 @@ export const DEFAULT_CONTENT = {
       varieties: ['Craspedia globosa', 'Panicum “Fountain”'],
       note: 'Small suns on bare stems. Dries perfectly and keeps for a year.',
       kind: 'shelf',
-      slot: 4,
+      slot: 10,
       bloom: 'craspedia',
       colorId: 'yellow',
+      colors: [{ id: 'stock-yellow', count: 8 }],
       photo: '',
       pickable: true,
     },
+
+    /* --- the floor: tall glass, cut long, standing in water ------------- */
     {
       id: 'anthurium-tropical',
-      title: 'Anthurium, Tropical',
-      varieties: ['Anthurium andraeanum', 'Monstera leaf', 'Heliconia'],
+      title: 'Anthurium, Red & Pink',
+      varieties: ['Anthurium andraeanum', 'Anthurium “Pink Champion”'],
       note: 'Lacquered, sculptural, unapologetic. Our warmest palette.',
       kind: 'floor',
       slot: 0,
       bloom: 'tropical',
       colorId: 'tropical',
+      colors: [
+        { id: 'stock-red', count: 6 },
+        { id: 'stock-pink', count: 6 },
+      ],
       photo: '',
       pickable: true,
     },
@@ -259,8 +431,92 @@ export const DEFAULT_CONTENT = {
       slot: 1,
       bloom: 'branches',
       colorId: 'white',
+      colors: [{ id: 'stock-white', count: 5 }],
       photo: '',
       pickable: false,
+    },
+    {
+      id: 'hydrangea-cool',
+      title: 'Hydrangea, Purple & Light Blue',
+      varieties: ['Hydrangea macrophylla “Verena”', 'Hydrangea “Blue Sky”'],
+      note:
+        'Whole mopheads, scores of florets to a stem. The blue is a soil colour, not a dye — it will not hold in every season.',
+      kind: 'floor',
+      slot: 2,
+      bloom: 'hydrangea',
+      colorId: 'purple',
+      colors: [
+        { id: 'stock-purple', count: 6 },
+        { id: 'stock-light-blue', count: 6 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'delphinium-blue',
+      title: 'Delphinium, Light Blue, Dark Blue & Purple',
+      varieties: ['Delphinium elatum', 'Delphinium “Volkerfrieden”', 'Eryngium planum'],
+      note: 'A vertical, almost architectural blue — the only true blue we carry.',
+      kind: 'floor',
+      slot: 3,
+      bloom: 'delphinium',
+      colorId: 'blue',
+      colors: [
+        { id: 'stock-light-blue', count: 6 },
+        { id: 'stock-dark-blue', count: 6 },
+        { id: 'stock-purple', count: 6 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'dahlia-red',
+      title: 'Dahlia, Red, Pink & Orange',
+      varieties: ['Dahlia “Karma Choc”', 'Dahlia “Cafe au Lait Rose”', 'Cotinus foliage'],
+      note: 'Near-black at the centre, opening to oxblood. Cut for drama.',
+      kind: 'floor',
+      slot: 4,
+      bloom: 'dahlia',
+      colorId: 'red',
+      colors: [
+        { id: 'stock-red', count: 6 },
+        { id: 'stock-pink', count: 6 },
+        { id: 'stock-orange', count: 6 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'hydrangea-warm',
+      title: 'Hydrangea, Green & Pink',
+      varieties: ['Hydrangea “Annabelle”', 'Hydrangea macrophylla “Rosita”'],
+      note: 'The antique end of the hydrangea stock — limes going over to dusty rose.',
+      kind: 'floor',
+      slot: 5,
+      bloom: 'hydrangea',
+      colorId: 'dreamy-pastel',
+      colors: [
+        { id: 'stock-green', count: 6 },
+        { id: 'stock-soft-pink', count: 6 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'anthurium-pure',
+      title: 'Anthurium, Green & White',
+      varieties: ['Anthurium “Midori”', 'Anthurium “Sumi White”', 'Monstera leaf'],
+      note: 'The same waxed spathe in green and in white. Reads as sculpture rather than as flowers.',
+      kind: 'floor',
+      slot: 6,
+      bloom: 'tropical',
+      colorId: 'white',
+      colors: [
+        { id: 'stock-green', count: 6 },
+        { id: 'stock-white', count: 6 },
+      ],
+      photo: '',
+      pickable: true,
     },
   ],
 
@@ -270,19 +526,19 @@ export const DEFAULT_CONTENT = {
       id: 'frame-01',
       title: 'Wrapped, No. 1',
       caption: 'Studio, August',
-      photo: '',
+      photo: 'images/KUNEY peony bouquet.jpg',
     },
     {
       id: 'frame-02',
       title: 'Table Arrangement, No. 4',
       caption: 'Private commission',
-      photo: '',
+      photo: 'images/KUNEY dahlia smoketreejpg.jpg',
     },
     {
       id: 'frame-03',
       title: 'Bud Vases, Morning',
       caption: 'Shop counter',
-      photo: '',
+      photo: 'images/KUNEY pink rose bouquet.WEBP',
     },
   ],
 
@@ -335,4 +591,36 @@ export const DEFAULT_CONTENT = {
 /* Convenience: colour lookup used by the picker, invoice and flower factory. */
 export function colorById(content, id) {
   return content.palette.find((c) => c.id === id) || content.palette[0];
+}
+
+/**
+ * A flower's colour, looked up across both lists.
+ *
+ * Stock colours and the customer palette overlap in name but not in intent, and
+ * a gathered stem may carry an id from either — a keepsake swatch has to resolve
+ * whichever it was.
+ */
+export function stockColorById(content, id) {
+  return (content.stockColors || []).find((c) => c.id === id)
+    || (content.palette || []).find((c) => c.id === id)
+    || null;
+}
+
+/**
+ * The colour groups standing in a display, resolved to real colours.
+ *
+ * Falls back to the display's single palette colour, so a display added from the
+ * admin panel — which does not know about `colors` — still builds.
+ */
+export function displayColorGroups(content, display) {
+  const groups = (display.colors || [])
+    .map((entry) => {
+      const colour = stockColorById(content, entry.id);
+      if (!colour) return null;
+      return { ...colour, count: Math.max(1, Math.round(entry.count) || 1) };
+    })
+    .filter(Boolean);
+  if (groups.length) return groups;
+  const single = colorById(content, display.colorId);
+  return [{ ...single, count: display.kind === 'floor' ? 7 : 9 }];
 }

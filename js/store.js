@@ -12,7 +12,7 @@
 
 import { DEFAULT_CONTENT, CONTENT_VERSION } from './content.js';
 
-const KEY_CONTENT = 'kuney.content.v3';
+const KEY_CONTENT = 'kuney.content.v4';
 const KEY_GARDEN = 'kuney.garden.v3';
 const KEY_ADMIN = 'kuney.admin';
 
@@ -155,7 +155,8 @@ export function repair(target = content, fallback = DEFAULT_CONTENT) {
     }
   };
 
-  for (const key of ['palette', 'occasions', 'sizes', 'delivery', 'terms', 'displays', 'frames']) {
+  for (const key of ['palette', 'stockColors', 'occasions', 'sizes', 'delivery', 'terms',
+    'displays', 'frames']) {
     expect(key, 'array');
   }
   for (const key of ['brand', 'contact', 'theme', 'invoice', 'calendar', 'garden']) {

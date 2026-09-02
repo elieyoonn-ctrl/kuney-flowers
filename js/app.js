@@ -86,8 +86,8 @@ class App {
 
     this.rig = new CameraRig(this.camera, this.renderer.domElement, {
       eyeHeight: 1.58,
-      onArrive: () => this.onArrive(),
-      onModeChange: (m) => this.onRigMode(m),
+      onArrive: (stop) => this.onArrive(stop),
+      onModeChange: (m, reason) => this.onRigMode(m, reason),
     });
     this.rig.setColliders(this.scenes.shop.colliders);
     this.rig.bounds = this.scenes.shop.bounds;
@@ -169,6 +169,14 @@ class App {
     this.currentScene?.update(dt, elapsed);
     if (this.space === 'corridor') this.scenes.corridor?.update(dt, elapsed);
 
+    /* The pointer can sit still while the room moves past it — walking with
+       the keyboard, or riding a guided move — which would otherwise leave the
+       last thing hovered lit and the cursor lying about what is under it.
+       `hoverAt` throttles itself, so this costs at most a cast every 70 ms. */
+    if (this._pointerAt && (this.rig?.isMoving || this.rig?.isWalking)) {
+      this.hoverAt(this._pointerAt.x, this._pointerAt.y);
+    }
+
     this.updatePlanMarker();
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(() => this.loop());
@@ -220,8 +228,12 @@ class App {
         heroEl.classList.add('is-set');
       }
 
+      /* Only the displays that appear on the landing page. Each of these is a
+         full render plus a synchronous toDataURL, and the shop now stands
+         twenty-one vases — shooting the seventeen nobody will look at only
+         made the loader sit there longer. */
       this.stills = new Map();
-      for (const display of this.content.displays) {
+      for (const display of this.featuredDisplays) {
         const entry = shop.displays.get(display.id);
         if (!entry) continue;
         this.stills.set(
@@ -262,7 +274,10 @@ class App {
     role('hero-season').textContent = `${c.brand.seasonLabel} — ${c.brand.seasonName}`;
     role('hero-intro').textContent = c.brand.intro;
     role('enter-btn').textContent = c.brand.enterLabel;
-    role('hud-brand').textContent = c.brand.logoText;
+    // The HUD brand is the logo image, so the brand copy names it rather than
+    // being written into it — setting textContent here would delete the <img>.
+    const logo = role('hud-logo');
+    if (logo) logo.alt = `${c.brand.name} — back to the front page`;
     document.title = `${c.brand.name} — A Virtual Flower Shop`;
 
     // Sizes
@@ -313,11 +328,16 @@ class App {
     host.appendChild(frag);
   }
 
+  /** The arrangements shown on the landing page — and the only ones that need
+   *  a still captured for them. One list, so the two cannot drift apart. */
+  get featuredDisplays() {
+    return this.content.displays.slice(0, 4);
+  }
+
   renderFeatured() {
     const grid = role('featured-grid');
     if (!grid) return;
-    const featured = this.content.displays.slice(0, 4);
-    grid.innerHTML = featured.map((d) => this.cardHTML(d)).join('');
+    grid.innerHTML = this.featuredDisplays.map((d) => this.cardHTML(d)).join('');
   }
 
   cardHTML(display) {
@@ -353,8 +373,8 @@ class App {
     if (displayId) this.focusDisplay(displayId);
     this.hint(
       this.isTouch()
-        ? 'Swipe to look · tap a flower to gather it · use the arrows to move'
-        : 'Drag to look · click a flower to gather it · arrow keys or Next to move'
+        ? 'Swipe to look · tap the floor to walk · tap a flower to gather it'
+        : 'Arrow keys to walk · click the floor to go there · Next for the guided tour'
     );
     this.syncRoute();
   }
@@ -375,6 +395,9 @@ class App {
     this.transitioning = true;
     this.closePanels();
     this.hint('');
+    // The threshold walk is a scripted dolly through a space with no colliders,
+    // so hand-walking has to be off for the duration of it.
+    this.rig.walkEnabled = false;
 
     const forward = space === 'garden';
 
@@ -439,6 +462,7 @@ class App {
 
     await this.veil(false, 720);
     this.transitioning = false;
+    this.rig.walkEnabled = true;
 
     if (!silent) {
       this.announce(space === 'garden' ? 'You are in the garden.' : 'You are back in the shop.');
@@ -479,27 +503,40 @@ class App {
     this.goToStopIndex(this.stopIndex + delta);
   }
 
-  onArrive() {
-    const stop = this.stops[this.stopIndex];
+  /**
+   * A camera move finished. Only a *stop* has anything to open on arrival: a
+   * free walk arrives too, with no stop attached, and must not fire the side
+   * effects of whichever stop the visitor happened to leave from.
+   */
+  onArrive(stop) {
     if (!stop) return;
     if (stop.kind === 'calendar') this.openOrderPanel({ focus: 'calendar' });
     if (stop.kind === 'plot') this.openGardenPanel(stop.plotIndex);
   }
 
-  onRigMode(mode) {
+  onRigMode(mode, reason) {
     const btn = role('explore-btn');
     if (btn) btn.setAttribute('aria-pressed', String(mode === 'free'));
-    if (mode === 'free') {
-      this.hint('Arrow keys or WASD to walk · drag to look · Esc to leave free exploration');
-      this.announce('Free exploration on.');
-    } else {
+    if (mode !== 'free') {
       this.hint('');
+      return;
+    }
+    // Walking off the tour is ordinary now, so it is not worth a live-region
+    // announcement every time someone touches an arrow key — only when they
+    // asked for free exploration by name.
+    if (reason === 'button') {
+      this.hint('Arrow keys or WASD to walk · drag to look · Esc returns to the tour');
+      this.announce('Free exploration on.');
+    } else if (reason === 'keys') {
+      this.hint('Walking freely · Next returns you to the tour · Esc goes back to this stop');
     }
   }
 
   toggleExplore() {
     if (this.isTouch()) {
-      this.toast('Free exploration is available on desktop. Use the stops to move.');
+      // Walking is not desktop-only any more — there is just no keyboard to
+      // announce, so say what does work here instead.
+      this.toast('Tap the floor to walk over to it, or use the arrows for the tour.');
       return;
     }
     this.rig.setMode(this.rig.mode === 'free' ? 'guided' : 'free');
@@ -696,13 +733,32 @@ class App {
     }[d.kind] || 'Display';
     role('detail-title').textContent = d.title;
 
+    // What is actually standing in this vase, colour by colour. Kept as a
+    // plain list of swatches so the panel's shape does not change.
+    const groups = entry.colours || [];
+    const colourList = groups.length > 1
+      ? `
+        <div class="section">
+          <h3>In this vase <em>${groups.length} colours</em></h3>
+          <ul class="varieties varieties--swatched">
+            ${groups.map((g) => `
+              <li><i style="background:${esc(g.hex)}"></i>${esc(g.label)}
+                <em>${g.count} stems</em></li>
+            `).join('')}
+          </ul>
+        </div>`
+      : '';
+
     role('detail-body').innerHTML = `
       <div class="section">
         <h3>About</h3>
         <p class="prose">${esc(d.note || '')}</p>
       </div>
+      ${colourList}
       <div class="section">
-        <h3>Varieties <em>${esc(entry.colour.label)}</em></h3>
+        <h3>Varieties${groups.length > 1
+          ? ''
+          : ` <em>${esc(groups[0]?.label || entry.colour.label)}</em>`}</h3>
         <ul class="varieties">
           ${(d.varieties || []).map((v) => `<li>${esc(v)}</li>`).join('')}
         </ul>
@@ -778,16 +834,24 @@ class App {
     hidden.push(stem);
     this.pickedStems.set(displayId, hidden);
 
-    shop.addPickedStem(entry.data.bloom, entry.colour.hex, this.order.picked.length);
+    /* The stem's own colour, not the display's. A mixed vase holds several
+       colours of one variety, so gathering the yellow rose out of the warm
+       bench has to put a yellow rose in your vase — reading the colour off the
+       display would quietly turn them all red. */
+    const hex = stem.userData.hex || entry.colour.hex;
+    const colorId = stem.userData.colorId || entry.colour.id;
+    const colorLabel = stem.userData.colorLabel || entry.colour.label;
+
+    shop.addPickedStem(entry.data.bloom, hex, this.order.picked.length);
     const total = this.order.addPicked({
       displayId,
       title: entry.data.title,
       recipeId: entry.data.bloom,
-      hex: entry.colour.hex,
-      colorId: entry.colour.id,
+      hex,
+      colorId,
     });
 
-    this.toast(`${entry.data.title} — gathered. ${total} stem${total === 1 ? '' : 's'} in your vase.`);
+    this.toast(`${entry.data.title} — ${colorLabel.toLowerCase()} stem gathered. ${total} stem${total === 1 ? '' : 's'} in your vase.`);
     this.announce(`Gathered ${entry.data.title}. A keepsake of your visit — it does not change your order.`);
     if (this.dom.panels.detail.classList.contains('is-open') && this.selectedId === displayId) {
       this.openDetail(entry);
@@ -1294,6 +1358,20 @@ class App {
       this.pickAt(e.clientX, e.clientY);
     });
 
+    // Hover feedback. Mouse only: on a touch screen there is no pointer to
+    // hover with, and running the raycast on every touchmove would only cost
+    // frames during a swipe.
+    canvas.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      this._pointerAt = { x: e.clientX, y: e.clientY };
+      if (this.transitioning || this.rig?.isDragging) return;
+      this.hoverAt(e.clientX, e.clientY);
+    }, { passive: true });
+    canvas.addEventListener('pointerleave', () => {
+      this._pointerAt = null;
+      this.clearHover();
+    });
+
     store.subscribe((next) => {
       this.refreshBoard();
       this.calendarPanel?.render();
@@ -1477,12 +1555,15 @@ class App {
     }
 
     if (!this.entered || this.transitioning) return;
-    if (this.rig?.mode === 'free') return;   // the rig handles movement keys
 
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    /* The arrow keys walk — the rig owns them, in guided mode as well as free,
+       so they are deliberately not handled here. Stepping the tour from the
+       keyboard moves to the bracket and comma keys; the Next and Previous
+       buttons, the floor plan and clicking a display are unchanged. */
+    if (e.key === '.' || e.key === '>' || e.key === 'PageDown' || e.key === ']') {
       e.preventDefault();
       this.step(1);
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    } else if (e.key === ',' || e.key === '<' || e.key === 'PageUp' || e.key === '[') {
       e.preventDefault();
       this.step(-1);
     } else if (e.key === 'Home') {
@@ -1493,9 +1574,10 @@ class App {
 
   /* --- raycasting ------------------------------------------------------- */
 
-  pickAt(clientX, clientY) {
+  /** The first visible interactive thing under a screen point, if any. */
+  castAt(clientX, clientY) {
     const scene = this.currentScene;
-    if (!scene?.interactive?.length) return;
+    if (!scene?.interactive?.length) return null;
 
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -1503,9 +1585,46 @@ class App {
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
     const hits = this.raycaster.intersectObjects(scene.interactive, false);
-    const hit = hits.find((h) => h.object.visible)?.object;
-    if (!hit) return;
+    return hits.find((h) => h.object.visible) || null;
+  }
+
+  /**
+   * Light whatever is under the pointer and set the cursor to match.
+   *
+   * Throttled: a raycast against a few hundred stems on every pointermove is
+   * wasted work at 120 Hz, and the glow eases in over a few frames anyway.
+   */
+  hoverAt(clientX, clientY) {
+    const now = performance.now();
+    if (now - (this._lastHover || 0) < 70) return;
+    this._lastHover = now;
+
+    const hit = this.castAt(clientX, clientY);
+    const data = hit?.object?.userData || {};
+    // The floor is interactive too, but it is not an *object* — it gets the
+    // walk cursor rather than a glow, so the two affordances stay distinct.
+    const isThing = !!hit && !data.walkable;
+    this.currentScene?.setHover?.(isThing ? hit.object : null);
+    this.dom.host.style.cursor = isThing ? 'pointer' : (hit ? 'crosshair' : '');
+  }
+
+  clearHover() {
+    this.currentScene?.setHover?.(null);
+    this.dom.host.style.cursor = '';
+  }
+
+  pickAt(clientX, clientY) {
+    const found = this.castAt(clientX, clientY);
+    if (!found) return;
+    const hit = found.object;
     const data = hit.userData || {};
+
+    if (data.walkable) {
+      // Clicking the stone walks there, stopping at whatever is in the way.
+      const seconds = this.rig.walkTo(found.point);
+      if (seconds > 0) this.announce('Walking.');
+      return;
+    }
 
     if (data.portal) {
       this.transitionTo(data.portal === 'garden' ? 'garden' : 'shop');
@@ -1565,16 +1684,22 @@ class App {
         <ul class="varieties">
           ${touch ? `
             <li>Swipe anywhere to look around.</li>
+            <li>Tap the floor to walk over to that spot.</li>
             <li>Tap a flower to move to it; tap again to gather a stem.</li>
             <li>Use the large arrows at the bottom to move between stops.</li>
           ` : `
             <li>Drag to look around.</li>
+            <li><b>Arrow keys or WASD walk you around</b>, from anywhere — left
+              and right turn, up and down walk. Hold Shift to walk faster.</li>
+            <li><b>Click the floor</b> to walk over to that spot, or click
+              anything to go and look at it closely.</li>
             <li>Click a flower to move to it; click again to gather a stem.</li>
-            <li>Left and right arrow keys move between stops.</li>
+            <li>The <b>Next</b> and <b>Previous</b> arrows follow the guided
+              tour of the room, and keep working wherever you have walked to.
+              On the keyboard that is <b>,</b> and <b>.</b></li>
             <li>Select points on the floor plan to jump.</li>
-            <li>Explore Freely walks with the arrow keys or WASD; Escape leaves it.</li>
           `}
-          <li>Escape closes any panel.</li>
+          <li>Escape brings you back to the tour, and closes any panel.</li>
         </ul>
       </div>
       <div class="section">

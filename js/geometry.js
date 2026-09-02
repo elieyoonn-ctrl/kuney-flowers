@@ -146,7 +146,42 @@ export const VASE_PROFILES = {
     [0.001, 0], [0.10, 0], [0.102, 0.02], [0.095, 0.30], [0.11, 0.52],
     [0.113, 0.58], [0.109, 0.58],
   ],
+  /* A plain straight-sided glass cylinder — the shop-cooler vase that a bunch
+     of long stems is dropped straight into. Short enough for a wall shelf. */
+  column: [
+    [0.001, 0], [0.072, 0], [0.075, 0.012], [0.075, 0.245],
+    [0.073, 0.262], [0.070, 0.262],
+  ],
 };
+
+/**
+ * The customer's own vase — the one that collects gathered stems.
+ *
+ * Deliberately nothing like the clear cylinders the stock stands in: a footed
+ * opaline urn, waisted above a rounded foot, swelling to a full belly, drawn in
+ * at the shoulder and flaring out again to a wide lip. `turned` splines through
+ * these, so the corners come out soft.
+ *
+ * The neck is kept wide enough to clear the gathered stems at full lean — a
+ * prettier, tighter neck put stems through the glass.
+ */
+export const SPECIAL_VASE_PROFILE = [
+  [0.001, 0],
+  [0.054, 0.002],    // the foot, a squat rounded bun
+  [0.064, 0.020],
+  [0.056, 0.042],
+  [0.040, 0.058],    // waist between foot and body
+  [0.066, 0.082],
+  [0.104, 0.132],
+  [0.122, 0.186],    // the belly, at its fullest
+  [0.118, 0.238],
+  [0.100, 0.272],    // shoulder draws in
+  [0.092, 0.294],    // neck
+  [0.108, 0.322],
+  [0.130, 0.346],    // the lip flares wide and a little wavy
+  [0.136, 0.354],
+  [0.131, 0.353],    // back down the inside, to give the rim thickness
+];
 
 /** Weathered pot for the olive tree. */
 export const POT_PROFILE = [

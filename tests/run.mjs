@@ -196,6 +196,68 @@ check('bunches fan out as separate pickable stems', () => {
   }
 });
 
+check('a grouped bunch carries a colour per stem, in blocks', () => {
+  const groups = [
+    { id: 'a', hex: '#c62430', label: 'Red', count: 6 },
+    { id: 'b', hex: '#f2c01e', label: 'Yellow', count: 5 },
+    { id: 'c', hex: '#f8f5ef', label: 'White', count: 7 },
+  ];
+  const bunch = flowers.createGroupedBunch('rose', groups, { rng: geom.seeded(4) });
+  assert(bunch.children.length === 18, `expected 18 stems, got ${bunch.children.length}`);
+
+  const tally = new Map();
+  for (const stem of bunch.children) {
+    assert(stem.userData.hex, 'a stem has no colour on it');
+    assert(stem.userData.colorId, 'a stem has no colour id on it');
+    tally.set(stem.userData.colorLabel, (tally.get(stem.userData.colorLabel) || 0) + 1);
+  }
+  for (const g of groups) {
+    assert(tally.get(g.label) === g.count,
+      `${g.label}: expected ${g.count} stems, got ${tally.get(g.label)}`);
+  }
+
+  // Each colour occupies its own wedge rather than being shuffled through the
+  // vase — grouping by variety and colour is the whole point of the display.
+  const order = bunch.children.map((s) => s.userData.colorLabel);
+  let switches = 0;
+  for (let i = 1; i < order.length; i += 1) if (order[i] !== order[i - 1]) switches += 1;
+  assert(switches === groups.length - 1,
+    `colours are interleaved: ${switches} changes across ${groups.length} groups`);
+});
+
+check('a grouped bunch can be cut to a length, blooms unchanged', () => {
+  const groups = [{ id: 'a', hex: '#e8699b', label: 'Pink', count: 5 }];
+  const tall = flowers.createGroupedBunch('iris', groups, { rng: geom.seeded(8) });
+  const short = flowers.createGroupedBunch('iris', groups, { rng: geom.seeded(8), height: 0.4 });
+  const highest = (b) => Math.max(...b.children.map((s) => s.userData.height));
+  assert(highest(short) < highest(tall) * 0.75,
+    `cutting to length did nothing: ${highest(short)} vs ${highest(tall)}`);
+  // The head is sized by `scale`, not by the stem length, so it must survive.
+  const headWidth = (b) => {
+    const head = b.children[0].getObjectByName('head');
+    head.geometry.computeBoundingBox();
+    return size(head.geometry).x;
+  };
+  near(headWidth(short), headWidth(tall), 0.001, 'the bloom shrank with the stem');
+});
+
+check('the varieties the shop lists all have a recipe', () => {
+  // The content names a bloom per display; a typo would silently fall back to
+  // a rose and nothing would look wrong enough to notice.
+  const wanted = [
+    'rose', 'dahlia', 'hydrangea', 'tropical', 'lisianthus', 'delphinium',
+    'gerbera', 'tulip', 'orchid', 'calla', 'iris',
+  ];
+  for (const id of wanted) {
+    assert(flowers.RECIPES[id], `no recipe for ${id}`);
+    const stem = flowers.createStem(id, '#c62430', { rng: geom.seeded(2) });
+    const head = stem.getObjectByName('head');
+    assert(head, `${id}: no head`);
+    const w = size(head.geometry).x;
+    assert(w > 0.012 && w < 0.3, `${id}: implausible head width ${w.toFixed(3)}`);
+  }
+});
+
 check('olive tree builds trunk and canopy', () => {
   const tree = flowers.createOliveTree({ height: 3, rng: geom.seeded(11) });
   const canopy = tree.getObjectByName('canopy');

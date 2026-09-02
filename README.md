@@ -6,10 +6,10 @@ and print an invoice for a seasonal florist's-choice bouquet. A door on the
 left leads through a white threshold space into a walled garden they can plant
 and tend, day by day.
 
-Everything is generated in code — the travertine, the plaster, the jade marble,
-every petal. There is not a single image asset in the repository; the only
-things shipped are two self-hosted typefaces, and the only thing fetched at
-runtime is three.js.
+Everything in the room is generated in code — the tumbled travertine, the
+plaster, the banded onyx of the long table, every petal. The only images are
+the shop's own photographs in `images/`: the surfaces are all procedural, the
+typefaces are self-hosted, and three.js is vendored.
 
 ---
 
@@ -42,7 +42,7 @@ Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
 any web host. There is no build step and no server-side code.
 
 ```bash
-npm test                  # 92 assertions + a DOM audit, no browser needed
+npm test                  # 118 assertions + a DOM audit, no browser needed
 ```
 
 ---
@@ -51,11 +51,13 @@ npm test                  # 92 assertions + a DOM audit, no browser needed
 
 1. Lands on a full-screen still captured from the live 3D room.
 2. Presses **Enter KUNEY FLOWERS SHOP** and arrives at the entrance.
-3. Moves between camera stops — Next/Previous, arrow keys, the floor plan, or
-   by clicking a display directly.
+3. Walks the room with the arrow keys, or by clicking the floor — and can
+   follow the guided tour of its twenty-nine stops with Next/Previous, the
+   floor plan, or by clicking a display directly. Either way, at any time.
 4. Clicks a flower once to move to it, again to gather a stem. The stem leaves
-   the display and drops into the glass vase on the long table. This is play —
-   it changes nothing about the order.
+   the display and drops into the peach opaline vase on the long table — the
+   one vase in the room that is not clear glass, so it is always obvious which
+   is yours. This is play — it changes nothing about the order.
 5. Opens the order panel: colour, occasion, size, delivery date.
 6. Reads the wall calendar to find a day with bouquets left.
 7. Confirms, and the bouquet is made: the gathered stems lift out of the water,
@@ -65,6 +67,45 @@ npm test                  # 92 assertions + a DOM audit, no browser needed
    WhatsApp.
 8. Walks through the plaster door into the garden, sows a seed, and comes back
    tomorrow to water it.
+
+### The stock
+
+Twenty-one vases, eleven varieties, thirty-seven colour groups, five to ten
+stems in every one of them — around 245 stems standing in the room.
+
+| | Colours |
+| --- | --- |
+| Garden rose | red, orange, yellow · pink, white, purple |
+| Peony | blush, white |
+| Dahlia | red, pink, orange |
+| Hydrangea | purple, light blue · green, pink |
+| Anthurium | red, pink · green, white |
+| Lisianthus | purple, pink, white |
+| Delphinium | light blue, dark blue, purple |
+| Gerbera | red, pink · peach, yellow |
+| Tulip | red, orange · pink, purple |
+| Orchid | white, pink |
+| Calla lily | white, yellow |
+| Iris | purple, yellow |
+| Ranunculus · sweet pea · craspedia | peach · pastel · yellow |
+
+A vase holds several colours of one variety, never several varieties, and each
+colour takes a contiguous wedge of the vase rather than being shuffled through
+it — that is how stock is actually bucketed, and it is what lets a visitor see
+the shape of a colour instead of a speckle of everything. Each stem carries its
+own colour, so gathering the yellow rose out of the warm bench puts a yellow
+rose in your vase.
+
+Where the stems are cut to depends on where they stand: short for the wall
+shelves, whose boards are 0.72 m apart, long for the tall glass on the floor.
+The blooms stay full size either way — it is the stems that change, as they
+would on the bench.
+
+Colours live in `stockColors` in `js/content.js`, kept deliberately apart from
+`palette`. `palette` is what a customer may *ask* for and drives the order
+chips and the invoice; `stockColors` is what happens to be standing in the
+buckets. Merging them would put twenty chips in the order panel and promise
+things the shop does not promise.
 
 ### The honest bit
 
@@ -90,11 +131,21 @@ would silently overwrite a deliberate one, and would contradict the promise.
 | | Desktop | Phone / tablet |
 | --- | --- | --- |
 | Look around | drag | swipe |
-| Move | ← → arrow keys, Next/Previous, floor plan | large Next/Previous buttons, tap a flower |
+| Walk | arrow keys or WASD, any time; Shift to hurry | tap the floor |
+| Walk to a spot | click the floor | tap the floor |
+| Guided tour | Next/Previous, floor plan, `,` and `.` | large Next/Previous buttons |
 | Select | click a display | tap a display |
 | Gather | click again | tap again |
-| Free walking | **Explore Freely**, then arrows or WASD; Esc leaves | not offered — the stops are easier |
 | Close anything | Esc | the close button |
+
+The two ways of moving are not modes to switch between. Touching a movement
+key, or clicking the floor, hands the camera over to free walking on the spot;
+the stop list is still there, and Next picks the tour back up from wherever the
+visitor has wandered to. **Explore Freely** in the top bar is now only a way of
+saying so explicitly — and of being told the keys.
+
+Because the arrow keys walk, stepping the tour from the keyboard is `,` and `.`
+(also `[`/`]` and PageUp/PageDown). Esc returns to the current stop.
 
 Pointer lock is never used. The camera never rolls. In guided mode a drag pans
 within a limited cone and then relaxes back to the stop's framing, so it is not
@@ -153,7 +204,7 @@ everybody:
 3. Re-upload the site
 
 `data/content.json` is merged over the defaults in `js/content.js`, so it only
-needs to contain what you changed. It ships as `{ "version": 3 }` — an empty
+needs to contain what you changed. It ships as `{ "version": 4 }` — an empty
 override.
 
 Resolution order, later winning: `js/content.js` → `data/content.json` →
@@ -194,16 +245,23 @@ See `images/README.md` for sizes and the publishing step.
    │   ╰─────╯                                             │  shelves ▐
    │                                                       │     (right
    │              ══════════════════                       │      wall)
-   │              jade island · vase · printer             │
+   │           long onyx table · vase · printer            │
    │  ← garden                                             │
    │    door                        ▭ low table + stools   │
    │                     ⚱ anthurium                       │
    └──────────────────────── entrance ────────────────────┘
 ```
 
-16 × 22 m, 6.2 m to the ceiling, with a 4.3 m circular oculus. The bright
-ellipse on the floor is a real cast shadow: a shadow-casting directional light
-shines through an actual hole in the ceiling geometry.
+16 × 22 m, 4.4 m to the ceiling, with a 3.7 m circular oculus and two tall
+window bays with linen down the right-hand wall. The bright ellipse on the
+floor is a real cast shadow: a shadow-casting directional light shines through
+an actual hole in the ceiling geometry.
+
+The floor is tumbled travertine in 0.9 m slabs — no grout, edges worn pale,
+and a different figure in every slab, with the texture carrying three slabs to
+a repeat so the pattern lands every 2.7 m rather than on every stone. The long
+table is a raw-edged banded onyx monolith with a concealed strip washing light
+up under its overhang.
 
 The garden is 24 × 26 m — gravel paths, a stone path from the gate, six raised
 beds, a long basin, clipped hedging, olive trees in terracotta, a bench, and a
@@ -271,7 +329,7 @@ js/garden-game.js     growth, watering, streaks, rewards
 
 js/textures.js        procedural travertine, plaster, marble, soil, lawn
 js/geometry.js        rounded slabs, lathe forms, amphitheatre seating
-js/flowers.js         petal geometry and ten flower recipes
+js/flowers.js         petal geometry and sixteen flower recipes
 js/scene-shop.js      the interior
 js/scene-corridor.js  the threshold between spaces
 js/scene-garden.js    the walled garden
@@ -308,8 +366,15 @@ every gatherable flower at 1, 6, 12 and 18 stems and asserts none of them lands
 on a display vase, the printer, or off the counter.
 
 **Why merged flower heads?** A peony is around fifty petals, each a parametric
-sheet. Merging every head into one buffer geometry keeps ninety stems in the
-room at a couple of hundred draw calls.
+sheet. Merging every head into one buffer geometry keeps 245 stems in the room
+at around 700 draw calls and a million triangles.
+
+That number is why the two varieties made of *many tiny* florets — hydrangea,
+at 312 petals a mophead, and delphinium, at 204 up a spike — build their
+petals as 4 × 2 sheets instead of 9 × 5. At 14 mm across there is nothing to
+see in the difference, and it took 40% of the room's triangles back. Stock
+stems also have their matrices baked at build time (`matrixAutoUpdate = false`)
+since a cut stem never moves; gathering one only hides it.
 
 **Why self-hosted fonts?** They were loaded from Google Fonts until
 `fonts.googleapis.com` became unreachable on a working machine and took the

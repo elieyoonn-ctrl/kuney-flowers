@@ -16,6 +16,7 @@ import { buildShop, ROOM } from '../js/scene-shop.js';
 import { buildCorridor } from '../js/scene-corridor.js';
 import { buildGarden, GARDEN } from '../js/scene-garden.js';
 import { GardenGame } from '../js/garden-game.js';
+import { CameraRig } from '../js/camera-rig.js';
 import { renderBoard } from '../js/calendar.js';
 
 let pass = 0;
@@ -613,6 +614,421 @@ check('the room still builds when the owner has emptied things out', () => {
   delete bare.displays;
   const missing = buildShop(bare);
   assert(missing.root.children.length > 20, 'missing arrays should not stop the build');
+});
+
+/* --- the interior, against the reference -------------------------------- --
+   The room was rebuilt to match a photograph: low and wide, tumbled travertine
+   underfoot rather than tile, window bays with linen down the right, a banded
+   onyx table in place of the jade one. These check the parts of that a reader
+   would otherwise have to take on trust.
+   ---------------------------------------------------------------------- */
+
+check('the room is low and wide, as the reference reads', () => {
+  assert(ROOM.height > 3.6 && ROOM.height < 5,
+    `${ROOM.height} m is not the low, horizontal space in the reference`);
+  const ceiling = [];
+  shop.root.traverse((o) => {
+    if (o.isMesh && Math.abs(o.position.y - ROOM.height) < 0.02) ceiling.push(o);
+  });
+  assert(ceiling.length > 20,
+    `expected a ceiling and its downlight grid at y = ${ROOM.height}, found ${ceiling.length}`);
+});
+
+check('the window bays are really cut through the right wall', () => {
+  for (const bay of ROOM.windows) {
+    // Mid-pane, not mid-bay: a mullion sits at the centre of an even bay and
+    // is supposed to stop a ray.
+    const z = bay.z0 + (bay.z1 - bay.z0) * 0.375;
+    const stop = { position: [4.5, 1.7, z], target: [ROOM.width / 2 + 0.6, 1.7, z] };
+    // The glazing itself is allowed to stop the ray; plaster is not.
+    const hits = wallBlocks(shop, stop).filter((h) => (
+      h.object.material?.transparent !== true
+    ));
+    assert(hits.length === 0,
+      `the bay at z = ${z} is walled up — hit ${hits.map((h) => h.object.name || h.object.type).join(', ')}`);
+  }
+});
+
+check('the wall shelves are left exactly where they were', () => {
+  // The reference does not show them, and they were asked to stay put: three
+  // boards on the right wall at the original heights.
+  const boards = [];
+  shop.root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (Math.abs(o.position.x - (ROOM.width / 2 - 0.15)) > 0.01) return;
+    if (Math.abs(o.rotation.y - Math.PI / 2) > 0.01) return;
+    boards.push(Number(o.position.y.toFixed(2)));
+  });
+  for (const y of [1.02, 1.74, 2.46]) {
+    assert(boards.includes(y), `no shelf board at y = ${y}; found ${boards.join(', ')}`);
+  }
+  // And nothing on the right wall may cut through them.
+  for (const bay of ROOM.windows) {
+    assert(bay.z1 < -1.05 || bay.z0 > 2.25,
+      `the window bay z ${bay.z0}…${bay.z1} runs through the shelves`);
+  }
+});
+
+check('the floor is one continuous stone, not a tiled grid', () => {
+  const floor = shop.root.getObjectByName('floor');
+  assert(floor, 'no floor');
+  assert(floor.material.map, 'the floor has no stone on it');
+  // A slab period of 2.7 m: three different slabs to a repeat. Repeating on
+  // every slab is exactly what made it read as tile.
+  const { x } = floor.material.map.repeat;
+  const period = ROOM.width / x;
+  assert(period > 2 && period < 4,
+    `the stone repeats every ${period.toFixed(2)} m, which will read as a pattern`);
+  assert(floor.userData.walkable, 'the floor should be clickable to walk to');
+  assert(shop.interactive.includes(floor), 'the floor is not in the interactive list');
+});
+
+check('the long table is banded onyx, at the working height it always was', () => {
+  const top = shop.root.getObjectByName('island-top');
+  assert(top.material.map, 'the table top has no stone on it');
+  // The top is thicker than the old jade slab — a raw-edged monolith, not a
+  // worktop — but the surface a visitor works on has not moved.
+  const size = new THREE.Vector3();
+  top.geometry.computeBoundingBox();
+  top.geometry.boundingBox.getSize(size);
+  assert(size.y > 0.12, `the top is ${size.y.toFixed(3)} m thick; it should read as a slab`);
+  near(top.position.y + size.y / 2, ROOM.island.height, 0.01, 'working height');
+
+  // Solid sides down to the floor, and the concealed strip under the overhang.
+  let faces = 0;
+  let glow = 0;
+  shop.root.traverse((o) => {
+    if (!o.isMesh) return;
+    const y = o.position.y;
+    const onTable = Math.abs(o.position.x - ROOM.island.x) < ROOM.island.width / 2 + 0.1
+      && Math.abs(o.position.z - ROOM.island.z) < ROOM.island.depth / 2 + 0.1;
+    if (!onTable) return;
+    if (o.material.map && y > 0.2 && y < ROOM.island.height - 0.2) faces += 1;
+    if (o.material.isMeshBasicMaterial && o.material.toneMapped === false
+      && y > 0.6 && y < ROOM.island.height) glow += 1;
+  });
+  assert(faces >= 4, `expected four slab faces to the floor, found ${faces}`);
+  assert(glow >= 2, `expected the light strip under the overhang, found ${glow}`);
+});
+
+check('the customer vase is unmistakably not one of the stock vases', () => {
+  const hero = shop.vase.hero;
+  assert(hero, 'no customer vase');
+  assert(hero.material.transparent !== true,
+    'the customer vase should be opaline, not clear like the stock');
+  assert(hero.geometry.attributes.color,
+    'the opaline gradient is missing from the customer vase');
+
+  // Every stock vase, by contrast, stays clear glass.
+  for (const d of shop.displays.values()) {
+    const vessel = d.group.children.find((c) => c.isMesh && c.geometry.type === 'LatheGeometry');
+    assert(vessel, `${d.id}: no vase`);
+    assert(vessel.material.transparent === true, `${d.id}: stock vase is not clear glass`);
+  }
+});
+
+check('gathered stems stay inside the customer vase', () => {
+  // This vase draws in at the shoulder, unlike the straight cylinder it
+  // replaced, so a fan that used to clear the rim would now cross the glass.
+  shop.clearVase();
+  for (let i = 0; i < 18; i += 1) shop.addPickedStem('rose', '#c62430', i);
+  const neckY = 0.294;
+  const neckR = 0.092;
+  for (const stem of shop.vase.holder.children) {
+    // Where the stem crosses the neck, measured along its own lean.
+    const rise = neckY - stem.position.y;
+    const out = Math.hypot(stem.position.x, stem.position.z)
+      + Math.abs(Math.sin(Math.max(Math.abs(stem.rotation.x), Math.abs(stem.rotation.z)))) * rise;
+    assert(out < neckR,
+      `a stem passes through the neck: ${out.toFixed(3)} m out at a ${neckR} m opening`);
+  }
+  shop.clearVase();
+});
+
+check('the wall frames are larger and reproduce the file faithfully', () => {
+  assert(shop.frames.length === 3, `expected 3 frames, got ${shop.frames.length}`);
+  for (const mount of shop.frames) {
+    assert(mount.opening.width > 1 && mount.opening.height > 1.3,
+      `frame ${mount.id} is ${mount.opening.width}×${mount.opening.height} m — too small`);
+    // Lit and tone-mapped, a photograph came out dimmer and flatter than the
+    // same file shown as an <img> in the side panel.
+    assert(mount.material.isMeshBasicMaterial,
+      `frame ${mount.id} is lit, so its colours will not match the panel`);
+    assert(mount.material.toneMapped === false,
+      `frame ${mount.id} is tone-mapped, which will desaturate the photograph`);
+  }
+  // No two frames may overlap, now that they are half again as wide.
+  const xs = shop.frames.map((m) => m.mesh.position.x).sort((a, b) => a - b);
+  for (let i = 1; i < xs.length; i += 1) {
+    assert(xs[i] - xs[i - 1] > shop.frames[0].opening.width,
+      'the frames overlap each other');
+  }
+});
+
+check('every interactive kind gives hover feedback', () => {
+  const glowing = new Set();
+  for (const o of shop.interactive) {
+    const d = o.userData || {};
+    if (d.walkable) continue;              // the floor gets a cursor, not a glow
+    if (d.displayId) {
+      // Flowers glow by way of the halo under their own display.
+      assert(shop.displays.get(d.displayId)?.halo, `${d.displayId}: no halo`);
+      glowing.add('flower');
+      continue;
+    }
+    const kind = d.calendar ? 'calendar' : d.printer ? 'printer'
+      : d.vase ? 'vase' : d.frameId ? 'frame' : d.portal ? 'portal' : 'other';
+    assert(d.hoverGlow, `the ${kind} has nothing to light up under the pointer`);
+    glowing.add(kind);
+  }
+  for (const want of ['flower', 'calendar', 'printer', 'vase', 'frame', 'portal']) {
+    assert(glowing.has(want), `no hover feedback on the ${want}`);
+  }
+});
+
+check('hovering lights one thing at a time and can be cleared', () => {
+  const frame = shop.interactive.find((o) => o.userData.frameId);
+  const printer = shop.interactive.find((o) => o.userData.printer);
+  const step = () => { for (let i = 0; i < 40; i += 1) shop.update(1 / 60, i / 60); };
+
+  shop.setHover(frame);
+  step();
+  assert(frame.userData.hoverGlow.material.opacity > 0.3, 'the hovered frame did not light');
+  assert(printer.userData.hoverGlow.material.opacity < 0.05, 'the printer lit too');
+
+  shop.setHover(printer);
+  step();
+  assert(frame.userData.hoverGlow.material.opacity < 0.05, 'the frame stayed lit');
+
+  shop.setHover(null);
+  step();
+  assert(printer.userData.hoverGlow.material.opacity < 0.05, 'a hover was left lit');
+});
+
+/* --- the stock ---------------------------------------------------------- --
+   The shop is meant to look full: every colour of every variety standing in
+   real numbers, grouped by variety, no vase looking picked over. The counts
+   are content, so this checks the content and the room agree about them.
+   ---------------------------------------------------------------------- */
+
+const REQUIRED_STOCK = {
+  rose: ['Red', 'Pink', 'Yellow', 'Purple', 'White', 'Orange'],
+  dahlia: ['Red', 'Pink', 'Orange'],
+  hydrangea: ['Purple', 'Green', 'Light Blue', 'Pink'],
+  tropical: ['Red', 'Pink', 'Green', 'White'],
+  lisianthus: ['Purple', 'Pink', 'White'],
+  delphinium: ['Light Blue', 'Dark Blue', 'Purple'],
+  gerbera: ['Pink', 'Peach', 'Yellow', 'Red'],
+  tulip: ['Red', 'Orange', 'Pink', 'Purple'],
+  orchid: ['White', 'Pink'],
+  calla: ['Yellow', 'White'],
+  iris: ['Purple', 'Yellow'],
+};
+
+check('every variety and colour the shop promises is standing in the room', () => {
+  // Built from the room, not from the content, so a colour that fails to reach
+  // a vase counts as missing.
+  const built = new Map();
+  for (const d of shop.displays.values()) {
+    for (const stem of d.bunch.children) {
+      const key = `${d.data.bloom}/${stem.userData.colorLabel}`;
+      built.set(key, (built.get(key) || 0) + 1);
+    }
+  }
+
+  const gaps = [];
+  for (const [bloom, colours] of Object.entries(REQUIRED_STOCK)) {
+    for (const colour of colours) {
+      // "Soft Pink" satisfies pink: it is the same bucket to a customer.
+      const n = (built.get(`${bloom}/${colour}`) || 0)
+        + (colour === 'Pink' ? built.get(`${bloom}/Soft Pink`) || 0 : 0);
+      if (n < 5) gaps.push(`${bloom} ${colour} (${n})`);
+    }
+  }
+  assert(gaps.length === 0, `too few stems of: ${gaps.join(', ')}`);
+});
+
+check('no colour group is sparse, and none is absurd', () => {
+  for (const d of shop.displays.values()) {
+    if (d.data.pickable === false) continue;
+    const counts = new Map();
+    for (const stem of d.bunch.children) {
+      counts.set(stem.userData.colorLabel, (counts.get(stem.userData.colorLabel) || 0) + 1);
+    }
+    for (const [label, n] of counts) {
+      assert(n >= 5, `${d.id}: only ${n} ${label} stems — that reads as picked over`);
+      assert(n <= 10, `${d.id}: ${n} ${label} stems is beyond a bucket`);
+    }
+  }
+});
+
+check('a mixed vase groups its colours instead of speckling them', () => {
+  const mixed = [...shop.displays.values()].find((d) => (d.colours || []).length >= 3);
+  assert(mixed, 'no vase holds three colours of one variety');
+  // Each colour should occupy its own arc of the vase: the spread of angles
+  // within a group has to be smaller than the whole circle it sits in.
+  const arcs = new Map();
+  for (const stem of mixed.bunch.children) {
+    const angle = Math.atan2(stem.position.z, stem.position.x);
+    const list = arcs.get(stem.userData.colorLabel) || [];
+    list.push(angle);
+    arcs.set(stem.userData.colorLabel, list);
+  }
+  for (const [label, angles] of arcs) {
+    const mean = Math.atan2(
+      angles.reduce((s, a) => s + Math.sin(a), 0) / angles.length,
+      angles.reduce((s, a) => s + Math.cos(a), 0) / angles.length
+    );
+    const worst = Math.max(...angles.map((a) => Math.abs(
+      Math.atan2(Math.sin(a - mean), Math.cos(a - mean))
+    )));
+    assert(worst < (Math.PI * 2) / arcs.size,
+      `${mixed.id}: the ${label} stems are spread through the whole vase`);
+  }
+});
+
+check('the room is fuller than it was, and not so full it will not run', () => {
+  let stems = 0;
+  for (const d of shop.displays.values()) stems += d.bunch.children.length;
+  assert(stems > 200, `${stems} stems is still a sparse shop`);
+  assert(stems < 340, `${stems} stems will cost too many draw calls`);
+});
+
+check('shelf arrangements fit under the board above them', () => {
+  const boards = [1.02, 1.74, 2.46];
+  const box = new THREE.Box3();
+  shop.root.updateMatrixWorld(true);
+  for (const d of shop.displays.values()) {
+    if (d.data.kind !== 'shelf') continue;
+    box.setFromObject(d.group);
+    const above = boards.find((y) => y > d.group.position.y + 0.1);
+    assert(above !== undefined, `${d.id}: no board above it`);
+    assert(box.max.y < above - 0.02,
+      `${d.id} grows to ${box.max.y.toFixed(2)} m, through the board at ${above}`);
+  }
+});
+
+check('floor vases stand clear of each other and of the furniture', () => {
+  const placed = [];
+  for (const d of shop.displays.values()) {
+    if (d.data.kind !== 'floor') continue;
+    const p = d.group.position;
+    for (const other of placed) {
+      const gap = Math.hypot(p.x - other.x, p.z - other.z);
+      assert(gap > 0.9, `two floor vases are ${gap.toFixed(2)} m apart`);
+    }
+    // Not standing inside the seating, the column, the tree or the low table.
+    for (const box of shop.colliders) {
+      const inside = p.x > box.min.x && p.x < box.max.x
+        && p.z > box.min.z && p.z < box.max.z && box.max.y > 0.5;
+      // Its own collider, of course, contains it.
+      const isOwn = Math.abs((box.min.x + box.max.x) / 2 - p.x) < 0.01
+        && Math.abs((box.min.z + box.max.z) / 2 - p.z) < 0.01;
+      assert(!inside || isOwn, `${d.id} stands inside a collider`);
+    }
+    placed.push({ x: p.x, z: p.z });
+  }
+});
+
+check('the guided tour still starts, ends, and takes the displays in runs', () => {
+  const ids = shop.stops.map((s) => s.id);
+  assert(ids[0] === 'entrance' && ids[ids.length - 1] === 'portal', 'tour endpoints moved');
+  assert(shop.stops.length >= 20, `only ${shop.stops.length} stops`);
+
+  /* Adding stock lengthened the tour, so the ordering matters more than it
+     did: all the table vases, then all the shelf, then all the floor. A kind
+     that appears in two separate runs means the visitor is being sent back and
+     forth across the room. (The tour does cross the room once, from the
+     shelves to the calendar on the back wall — that is the original ordering
+     and is left alone.) */
+  const runs = [];
+  for (const stop of shop.stops) {
+    const kind = stop.displayId ? shop.displays.get(stop.displayId).data.kind : null;
+    if (kind && runs[runs.length - 1] !== kind) runs.push(kind);
+  }
+  assert(runs.length === new Set(runs).size,
+    `the tour returns to a kind it had left: ${runs.join(' → ')}`);
+});
+
+/* --- navigation --------------------------------------------------------- --
+   Free walking and the guided tour have to coexist: walking off the tour must
+   not lose your place in it, and the tour must not take the movement keys
+   away from you.
+   ---------------------------------------------------------------------- */
+
+function makeRig() {
+  const camera = new THREE.PerspectiveCamera(52, 1.6, 0.05, 140);
+  const rig = new CameraRig(camera, document.createElement('div'), { eyeHeight: 1.58 });
+  rig.setColliders(shop.colliders);
+  rig.bounds = shop.bounds;
+  rig.jumpTo(shop.entranceStop);
+  return rig;
+}
+
+check('a movement key walks from a guided stop, and the stops survive it', () => {
+  const rig = makeRig();
+  rig.goTo(shop.islandStop);
+  for (let i = 0; i < 200; i += 1) rig.update(1 / 60);
+  assert(rig.mode === 'guided', 'arriving at a stop should leave you on the tour');
+  const parked = rig.position.clone();
+
+  // Walk forward. No mode to turn on first.
+  rig._keys.add('ArrowUp');
+  for (let i = 0; i < 60; i += 1) rig.update(1 / 60);
+  rig._keys.delete('ArrowUp');
+  assert(rig.mode === 'free', 'an arrow key did not hand over to walking');
+  assert(rig.position.distanceTo(parked) > 0.4,
+    `barely moved: ${rig.position.distanceTo(parked).toFixed(2)} m`);
+
+  // And the tour still works from wherever you ended up.
+  rig.goTo(shop.stops[3]);
+  for (let i = 0; i < 300; i += 1) rig.update(1 / 60);
+  assert(rig.mode === 'guided', 'Next did not put you back on the tour');
+  near(rig.position.x, shop.stops[3].position[0], 0.02, 'did not reach the stop');
+});
+
+check('walking is held off while a space transition is playing', () => {
+  const rig = makeRig();
+  rig.walkEnabled = false;
+  rig._keys.add('ArrowUp');
+  const before = rig.position.clone();
+  for (let i = 0; i < 60; i += 1) rig.update(1 / 60);
+  rig._keys.delete('ArrowUp');
+  assert(rig.mode === 'guided' && rig.position.distanceTo(before) < 1e-6,
+    'a held key walked the camera during a transition');
+});
+
+check('clicking the floor walks there, and stops at what is in the way', () => {
+  const rig = makeRig();
+  const yaw = rig.yaw;
+
+  // Somewhere open, in front of the entrance.
+  const open = new THREE.Vector3(-2, 0, 6);
+  const seconds = rig.walkTo(open);
+  assert(seconds > 0, 'a walk across the room took no time');
+  for (let i = 0; i < 400; i += 1) rig.update(1 / 60);
+  near(rig.position.x, open.x, 0.06, 'walked to the wrong x');
+  near(rig.position.z, open.z, 0.06, 'walked to the wrong z');
+  near(rig.position.y, 1.58, 0.001, 'left the floor');
+  near(rig.yaw, yaw, 1e-6, 'the walk turned the camera; it should keep your view');
+  assert(rig.mode === 'free', 'a walk should leave you free to keep walking');
+
+  // Now aim at the floor on the far side of the long table. The visitor should
+  // end up at the near edge of it, not standing inside the stone.
+  const through = new THREE.Vector3(ROOM.island.x, 0, ROOM.island.z - 2);
+  rig.walkTo(through);
+  for (let i = 0; i < 400; i += 1) rig.update(1 / 60);
+  const stopped = rig.position.z;
+  assert(stopped > ROOM.island.z + ROOM.island.depth / 2,
+    `walked into the table: stopped at z = ${stopped.toFixed(2)}`);
+});
+
+check('a walk cannot leave the room', () => {
+  const rig = makeRig();
+  rig.walkTo(new THREE.Vector3(40, 0, 40));
+  for (let i = 0; i < 600; i += 1) rig.update(1 / 60);
+  assert(Math.abs(rig.position.x) < ROOM.width / 2, 'walked through the right wall');
+  assert(Math.abs(rig.position.z) < ROOM.depth / 2, 'walked through the front wall');
 });
 
 /* --- calendar board ----------------------------------------------------- */

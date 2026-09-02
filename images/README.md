@@ -32,6 +32,13 @@ itself, which updates if you re-tint the room.
 `.jpg`, `.png`, `.webp` and `.avif` all work. JPEG at around 80% quality is the
 right choice for photographs.
 
+A larger file is not wasted, but it is not used either: anything over 2048 px
+on its long edge is resampled down to that in the browser before it goes on the
+wall. Straight off a phone, a photograph is around 4000 px, which as a texture
+is 48 MB of graphics memory before mipmaps — three of those would be most of
+the budget on a phone, for detail no one can see in a 1.5 m frame. Resizing the
+files yourself still saves your visitors the download.
+
 Photographs of any shape are **fitted inside** the frame, never stretched — a
 landscape photo in a portrait frame keeps its proportions and simply sits
 smaller. Portrait suits these frames best.

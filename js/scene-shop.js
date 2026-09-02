@@ -1,11 +1,16 @@
 /* ==========================================================================
    The shop interior.
 
-   A tall, pale room: travertine floor, lime plaster walls, a circular oculus
-   that drops a moving pool of daylight on the stone, curved plaster seating on
-   the left, a raw concrete column, an olive tree in a weathered pot, a low
-   white table with cylindrical stools, and — at the centre — the long jade
-   marble island where flowers are gathered, wrapped and invoiced.
+   A low, wide, warm-white room in the manner of the reference: everything in
+   one lime plaster, a flat ceiling pricked with a grid of small recessed
+   downlights, tall window bays with floor-length linen on the right, curved
+   plaster seating on the left, a raw concrete column, an olive tree in a
+   weathered pot, a low white table with cylindrical stools, and — at the
+   centre — the long banded-onyx table where flowers are gathered, wrapped and
+   invoiced.
+
+   The floor is tumbled travertine laid as large slabs: no grout, edges worn
+   pale, and a different figure in every slab. See `tex.tumbledTravertine`.
 
    The oculus light is a real shadow-casting directional light shining through
    a hole in the ceiling geometry, so the bright ellipse on the floor is cast,
@@ -14,18 +19,32 @@
 
 import * as THREE from 'three';
 import * as tex from './textures.js';
-import { slab, planeWithHole, turned, amphitheatre, VASE_PROFILES, POT_PROFILE, seeded } from './geometry.js';
-import { createBunch, createStem, createOliveTree } from './flowers.js';
+import {
+  slab, planeWithHole, turned, amphitheatre,
+  VASE_PROFILES, SPECIAL_VASE_PROFILE, POT_PROFILE, seeded,
+} from './geometry.js';
+import { createGroupedBunch, createStem, createOliveTree } from './flowers.js';
+import { displayColorGroups, colorById } from './content.js';
 import { CameraRig } from './camera-rig.js';
 
 export const ROOM = {
   width: 16,      // x: -8 .. 8
   depth: 22,      // z: -11 .. 11
-  height: 6.2,
-  oculus: { radius: 2.15, x: 0.4, z: -1.2 },
+  // Low and wide, as the reference reads: the old 6.2 m made a tall well of a
+  // room, where the photograph is a long horizontal space you look across.
+  height: 4.4,
+  oculus: { radius: 1.85, x: 0.4, z: -1.2 },
   entrance: { z: 9.4 },
   island: { x: 0, z: 1.6, width: 4.4, depth: 1.06, height: 0.92 },
   portal: { x: -7.94, z: 5.4, width: 1.34, height: 2.55 },
+  /* Window bays on the right wall, given as spans in z. They are deliberately
+     placed clear of the wall shelves (z −1.05 … 2.25), which stay exactly
+     where they were. */
+  windows: [
+    { z0: -9.6, z1: -2.4 },
+    { z0: 3.4, z1: 9.6 },
+  ],
+  window: { sill: 0.35, head: 3.55 },
 };
 
 const EYE = 1.58;
@@ -40,19 +59,53 @@ const SLOTS = {
     { pos: [-1.15, ROOM.island.height, 1.74], profile: 'cylinder', from: [0, 0, 1] },
     // On the back rail, so it has to be viewed from further off: the whole
     // depth of the counter is between the visitor and the flowers.
-    { pos: [-0.30, ROOM.island.height, 1.20], profile: 'bud', from: [-0.1, 0, 1], distance: 1.85 },
+    { pos: [-0.38, ROOM.island.height, 1.14], profile: 'bud', from: [-0.1, 0, 1], distance: 1.85 },
   ],
+  /* Two of the three shelf boards, six vases on the lower and five above.
+     The top board keeps its empty vessels. Straight glass cylinders, as in the
+     reference: the stock stands in plain glass and the flowers do the work. */
   shelf: [
-    { pos: [7.78, 1.04, -0.62], profile: 'bud', from: [-1, 0, 0.1] },
-    { pos: [7.78, 1.04, 0.58], profile: 'cylinder', from: [-1, 0, 0] },
-    { pos: [7.78, 1.04, 1.82], profile: 'bud', from: [-1, 0, -0.1] },
-    { pos: [7.78, 1.76, -0.04], profile: 'bud', from: [-1, 0, 0.05] },
-    { pos: [7.78, 1.76, 1.22], profile: 'cylinder', from: [-1, 0, -0.05] },
+    { pos: [7.78, 1.04, -0.90], profile: 'column', from: [-1, 0, 0.22] },
+    { pos: [7.78, 1.04, -0.28], profile: 'column', from: [-1, 0, 0.14] },
+    { pos: [7.78, 1.04, 0.34], profile: 'column', from: [-1, 0, 0.06] },
+    { pos: [7.78, 1.04, 0.96], profile: 'column', from: [-1, 0, -0.06] },
+    { pos: [7.78, 1.04, 1.58], profile: 'column', from: [-1, 0, -0.14] },
+    { pos: [7.78, 1.04, 2.10], profile: 'bud', from: [-1, 0, -0.22] },
+    { pos: [7.78, 1.76, -0.72], profile: 'column', from: [-1, 0, 0.18] },
+    { pos: [7.78, 1.76, -0.06], profile: 'column', from: [-1, 0, 0.08] },
+    { pos: [7.78, 1.76, 0.60], profile: 'bud', from: [-1, 0, 0] },
+    { pos: [7.78, 1.76, 1.26], profile: 'bud', from: [-1, 0, -0.08] },
+    { pos: [7.78, 1.76, 1.92], profile: 'bud', from: [-1, 0, -0.18] },
   ],
+  /* Tall glass on the stone, cut long. Kept out of the seating, the column,
+     the olive tree, the low table and the frame and calendar viewing lines. */
   floor: [
     { pos: [-2.70, 0, 4.40], profile: 'tall', from: [0.2, 0, 1] },
     { pos: [3.70, 0, -7.10], profile: 'tall', from: [-0.2, 0, 1] },
+    { pos: [-1.10, 0, -8.90], profile: 'tall', from: [0.1, 0, 1] },
+    { pos: [6.55, 0, -3.40], profile: 'tall', from: [-1, 0, 0.15] },
+    { pos: [6.55, 0, -8.20], profile: 'tall', from: [-0.8, 0, 0.6] },
+    { pos: [-6.40, 0, 8.20], profile: 'tall', from: [0.7, 0, -0.6] },
+    { pos: [5.90, 0, 8.60], profile: 'tall', from: [-0.5, 0, -0.85] },
   ],
+};
+
+/* Per-kind arrangement: how wide the bunch fans, how long the stems are cut,
+   and how far they lean. The floor vases are cut long and stand tall; the
+   shelf vases are short because the boards are 0.72 m apart and stay that way. */
+const ARRANGEMENT = {
+  /* The table bunches are full but held upright rather than fanned. A wrapped
+     bouquet is nearly a metre long and is laid down along this counter, so the
+     span from about x = −0.4 rightward has to stay clear; leaning the stems out
+     any further puts flowers where the finished bouquet goes. Density comes
+     from the stem count, not from the fan. */
+  'vase-table': { spread: 0.075, scale: 1, tilt: 0.26 },
+  /* Cut short. The three shelf boards are 0.72 m apart and were asked to stay
+     exactly where they are, so shelf stock is cut to the gap — the blooms stay
+     full size, only the stems come down. */
+  shelf: { spread: 0.055, scale: 0.8, tilt: 0.24, height: 0.42 },
+  /* Cut long, standing in tall glass on the stone, as in the reference. */
+  floor: { spread: 0.15, scale: 1.45, tilt: 0.4, height: 0.78 },
 };
 
 /* --- small builders ----------------------------------------------------- */
@@ -70,8 +123,16 @@ function plasterMaterial(theme, extra = {}) {
   });
 }
 
-/** A wall panel, optionally with a rectangular opening built from four slabs. */
-function wallWithOpening(width, height, material, opening) {
+/**
+ * A wall panel with any number of rectangular openings cut out of it.
+ *
+ * Openings are given in the wall's own local x, are assumed not to overlap,
+ * and each may sit off the floor: a doorway has `sill: 0`, a window bay does
+ * not. The wall is assembled from full-height piers between the openings plus
+ * a head panel over each one and an apron under it, which is cheaper and
+ * cleaner than punching holes in a shape.
+ */
+function wallWithOpening(width, height, material, openings) {
   const group = new THREE.Group();
   const add = (w, h, x, y) => {
     if (w <= 0.001 || h <= 0.001) return;
@@ -81,38 +142,61 @@ function wallWithOpening(width, height, material, opening) {
     group.add(mesh);
   };
 
-  if (!opening) {
+  const list = (Array.isArray(openings) ? openings : [openings])
+    .filter(Boolean)
+    .sort((a, b) => a.x - b.x);
+
+  if (!list.length) {
     add(width, height, 0, height / 2);
     return group;
   }
 
-  const { x: ox, width: ow, height: oh } = opening;
-  const left = ox - ow / 2 + width / 2;   // distance from the wall's left edge
-  const right = width - (ox + ow / 2 + width / 2);
+  // Piers: from the wall's left edge to the first opening, between each
+  // consecutive pair, and from the last opening to the right edge.
+  let edge = -width / 2;
+  for (const o of list) {
+    const start = o.x - o.width / 2;
+    add(start - edge, height, (edge + start) / 2, height / 2);
+    edge = o.x + o.width / 2;
+  }
+  add(width / 2 - edge, height, (edge + width / 2) / 2, height / 2);
 
-  add(left, height, -width / 2 + left / 2, height / 2);
-  add(right, height, width / 2 - right / 2, height / 2);
-  add(ow, height - oh, ox, oh + (height - oh) / 2);
+  // Head over each opening, and an apron under it where there is a sill.
+  for (const o of list) {
+    const sill = o.sill ?? 0;
+    const top = sill + o.height;
+    add(o.width, height - top, o.x, top + (height - top) / 2);
+    add(o.width, sill, o.x, sill / 2);
+  }
   return group;
 }
 
-/** Glass: full transmission for the hero vase, cheap fake glass elsewhere. */
-function glassMaterial({ hero = false } = {}) {
-  if (hero) {
-    return new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      transmission: 0.98,
-      thickness: 0.22,
-      ior: 1.48,
-      roughness: 0.045,
-      metalness: 0,
-      transparent: true,
-      opacity: 1,
-      side: THREE.DoubleSide,
-      envMapIntensity: 1.25,
-      specularIntensity: 1,
-    });
+/**
+ * A floor-length linen curtain, hung open at the side of a window bay.
+ *
+ * Folds are a displaced plane rather than cloth simulation: a vertical sine
+ * across the width, tightening toward the top where the fabric gathers on the
+ * track, which under this room's soft light is all the reading it needs.
+ */
+function curtainGeometry(width, height, { folds = 7, depth = 0.09 } = {}) {
+  const geo = new THREE.PlaneGeometry(width, height, folds * 4, 6);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    // 0 at the hem, 1 at the track: the gather is tightest where it hangs from.
+    const up = (y + height / 2) / height;
+    const gather = 0.45 + Math.pow(up, 1.5) * 0.55;
+    pos.setZ(i, Math.sin((x / width) * Math.PI * 2 * folds) * depth * gather);
+    // Drawn back to the side, so the panel is narrower at the top.
+    pos.setX(i, x * (1 - up * 0.12));
   }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** Clear glass for every stock vase in the room. */
+function glassMaterial() {
   return new THREE.MeshPhysicalMaterial({
     color: 0xf2f6f4,
     roughness: 0.08,
@@ -123,6 +207,52 @@ function glassMaterial({ hero = false } = {}) {
     envMapIntensity: 1.6,
     depthWrite: false,
   });
+}
+
+/**
+ * Opaline glass for the customer's vase: milky, not clear, and warmer at the
+ * lip and the foot than through the belly — which is how blown opaline pools
+ * where the glass is thickest. Done with vertex colours over the lathe rather
+ * than with a texture, since the gradient only runs one way.
+ *
+ * No transmission on purpose. The reference vase is opaque opaline, and a
+ * transmissive material would also cost the renderer a whole extra pass.
+ */
+function opalineMaterial() {
+  return new THREE.MeshPhysicalMaterial({
+    vertexColors: true,
+    roughness: 0.085,
+    metalness: 0,
+    clearcoat: 1,
+    clearcoatRoughness: 0.05,
+    sheen: 0.5,
+    sheenColor: new THREE.Color(0xffe6d2),
+    sheenRoughness: 0.5,
+    emissive: new THREE.Color(0xf6b98c),
+    emissiveIntensity: 0.05,
+    envMapIntensity: 1.3,
+    side: THREE.DoubleSide,
+  });
+}
+
+/** Tint a lathed vessel from its foot to its lip. */
+function shadeOpaline(geo, height) {
+  const body = new THREE.Color('#f8d8c6').convertSRGBToLinear();
+  const warm = new THREE.Color('#f0a869').convertSRGBToLinear();
+  const pos = geo.attributes.position;
+  const colours = new Float32Array(pos.count * 3);
+  const c = new THREE.Color();
+  for (let i = 0; i < pos.count; i += 1) {
+    const t = THREE.MathUtils.clamp(pos.getY(i) / height, 0, 1);
+    // Deepest at the foot, palest through the belly, warm again at the lip.
+    const deep = Math.max(Math.pow(1 - t / 0.22, 2), Math.pow((t - 0.86) / 0.14, 2));
+    c.copy(body).lerp(warm, THREE.MathUtils.clamp(deep, 0, 1) * 0.85);
+    colours[i * 3] = c.r;
+    colours[i * 3 + 1] = c.g;
+    colours[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+  return geo;
 }
 
 function waterMaterial() {
@@ -220,25 +350,36 @@ export function buildShop(content, { renderer } = {}) {
 
   /* --- floor ------------------------------------------------------------ */
 
-  const floorTex = tex.travertine(theme.floor, { tiles: 2 });
-  floorTex.map.repeat.set(8, 11);
-  floorTex.normalMap.repeat.set(8, 11);
-  floorTex.roughnessMap.repeat.set(8, 11);
+  /* Tumbled travertine in ~0.9 m slabs. The texture carries three slabs across,
+     each with its own figure, so the repeat lands every 2.7 m instead of on
+     every slab — which is what stops large-format stone reading as tile. */
+  const SLABS_PER_TILE = 3;
+  const SLAB_SIZE = 0.9;
+  const floorTex = tex.tumbledTravertine(theme.floor, { slabs: SLABS_PER_TILE });
+  const repeatX = ROOM.width / (SLAB_SIZE * SLABS_PER_TILE);
+  const repeatZ = ROOM.depth / (SLAB_SIZE * SLABS_PER_TILE);
+  for (const map of [floorTex.map, floorTex.normalMap, floorTex.roughnessMap]) {
+    map.repeat.set(repeatX, repeatZ);
+  }
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM.width, ROOM.depth),
     new THREE.MeshStandardMaterial({
       map: floorTex.map,
       normalMap: floorTex.normalMap,
-      normalScale: new THREE.Vector2(0.5, 0.5),
+      normalScale: new THREE.Vector2(0.42, 0.42),
       roughnessMap: floorTex.roughnessMap,
-      roughness: 0.78,
+      roughness: 1,
       metalness: 0,
     })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   floor.name = 'floor';
+  // Clicking the stone walks there: `pickAt` in js/app.js hands the hit point
+  // to the rig's `walkTo`, which stops at whatever is in the way.
+  floor.userData = { walkable: true, label: 'Walk here' };
   root.add(floor);
+  interactive.push(floor);
 
   /* --- walls ------------------------------------------------------------ */
 
@@ -255,7 +396,19 @@ export function buildShop(content, { renderer } = {}) {
   front.rotation.y = Math.PI;
   root.add(front);
 
-  const right = wallWithOpening(ROOM.depth, ROOM.height, wallMat, null);
+  // The right wall is rotated −90° about Y, which maps its local +X onto world
+  // +Z — so a window bay's local x is its world z directly.
+  const windowHeight = ROOM.window.head - ROOM.window.sill;
+  const bays = ROOM.windows.map((w) => ({
+    x: (w.z0 + w.z1) / 2,
+    width: w.z1 - w.z0,
+    height: windowHeight,
+    sill: ROOM.window.sill,
+    z0: w.z0,
+    z1: w.z1,
+  }));
+
+  const right = wallWithOpening(ROOM.depth, ROOM.height, wallMat, bays);
   right.position.set(halfW, 0, 0);
   right.rotation.y = -Math.PI / 2;
   root.add(right);
@@ -268,6 +421,117 @@ export function buildShop(content, { renderer } = {}) {
   left.position.set(-halfW, 0, 0);
   left.rotation.y = Math.PI / 2;
   root.add(left);
+
+  /* --- window bays + linen (right wall) --------------------------------- */
+
+  const glassPane = new THREE.MeshPhysicalMaterial({
+    color: 0xeef3f4,
+    roughness: 0.04,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.16,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    envMapIntensity: 1.4,
+  });
+  const frameDark = new THREE.MeshStandardMaterial({
+    color: 0x6f6a63, roughness: 0.42, metalness: 0.2,
+  });
+  // Outside is a blown-out, warm sky. Kept a little under white so the glazing
+  // still reads as an opening rather than as a hole in the render.
+  const outside = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(theme.daylight).multiplyScalar(0.94),
+    toneMapped: false,
+  });
+  const revealMatWindow = plasterMaterial(theme, { color: 0xfaf8f3, side: THREE.DoubleSide });
+  const linenMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(theme.curtain || '#dbd0bd'),
+    roughness: 0.94,
+    metalness: 0,
+    side: THREE.DoubleSide,
+  });
+
+  const midHeight = ROOM.window.sill + windowHeight / 2;
+
+  for (const bay of bays) {
+    const group = new THREE.Group();
+
+    // Glazing, just inside the wall plane.
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(bay.width, windowHeight), glassPane);
+    pane.rotation.y = -Math.PI / 2;
+    pane.position.set(halfW - 0.02, midHeight, bay.x);
+    group.add(pane);
+
+    // The daylight beyond, a little further out so the reveal has depth.
+    const beyondWindow = new THREE.Mesh(
+      new THREE.PlaneGeometry(bay.width, windowHeight), outside
+    );
+    beyondWindow.rotation.y = -Math.PI / 2;
+    beyondWindow.position.set(halfW + 0.26, midHeight, bay.x);
+    group.add(beyondWindow);
+
+    // Plaster returns around the opening: head, sill and two jambs.
+    const depth = 0.28;
+    const head = new THREE.Mesh(new THREE.PlaneGeometry(depth, bay.width), revealMatWindow);
+    head.rotation.x = Math.PI / 2;
+    head.position.set(halfW + depth / 2, ROOM.window.sill + windowHeight, bay.x);
+    group.add(head);
+
+    const sillBoard = new THREE.Mesh(new THREE.PlaneGeometry(depth, bay.width), revealMatWindow);
+    sillBoard.rotation.x = -Math.PI / 2;
+    sillBoard.position.set(halfW + depth / 2, ROOM.window.sill, bay.x);
+    group.add(sillBoard);
+
+    for (const side of [-1, 1]) {
+      const jamb = new THREE.Mesh(new THREE.PlaneGeometry(depth, windowHeight), revealMatWindow);
+      jamb.rotation.y = side > 0 ? 0 : Math.PI;
+      jamb.position.set(halfW + depth / 2, midHeight, bay.x + (side * bay.width) / 2);
+      group.add(jamb);
+    }
+
+    // Slim mullions, roughly every 1.8 m.
+    const panes = Math.max(2, Math.round(bay.width / 1.8));
+    for (let i = 1; i < panes; i += 1) {
+      const mullion = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, windowHeight, 0.055), frameDark
+      );
+      mullion.position.set(halfW - 0.03, midHeight, bay.z0 + (bay.width * i) / panes);
+      group.add(mullion);
+    }
+
+    // Linen hung open at both ends of the bay, from a track above the head to
+    // just off the stone.
+    const curtainWidth = Math.min(1.15, bay.width * 0.3);
+    const curtainHeight = ROOM.window.head + 0.28;
+    for (const side of [-1, 1]) {
+      const panel = new THREE.Mesh(
+        curtainGeometry(curtainWidth, curtainHeight, { folds: 7, depth: 0.085 }),
+        linenMat
+      );
+      panel.rotation.y = -Math.PI / 2;
+      panel.position.set(
+        halfW - 0.16,
+        curtainHeight / 2 + 0.02,
+        bay.x + side * (bay.width / 2 - curtainWidth / 2 + 0.08)
+      );
+      panel.castShadow = true;
+      panel.receiveShadow = true;
+      group.add(panel);
+    }
+
+    root.add(group);
+  }
+
+  /* Daylight through the glazing: soft, unshadowed, aimed across the room.
+     One light for both bays, not one each — a directional light has no
+     position to speak of, so a second would differ only in the direction it
+     points, and every light in the scene is paid for on every lit surface.
+     The oculus keeps the only shadow-casting light; two would fight. */
+  const dayIn = new THREE.DirectionalLight(new THREE.Color(theme.daylight), 0.78);
+  dayIn.position.set(halfW + 3.4, 3.2, 1.0);
+  dayIn.target.position.set(halfW - 7.5, 0.6, -1.0);
+  root.add(dayIn);
+  root.add(dayIn.target);
 
   // Wall colliders, pushed slightly inside so the camera cannot clip through.
   addCollider(-halfW - 1, 0, -halfD - 1, -halfW + 0.05, ROOM.height, halfD + 1);
@@ -359,30 +623,36 @@ export function buildShop(content, { renderer } = {}) {
   sky.position.set(ROOM.oculus.x, ROOM.height + 0.49, ROOM.oculus.z);
   root.add(sky);
 
-  // Small recessed downlights.
+  /* Recessed downlights on a regular grid, as in the reference: small, plain
+     pinholes rather than fittings, reading as a field of points across the
+     plaster. Most are geometry only — every light in a three.js scene costs
+     shader work on every lit surface, so a handful carry the actual room
+     lighting and the rest are there because the ceiling is what you see. */
   const recessMat = new THREE.MeshBasicMaterial({ color: 0xfff4e4, toneMapped: false });
   const recessRing = plasterMaterial(theme, { color: 0xf4f1ea });
-  const recessSpots = [
-    [-4.6, -6.0], [-4.6, 0.5], [-4.6, 6.0],
-    [4.6, -6.0], [4.6, 0.5], [4.6, 6.0],
-    [0, -8.4], [0, 5.6],
-  ];
-  recessSpots.forEach(([x, z], i) => {
-    const rim = new THREE.Mesh(new THREE.CircleGeometry(0.13, 20), recessRing);
-    rim.rotation.x = Math.PI / 2;
-    rim.position.set(x, ROOM.height - 0.004, z);
-    root.add(rim);
-    const bulb = new THREE.Mesh(new THREE.CircleGeometry(0.1, 20), recessMat);
-    bulb.rotation.x = Math.PI / 2;
-    bulb.position.set(x, ROOM.height - 0.012, z);
-    root.add(bulb);
-    // Only a few carry real lights; the rest are geometry only.
-    if (i % 3 === 0) {
-      const p = new THREE.PointLight(0xfff1dd, 5.5, 9, 2);
-      p.position.set(x, ROOM.height - 0.3, z);
-      root.add(p);
+  const rimGeo = new THREE.CircleGeometry(0.085, 16);
+  const bulbGeo = new THREE.CircleGeometry(0.062, 16);
+  let spotIndex = 0;
+  for (const x of [-5.8, -2.9, 0, 2.9, 5.8]) {
+    for (const z of [-9.2, -6.4, -3.6, -0.8, 2.0, 4.8, 7.6, 9.9]) {
+      // Nothing sits inside the oculus, or in its plaster margin.
+      if (Math.hypot(x - ROOM.oculus.x, z - ROOM.oculus.z) < ROOM.oculus.radius + 0.4) continue;
+      const rim = new THREE.Mesh(rimGeo, recessRing);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.set(x, ROOM.height - 0.004, z);
+      root.add(rim);
+      const bulb = new THREE.Mesh(bulbGeo, recessMat);
+      bulb.rotation.x = Math.PI / 2;
+      bulb.position.set(x, ROOM.height - 0.012, z);
+      root.add(bulb);
+      if (spotIndex % 13 === 0) {
+        const p = new THREE.PointLight(0xfff1dd, 4.2, 8.5, 2);
+        p.position.set(x, ROOM.height - 0.3, z);
+        root.add(p);
+      }
+      spotIndex += 1;
     }
-  });
+  }
 
   /* --- lighting --------------------------------------------------------- */
 
@@ -410,7 +680,8 @@ export function buildShop(content, { renderer } = {}) {
   root.add(sun.target);
 
   // A gentle fill from the entrance so the front of the room is not muddy.
-  const fill = new THREE.DirectionalLight(0xf6ece0, 0.5);
+  // Lighter than it was: the window bays now do most of this work.
+  const fill = new THREE.DirectionalLight(0xf6ece0, 0.26);
   fill.position.set(-3, 4, 12);
   root.add(fill);
 
@@ -561,46 +832,116 @@ export function buildShop(content, { renderer } = {}) {
   });
   addCollider(halfW - 0.45, 0.9, -1.2, halfW, 2.6, 2.4);
 
-  /* --- the jade marble island ------------------------------------------- */
+  /* --- the long table: raw-edged banded onyx ----------------------------
+     A monolith, not a table on legs: a thick top with a chiselled raw edge
+     over solid slab sides that run to the floor, and a concealed strip under
+     the overhang washing light up the stone. Footprint, working height and
+     the clear span kept as the wrapping bench are all exactly as before, so
+     the vase, the printer, the paper roll and the whole wrapping sequence are
+     untouched by the change.
+     ---------------------------------------------------------------------- */
 
-  const jade = tex.jadeMarble(theme.island, theme.islandVein);
-  const jadeMat = new THREE.MeshPhysicalMaterial({
-    map: jade.map,
-    normalMap: jade.normalMap,
-    normalScale: new THREE.Vector2(0.28, 0.28),
-    roughnessMap: jade.roughnessMap,
-    roughness: 0.2,
-    metalness: 0,
-    clearcoat: 0.55,
-    clearcoatRoughness: 0.16,
-    envMapIntensity: 1.1,
-  });
+  const TOP_THICKNESS = 0.16;
+  const onyx = tex.bandedOnyx(theme.island, theme.islandVein);
 
+  /**
+   * The stone, with the strata scaled to the face they run across.
+   *
+   * A cloned texture is a separate upload to the GPU even when it shares its
+   * image, so this is memoised by repeat: the two long faces are the same size
+   * as each other and so are the two ends, which brings five faces down to
+   * three sets of maps.
+   */
+  const onyxMaterials = new Map();
+  const onyxMaterial = (repeatU, repeatV) => {
+    const key = `${repeatU.toFixed(3)}:${repeatV.toFixed(3)}`;
+    if (!onyxMaterials.has(key)) {
+      const maps = {};
+      for (const name of ['map', 'normalMap', 'roughnessMap']) {
+        const t = onyx[name].clone();
+        t.needsUpdate = true;
+        t.repeat.set(repeatU, repeatV);
+        maps[name] = t;
+      }
+      onyxMaterials.set(key, new THREE.MeshPhysicalMaterial({
+        ...maps,
+        normalScale: new THREE.Vector2(0.3, 0.3),
+        roughness: 0.16,
+        metalness: 0,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.18,
+        envMapIntensity: 1.1,
+      }));
+    }
+    return onyxMaterials.get(key);
+  };
+
+  // The top is seen from above, so its strata run along the length of the slab.
   const islandTop = new THREE.Mesh(
-    slab(ROOM.island.width, ROOM.island.depth, 0.11, {
-      radius: 0.075,
-      bevel: 0.032,
-      wobble: 0.022,        // the raw, hand-finished edge
-      wobbleFrequency: 3.1,
+    slab(ROOM.island.width, ROOM.island.depth, TOP_THICKNESS, {
+      radius: 0.05,
+      bevel: 0.022,
+      wobble: 0.026,        // the raw, chiselled edge
+      wobbleFrequency: 2.6,
     }),
-    jadeMat
+    onyxMaterial(1.6, 1.6)
   );
-  islandTop.position.set(ROOM.island.x, ROOM.island.height - 0.055, ROOM.island.z);
+  islandTop.position.set(ROOM.island.x, ROOM.island.height - TOP_THICKNESS / 2, ROOM.island.z);
   islandTop.castShadow = true;
   islandTop.receiveShadow = true;
   islandTop.name = 'island-top';
   root.add(islandTop);
 
-  const islandBody = new THREE.Mesh(
-    slab(ROOM.island.width - 0.22, ROOM.island.depth - 0.16, ROOM.island.height - 0.11, {
-      radius: 0.05, bevel: 0.02,
-    }),
-    jadeMat
-  );
-  islandBody.position.set(ROOM.island.x, (ROOM.island.height - 0.11) / 2, ROOM.island.z);
-  islandBody.castShadow = true;
-  islandBody.receiveShadow = true;
-  root.add(islandBody);
+  /* The body: four slab faces, inset under the top so the overhang reads and
+     so the light strip has somewhere to hide. BoxGeometry rather than `slab`
+     because its UVs put v on the face's own vertical, which is the only way
+     the strata come out level on a standing panel. */
+  const bodyHeight = ROOM.island.height - TOP_THICKNESS;
+  const bodyWidth = ROOM.island.width - 0.16;
+  const bodyDepth = ROOM.island.depth - 0.14;
+  const bodyY = bodyHeight / 2;
+  const BAND_METRES = 0.9;   // one texture repeat covers this much of a face
+
+  for (const side of [-1, 1]) {
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(bodyWidth, bodyHeight),
+      onyxMaterial(bodyWidth / BAND_METRES, bodyHeight / BAND_METRES)
+    );
+    face.rotation.y = side > 0 ? 0 : Math.PI;
+    face.position.set(ROOM.island.x, bodyY, ROOM.island.z + (side * bodyDepth) / 2);
+    face.castShadow = true;
+    face.receiveShadow = true;
+    root.add(face);
+  }
+  for (const side of [-1, 1]) {
+    const end = new THREE.Mesh(
+      new THREE.PlaneGeometry(bodyDepth, bodyHeight),
+      onyxMaterial(bodyDepth / BAND_METRES, bodyHeight / BAND_METRES)
+    );
+    end.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+    end.position.set(ROOM.island.x + (side * bodyWidth) / 2, bodyY, ROOM.island.z);
+    end.castShadow = true;
+    end.receiveShadow = true;
+    root.add(end);
+  }
+
+  /* The concealed strip. An emissive band tucked into the shadow gap under the
+     overhang, plus two real lights so the stone above it actually lifts. */
+  const glowColour = new THREE.Color(theme.tableGlow || '#ffe4bd');
+  const glowMat = new THREE.MeshBasicMaterial({ color: glowColour, toneMapped: false });
+  for (const side of [-1, 1]) {
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(bodyWidth * 0.98, 0.022), glowMat);
+    strip.rotation.y = side > 0 ? 0 : Math.PI;
+    strip.position.set(
+      ROOM.island.x,
+      bodyHeight - 0.014,
+      ROOM.island.z + (side * (bodyDepth + 0.012)) / 2
+    );
+    root.add(strip);
+  }
+  const wash = new THREE.PointLight(glowColour, 2.2, 1.6, 2);
+  wash.position.set(ROOM.island.x, bodyHeight + 0.02, ROOM.island.z);
+  root.add(wash);
 
   addCollider(
     ROOM.island.x - ROOM.island.width / 2 - 0.1, 0, ROOM.island.z - ROOM.island.depth / 2 - 0.1,
@@ -649,24 +990,38 @@ export function buildShop(content, { renderer } = {}) {
   shears.rotation.y = -0.5;
   root.add(shears);
 
-  /* --- the customer's vase (hero glass) -------------------------------- */
+  /* --- the customer's vase --------------------------------------------- --
+     The one vase in the room that is not clear glass. The stock stands in
+     plain cylinders so the flowers do the talking; what a visitor gathers goes
+     into a footed opaline urn in peach, which is a different object at a
+     glance from across the room — the point being that you can always tell
+     which vase is yours.
+     ---------------------------------------------------------------------- */
 
   const vaseGroup = new THREE.Group();
   vaseGroup.name = 'customer-vase';
   vaseGroup.position.set(0.92, ROOM.island.height, 1.46);
   root.add(vaseGroup);
 
-  const heroVase = new THREE.Mesh(turned(VASE_PROFILES.cylinder, { segments: 56 }), glassMaterial({ hero: true }));
-  heroVase.scale.setScalar(1.18);
+  const SPECIAL_VASE_HEIGHT = SPECIAL_VASE_PROFILE[SPECIAL_VASE_PROFILE.length - 1][1];
+  const heroVase = new THREE.Mesh(
+    shadeOpaline(turned(SPECIAL_VASE_PROFILE, { segments: 64 }), SPECIAL_VASE_HEIGHT),
+    opalineMaterial()
+  );
   heroVase.name = 'hero-vase';
+  heroVase.castShadow = true;
   vaseGroup.add(heroVase);
 
-  // A closed column of water filling the lower two thirds of the vase.
+  /* A closed column of water. It starts above the waist rather than at the
+     origin, because this vase stands on a foot: water at y = 0 would show
+     through the stem of it. */
   const water = new THREE.Mesh(
-    turned([[0.001, 0.004], [0.082, 0.004], [0.082, 0.19], [0.001, 0.19]], { segments: 40, smooth: 1 }),
+    turned([
+      [0.001, 0.095], [0.088, 0.095], [0.102, 0.14],
+      [0.110, 0.19], [0.104, 0.228], [0.001, 0.228],
+    ], { segments: 44, smooth: 1 }),
     waterMaterial()
   );
-  water.scale.setScalar(1.18);
   water.visible = false;
   vaseGroup.add(water);
 
@@ -913,6 +1268,67 @@ export function buildShop(content, { renderer } = {}) {
   root.add(printerHit);
   interactive.push(printerHit);
 
+  /* --- hover feedback --------------------------------------------------- --
+     Nothing in a 3D room announces itself as clickable, so every interactive
+     thing gets a glow that fades in under the pointer: a ring on the stone for
+     things standing on it, a rim behind the frame for things hung on the wall.
+     One shared easing pass in `update` drives all of them, and `setHover` is
+     the only thing that moves the targets — so a stale hover cannot be left
+     lit when the pointer leaves the canvas.
+     ---------------------------------------------------------------------- */
+
+  const accent = new THREE.Color(theme.accent || '#8c9a82');
+  const hoverGlows = [];
+  let hovered = null;
+  let selectedDisplayId = null;
+
+  const glowMaterial = () => new THREE.MeshBasicMaterial({
+    color: accent,
+    transparent: true,
+    opacity: 0,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    toneMapped: false,
+  });
+
+  /** Register `glow` as the hover response for whatever `target` is hit. */
+  function registerHover(target, glow) {
+    glow.material.userData.target = 0;
+    glow.renderOrder = -1;
+    hoverGlows.push(glow);
+    target.userData.hoverGlow = glow;
+    return glow;
+  }
+
+  /** A ring laid on a surface, for objects standing on the stone. */
+  function hoverRing(inner, outer, position, parent = root) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(inner, outer, 44), glowMaterial());
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(position);
+    parent.add(ring);
+    return ring;
+  }
+
+  /** A rim standing just proud of a wall-hung panel. */
+  function hoverRim(width, height, position) {
+    const rim = new THREE.Mesh(new THREE.PlaneGeometry(width, height), glowMaterial());
+    rim.position.copy(position);
+    root.add(rim);
+    return rim;
+  }
+
+  registerHover(vaseHit, hoverRing(
+    0.15, 0.2, new THREE.Vector3(0, 0.004, 0), vaseGroup
+  ));
+  registerHover(printerHit, hoverRing(
+    0.27, 0.33, new THREE.Vector3(1.86, ROOM.island.height + 0.004, 1.72)
+  ));
+  registerHover(portalHit, hoverRim(
+    ROOM.portal.width + 0.14, ROOM.portal.height + 0.1,
+    new THREE.Vector3(-halfW + 0.05, ROOM.portal.height / 2, ROOM.portal.z)
+  ));
+  portalHit.userData.hoverGlow.rotation.y = Math.PI / 2;
+
   /* --- displays --------------------------------------------------------- */
 
   const highlightMat = new THREE.MeshBasicMaterial({
@@ -933,6 +1349,7 @@ export function buildShop(content, { renderer } = {}) {
     const profile = VASE_PROFILES[slot.profile] || VASE_PROFILES.cylinder;
     const vaseScale = isFloor ? 1.9 : 1;
 
+    // Stock vases stay clear glass, whatever is standing in them.
     const vessel = new THREE.Mesh(turned(profile, { segments: 40 }), glassMaterial());
     vessel.scale.setScalar(vaseScale);
     vessel.castShadow = false;
@@ -940,36 +1357,58 @@ export function buildShop(content, { renderer } = {}) {
 
     const vaseTop = profile[profile.length - 1][1] * vaseScale;
 
-    const colour = content.palette.find((c) => c.id === display.colorId) || content.palette[0];
-    const count = isFloor ? 7 : display.kind === 'shelf' ? 6 : 9;
-    const bunch = createBunch(display.bloom, colour.hex, count, {
+    /* Colour groups: several colours of one variety to a vase, each bucketed
+       into its own wedge. `displayColorGroups` falls back to the display's
+       single palette colour, so a display added from the admin panel still
+       builds. */
+    const groups = displayColorGroups(content, display);
+    const colour = colorById(content, display.colorId);
+    const arrangement = ARRANGEMENT[display.kind] || ARRANGEMENT['vase-table'];
+
+    const bunch = createGroupedBunch(display.bloom, groups, {
       rng,
-      spread: isFloor ? 0.13 : 0.06,
-      scale: isFloor ? 1.5 : 1,
+      spread: arrangement.spread,
+      scale: arrangement.scale,
+      tilt: arrangement.tilt,
+      height: arrangement.height,
       lift: vaseTop * 0.45,
-      tilt: display.kind === 'shelf' ? 0.2 : 0.3,
     });
     bunch.position.y = 0;
     group.add(bunch);
 
-    // Per-stem pick targets.
+    // Per-stem pick targets. Each stem carries its own colour, so gathering a
+    // yellow rose out of a mixed vase drops a yellow rose into your vase.
     let tallest = 0;
     bunch.children.forEach((stem, i) => {
-      stem.userData.displayId = display.id;
-      stem.userData.stemIndex = i;
-      stem.userData.pickable = display.pickable !== false;
+      const stemData = {
+        displayId: display.id,
+        stemIndex: i,
+        pickable: display.pickable !== false,
+        hex: stem.userData.hex,
+        colorId: stem.userData.colorId || colour.id,
+        colorLabel: stem.userData.colorLabel || colour.label,
+      };
+      Object.assign(stem.userData, stemData);
       tallest = Math.max(tallest, stem.userData.height || 0);
       stem.traverse((o) => {
         if (o.isMesh) {
-          o.userData.displayId = display.id;
-          o.userData.stemIndex = i;
-          o.userData.pickable = display.pickable !== false;
+          Object.assign(o.userData, stemData);
           interactive.push(o);
         }
       });
     });
 
-    const headHeight = slot.pos[1] + vaseTop * 0.45 + tallest * (isFloor ? 1.5 : 1) * 0.82;
+    /* Freeze the arrangement's transforms.
+       Stock stems never move once cut — gathering one only hides it — so their
+       matrices can be baked here instead of being recomputed for every one of
+       them on every frame. With this much stock standing in the room that is
+       hundreds of objects a frame that no longer need touching. Stems the
+       visitor gathers are built separately by `addPickedStem` and are animated,
+       so they keep their automatic updates. */
+    group.updateMatrixWorld(true);
+    bunch.traverse((o) => { o.matrixAutoUpdate = false; });
+
+    const headHeight = slot.pos[1] + vaseTop * 0.45 + tallest * arrangement.scale * 0.82;
 
     // Subtle selection halo on the surface under the display.
     const halo = new THREE.Mesh(new THREE.RingGeometry(0.13 * vaseScale, 0.2 * vaseScale, 40), highlightMat.clone());
@@ -998,6 +1437,7 @@ export function buildShop(content, { renderer } = {}) {
       focus,
       stop,
       colour,
+      colours: groups,
     });
     stops.push({ ...stop, kind: 'display', label: display.title, displayId: display.id });
   }
@@ -1017,18 +1457,55 @@ export function buildShop(content, { renderer } = {}) {
    * placeholder simply stays, so a wrong path degrades quietly instead of
    * leaving a black rectangle on the wall.
    */
+  const maxAnisotropy = renderer?.capabilities?.getMaxAnisotropy?.() ?? 8;
+
+  /* A photograph off a phone is around 4000 px on its long edge, which as a
+     texture is 4000 × 3000 × 4 bytes — 48 MB before mipmaps, and three of them
+     would be most of a mobile GPU's budget. The frames are 1.5 m tall and are
+     never seen larger than the window, so 2048 px is past the point of any
+     visible difference. Cheaper than asking the owner to resize files, and it
+     protects the room from whatever gets dropped into images/ later. */
+  const PHOTO_MAX_EDGE = 2048;
+
+  function fitPhoto(image) {
+    const longest = Math.max(image.width, image.height);
+    if (!longest || longest <= PHOTO_MAX_EDGE) return null;
+    const k = PHOTO_MAX_EDGE / longest;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(image.width * k);
+    canvas.height = Math.round(image.height * k);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  }
+
   function loadFramePhoto(mount, path) {
     textureLoader.load(
       path,
-      (texture) => {
+      (loaded) => {
+        const img = loaded.image;
+        // Proportions come from the original pixels either way: the resample
+        // is uniform, so it cannot change the shape of the photograph.
+        const ratio = (img?.width || 1) / (img?.height || 1);
+
+        const reduced = img ? fitPhoto(img) : null;
+        const texture = reduced ? new THREE.CanvasTexture(reduced) : loaded;
+        if (reduced) loaded.dispose();
+
         texture.colorSpace = THREE.SRGBColorSpace;
-        texture.anisotropy = 8;
+        // A photograph on a wall is seen at a raking angle more often than
+        // square on, which is exactly where a low anisotropy sample turns fine
+        // detail to mush. Take whatever the device will give.
+        texture.anisotropy = maxAnisotropy;
         texture.generateMipmaps = true;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.needsUpdate = true;
 
         const { width: ow, height: oh } = mount.opening;
-        const img = texture.image;
-        const ratio = (img?.width || 1) / (img?.height || 1);
         const openRatio = ow / oh;
         // Fit inside the opening, preserving the photograph's proportions.
         const scaleX = ratio > openRatio ? 1 : ratio / openRatio;
@@ -1098,12 +1575,12 @@ export function buildShop(content, { renderer } = {}) {
   }
 
   (content.frames || []).slice(0, 3).forEach((f, i) => {
-    const w = 0.78;
-    const h = 1.04;
-    const x = 2.0 + i * 1.15;
-    const y = 1.92;
-    const openW = w - 0.09;
-    const openH = h - 0.09;
+    const w = 1.18;
+    const h = 1.56;
+    const x = 1.9 + i * 1.34;
+    const y = 1.95;
+    const openW = w - 0.11;
+    const openH = h - 0.11;
 
     const surround = new THREE.Mesh(slab(w, h, 0.045, { radius: 0.02, bevel: 0.01 }), frameMat);
     surround.rotation.x = Math.PI / 2;
@@ -1111,17 +1588,24 @@ export function buildShop(content, { renderer } = {}) {
     surround.castShadow = true;
     root.add(surround);
 
-    const imageMat = new THREE.MeshStandardMaterial({
+    /* Unlit, and out of the tone mapper.
+       A photograph in a frame was a lit MeshStandardMaterial, which meant the
+       room's soft wall light dimmed it and ACES then pulled the saturation out
+       of what was left — so the print on the wall never matched the same file
+       shown as an <img> in the side panel. Basic and untone-mapped puts the
+       file's own sRGB values on the wall, which is what the panel does too. */
+    const imageMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       map: framePlaceholder(f.title, f.caption),
-      roughness: 0.86,
-      metalness: 0,
+      toneMapped: false,
     });
     const image = new THREE.Mesh(new THREE.PlaneGeometry(openW, openH), imageMat);
     image.position.set(x, y, -halfD + 0.056);
     image.userData = { frameId: f.id, label: f.title };
     root.add(image);
     interactive.push(image);
+
+    registerHover(image, hoverRim(w + 0.13, h + 0.13, new THREE.Vector3(x, y, -halfD + 0.018)));
 
     const mount = {
       id: f.id,
@@ -1135,8 +1619,9 @@ export function buildShop(content, { renderer } = {}) {
 
     const focus = new THREE.Vector3(x, y, -halfD + 0.06);
     stops.push({
+      // Backed off from 1.55 m: the frames are half again as large as they were.
       ...CameraRig.focusStop(focus, {
-        distance: 1.55, from: new THREE.Vector3(0, 0, 1), eyeHeight: 1.62, id: `frame-${f.id}`,
+        distance: 2.0, from: new THREE.Vector3(0, 0, 1), eyeHeight: 1.66, id: `frame-${f.id}`,
       }),
       kind: 'frame',
       label: f.title,
@@ -1158,6 +1643,8 @@ export function buildShop(content, { renderer } = {}) {
   calFace.userData = { calendar: true, label: 'Availability calendar' };
   root.add(calFace);
   interactive.push(calFace);
+
+  registerHover(calFace, hoverRim(2.34, 1.76, new THREE.Vector3(-3.1, 2.0, -halfD + 0.018)));
 
   const calFocus = new THREE.Vector3(-3.1, 2.0, -halfD + 0.06);
   const calendarStop = {
@@ -1313,19 +1800,51 @@ export function buildShop(content, { renderer } = {}) {
 
     /** Fade the halo under one display up and everything else down. */
     highlight(displayId) {
+      selectedDisplayId = displayId;
       for (const [id, d] of displays) {
         d.halo.material.userData.target = id === displayId ? 0.5 : 0;
       }
     },
 
+    /**
+     * Light whatever the pointer is over.
+     *
+     * Takes the hit object rather than an id so it works for every kind of
+     * target without the caller having to know which is which, and clears
+     * everything first so a hover can never be left lit. Pass null to clear.
+     */
+    setHover(object) {
+      hovered = object || null;
+      const glow = object?.userData?.hoverGlow || null;
+      for (const g of hoverGlows) {
+        g.material.userData.target = g === glow ? 0.5 : 0;
+      }
+      const displayId = object?.userData?.displayId || null;
+      for (const [id, d] of displays) {
+        if (id === selectedDisplayId) continue;   // selection outranks hover
+        d.halo.material.userData.target = id === displayId ? 0.3 : 0;
+      }
+    },
+
+    get hovered() {
+      return hovered;
+    },
+
     update(dt, elapsed) {
       for (const fn of tickers) fn(elapsed, dt);
 
-      // Ease halo opacities.
+      // Ease halo and hover-glow opacities.
+      const ease = Math.min(1, dt * 7);
       for (const d of displays.values()) {
         const mat = d.halo.material;
         const target = mat.userData.target ?? 0;
-        mat.opacity += (target - mat.opacity) * Math.min(1, dt * 5);
+        mat.opacity += (target - mat.opacity) * ease;
+      }
+      for (const g of hoverGlows) {
+        const mat = g.material;
+        const target = mat.userData.target ?? 0;
+        mat.opacity += (target - mat.opacity) * ease;
+        g.visible = mat.opacity > 0.004;
       }
 
       // Printer: paper creeps out, then settles.
@@ -1428,9 +1947,11 @@ export function buildShop(content, { renderer } = {}) {
       });
       const n = stemHolder.children.length;
       const yaw = n * 2.399;
-      const r = Math.min(0.055, 0.012 + n * 0.006);
+      // Held a little tighter than they used to be: this vase draws in at the
+      // shoulder, and a wider fan put stems out through the glass.
+      const r = Math.min(0.046, 0.010 + n * 0.005);
       stem.position.set(Math.cos(yaw) * r, 0.1, Math.sin(yaw) * r);
-      const lean = Math.min(0.34, 0.08 + n * 0.025);
+      const lean = Math.min(0.26, 0.06 + n * 0.02);
       stem.rotation.z = -Math.cos(yaw) * lean;
       stem.rotation.x = Math.sin(yaw) * lean;
       stem.userData.dropFrom = 0.42;

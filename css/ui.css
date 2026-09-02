@@ -514,17 +514,27 @@
   transition: opacity var(--dur) var(--ease);
 }
 
+/* The logo sits in the same pill the wordmark used to: same padding, same
+   radius, same backdrop. Only the mark inside it changed, so the height is
+   pinned to what a 0.95rem line of the serif occupied and the image is fitted
+   into it rather than driving the size itself. */
 .hud__brand {
-  font-family: var(--serif);
-  font-size: 0.95rem;
-  letter-spacing: 0.26em;
-  text-indent: 0.26em;
+  display: flex;
+  align-items: center;
   padding: 0.5rem 0.9rem;
   border-radius: 999px;
   background: var(--panel);
   -webkit-backdrop-filter: var(--panel-blur);
   backdrop-filter: var(--panel-blur);
   border: 1px solid rgba(44, 42, 38, 0.1);
+}
+
+.hud__brand img {
+  display: block;
+  height: 1.15rem;
+  width: auto;
+  max-width: 8.5rem;
+  object-fit: contain;
 }
 
 .hud__spacer {
@@ -886,6 +896,34 @@
   border-radius: 50%;
   background: var(--sage);
   transform: translateY(-2px);
+}
+
+/* A colour breakdown of one vase: swatch instead of the sage dot, count on
+   the right. Used where a display holds several colours of one variety. */
+
+.varieties--swatched li::before {
+  display: none;
+}
+
+.varieties--swatched li {
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.varieties--swatched i {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid rgba(44, 42, 38, 0.16);
+}
+
+.varieties--swatched em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--charcoal-soft);
 }
 
 /* Chips (colour + occasion + size) */
@@ -1702,9 +1740,12 @@
 
 @media (max-width: 520px) {
   .hud__brand {
-    font-size: 0.78rem;
-    letter-spacing: 0.18em;
     padding: 0.45rem 0.7rem;
+  }
+
+  .hud__brand img {
+    height: 0.95rem;
+    max-width: 6.5rem;
   }
 
 }
