@@ -46,16 +46,15 @@ function getPath(obj, path) {
   return path.split('.').reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
 }
 
-/** Build a minimal nested patch object for one dotted path. */
-function patchFor(path, value) {
-  const keys = path.split('.');
-  const patch = {};
-  let cursor = patch;
-  keys.forEach((key, i) => {
-    if (i === keys.length - 1) cursor[key] = value;
-    else cursor = (cursor[key] = {});
-  });
-  return patch;
+/**
+ * Always read a content list as an array.
+ *
+ * The panel edits owner-supplied content, so it must render something rather
+ * than throw if a value arrives in the wrong shape — a white-screened admin
+ * leaves no way to put it right.
+ */
+function list(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 /* --- field renderers ---------------------------------------------------- */
@@ -111,12 +110,12 @@ function selectField(content, { path, label, options }) {
 
 /** Editable list of plain strings (terms, varieties). */
 function linesField(content, { path, label, help, addLabel = 'Add line' }) {
-  const list = getPath(content, path) || [];
+  const items = list(getPath(content, path));
   return `
     <div class="field field--wide">
       <span>${esc(label)}${help ? ` — <em style="font-style:normal;opacity:.75">${esc(help)}</em>` : ''}</span>
       <div class="list-lines" data-lines="${esc(path)}">
-        ${list.map((line, i) => `
+        ${items.map((line, i) => `
           <div class="list-lines__row">
             <input type="text" data-line="${esc(path)}" data-index="${i}" value="${esc(line)}" />
             <button class="icon-mini" data-admin="line-remove" data-target="${esc(path)}" data-index="${i}"
@@ -243,7 +242,7 @@ function paletteSection(c) {
   return section('sec-palette', 'Colour palette',
     'The colours a customer can request. These drive the chips, the flower colours in the 3D shop and the invoice.',
     `<div class="repeat" data-repeat="palette">
-      ${c.palette.map((p, i) => `
+      ${list(c.palette).map((p, i) => `
         <div class="repeat__item">
           <div class="repeat__head">
             <span style="width:20px;height:20px;border-radius:50%;background:${esc(p.hex)};
@@ -265,7 +264,7 @@ function occasionsSection(c) {
   return section('sec-occasions', 'Occasions',
     'The occasions a customer can pick. Optional for them, always printed on the invoice.',
     `<div class="repeat" data-repeat="occasions">
-      ${c.occasions.map((o, i) => `
+      ${list(c.occasions).map((o, i) => `
         <div class="repeat__item">
           <div class="repeat__head">
             <b>${esc(o.label)}</b>
@@ -285,7 +284,7 @@ function sizesSection(c) {
     'Prices are shown and totalled in the currency below.',
     `${textField(c, { path: 'currency', label: 'Currency code' })}
     <div class="repeat" data-repeat="sizes">
-      ${c.sizes.map((s, i) => `
+      ${list(c.sizes).map((s, i) => `
         <div class="repeat__item">
           <div class="repeat__head">
             <b>${esc(s.label)}</b>
@@ -306,7 +305,7 @@ function deliverySection(c) {
   return section('sec-delivery', 'Delivery zones',
     'Printed on the invoice exactly as written. Use the label for ranges like “HKD 500 – 800”.',
     `<div class="repeat" data-repeat="delivery">
-      ${c.delivery.map((d, i) => `
+      ${list(c.delivery).map((d, i) => `
         <div class="repeat__item">
           <div class="repeat__head">
             <b>${esc(d.zone)}</b>
@@ -352,7 +351,7 @@ function displaysSection(c) {
      when they gather a stem. Leave <strong>photo</strong> blank to use an automatic
      still of the 3D arrangement, or point it at a file in <code>images/</code>.`,
     `<div class="repeat" data-repeat="displays">
-      ${c.displays.map((d, i) => `
+      ${list(c.displays).map((d, i) => `
         <div class="repeat__item">
           <div class="repeat__head">
             <b>${esc(d.title)}</b>
@@ -385,7 +384,7 @@ function framesSection(c) {
   return section('sec-frames', 'Wall photographs',
     'Three frames hang on the back wall. Drop files into <code>images/</code> and give the path, e.g. <code>images/wrapped-01.jpg</code>. Without a photo, a plaster placeholder is shown.',
     `<div class="repeat" data-repeat="frames">
-      ${c.frames.map((f, i) => `
+      ${list(c.frames).map((f, i) => `
         <div class="repeat__item">
           <div class="repeat__head">
             <b>${esc(f.title)}</b>
@@ -415,7 +414,7 @@ function gardenSection(c) {
       ${textField(c, { path: 'garden.bloomReward', label: 'Reward for a bloom' })}
     </div>
     <div class="repeat" data-repeat="garden.rewards">
-      ${c.garden.rewards.map((r, i) => `
+      ${list(c.garden.rewards).map((r, i) => `
         <div class="repeat__item">
           <div class="repeat__head">
             <b>Day ${r.day}</b>
@@ -722,7 +721,7 @@ class AdminPanel {
       value = value === '' ? 0 : Number(value);
     }
 
-    store.saveContent(patchFor(path, value));
+    store.setContentPath(path, value);
 
     // Keep paired colour inputs in step without a full re-render.
     if (el.dataset.mirror) {
@@ -739,9 +738,9 @@ class AdminPanel {
   writeLine(el) {
     const path = el.dataset.line;
     const index = Number(el.dataset.index);
-    const list = [...(getPath(store.getContent(), path) || [])];
-    list[index] = el.value;
-    store.saveContent(patchFor(path, list));
+    const next = [...list(getPath(store.getContent(), path))];
+    next[index] = el.value;
+    store.setContentPath(path, next);
     clearTimeout(this._jsonTimer);
     this._jsonTimer = setTimeout(() => this.refreshJSON(), 400);
     this.status('Saved to this browser');
@@ -754,32 +753,32 @@ class AdminPanel {
 
     switch (action) {
       case 'add': {
-        const list = [...(getPath(store.getContent(), listPath) || [])];
-        list.push(this.blankFor(listPath, list.length));
-        store.saveContent(patchFor(listPath, list));
+        const next = [...list(getPath(store.getContent(), listPath))];
+        next.push(this.blankFor(listPath, next.length));
+        store.setContentPath(listPath, next);
         this.render();
         toast('Added.');
         break;
       }
       case 'remove': {
-        const list = [...(getPath(store.getContent(), listPath) || [])];
-        list.splice(index, 1);
-        store.saveContent(patchFor(listPath, list));
+        const next = [...list(getPath(store.getContent(), listPath))];
+        next.splice(index, 1);
+        store.setContentPath(listPath, next);
         this.render();
         toast('Removed.');
         break;
       }
       case 'line-add': {
-        const list = [...(getPath(store.getContent(), target) || [])];
-        list.push('');
-        store.saveContent(patchFor(target, list));
+        const next = [...list(getPath(store.getContent(), target))];
+        next.push('');
+        store.setContentPath(target, next);
         this.render();
         break;
       }
       case 'line-remove': {
-        const list = [...(getPath(store.getContent(), target) || [])];
-        list.splice(index, 1);
-        store.saveContent(patchFor(target, list));
+        const next = [...list(getPath(store.getContent(), target))];
+        next.splice(index, 1);
+        store.setContentPath(target, next);
         this.render();
         break;
       }

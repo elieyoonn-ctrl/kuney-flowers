@@ -382,13 +382,62 @@ check('a null in saved content cannot clobber a real value', () => {
 });
 
 check('repair falls back to shipped content, not the factory default', () => {
-  const c = store.getContent();
+  // On a copy: repair mutates in place, and the live content is shared state.
+  const c = JSON.parse(JSON.stringify(store.getContent()));
   const shipped = JSON.parse(JSON.stringify(c));
   shipped.frames = [{ id: 'published', title: 'Published frame', caption: '', photo: 'images/x.jpg' }];
   c.frames = 'corrupt';
   store.repair(c, shipped);
   assert(c.frames.length === 1 && c.frames[0].id === 'published',
     'a corrupt browser copy should fall back to what the site publishes');
+});
+
+check('editing one item in a list leaves the list intact', () => {
+  /* The bug that blanked the shop. The owner panel wrote each field as a nested
+     patch — `{frames: {0: {photo: '...'}}}` — an object where an array belongs,
+     and merge replaced the whole array with it. Every edit to a flower, a
+     colour, a size or a frame destroyed that entire list, and the room then
+     threw while being built. Writes go through setContentPath now, which walks
+     the real structure. */
+  const snapshot = store.exportContent();   // restored at the end
+  const before = store.getContent().frames.length;
+  assert(before >= 3, 'expected the default frames');
+
+  store.setContentPath('frames.0.photo', 'images/wrapped-01.jpg');
+  const frames = store.getContent().frames;
+  assert(Array.isArray(frames), 'frames stopped being an array');
+  assert(frames.length === before, `frames went from ${before} to ${frames.length}`);
+  assert(frames[0].photo === 'images/wrapped-01.jpg', 'the edit did not take');
+  assert(frames[1].title, 'a sibling frame lost its data');
+
+  // Same for every other editable list.
+  for (const [path, key] of [
+    ['palette.2.label', 'palette'],
+    ['displays.1.title', 'displays'],
+    ['sizes.0.price', 'sizes'],
+    ['garden.rewards.0.label', 'garden.rewards'],
+  ]) {
+    const list = path.startsWith('garden')
+      ? store.getContent().garden.rewards
+      : store.getContent()[key];
+    const n = list.length;
+    store.setContentPath(path, 'edited');
+    const after = path.startsWith('garden')
+      ? store.getContent().garden.rewards
+      : store.getContent()[key];
+    assert(Array.isArray(after), `${key} stopped being an array`);
+    assert(after.length === n, `${key} lost items: ${n} -> ${after.length}`);
+  }
+
+  store.importContent(snapshot);
+});
+
+check('a bad write is repaired rather than saved', () => {
+  const snapshot = store.exportContent();
+  store.saveContent({ frames: { 0: { photo: 'x' } } });
+  assert(Array.isArray(store.getContent().frames), 'an object patch should be repaired away');
+  assert(store.getContent().frames.length > 0, 'frames should hold real entries');
+  store.importContent(snapshot);
 });
 
 check('content export/import round-trips', () => {

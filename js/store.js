@@ -207,6 +207,7 @@ function emit() {
 export function saveContent(patch) {
   content = merge(content, patch);
   content.version = CONTENT_VERSION;
+  repair(content);
   const ok = writeJSON(KEY_CONTENT, content);
   emit();
   return ok;
@@ -231,6 +232,7 @@ export function setContentPath(path, value) {
   cursor[keys[keys.length - 1]] = value;
   content = next;
   content.version = CONTENT_VERSION;
+  repair(content);
   const ok = writeJSON(KEY_CONTENT, content);
   emit();
   return ok;
