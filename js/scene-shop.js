@@ -3,11 +3,11 @@
 
    A low, wide, warm-white room in the manner of the reference: everything in
    one lime plaster, a flat ceiling pricked with a grid of small recessed
-   downlights, tall window bays with floor-length linen on the right, curved
-   plaster seating on the left, a raw concrete column, an olive tree in a
-   weathered pot, a low white table with cylindrical stools, and — at the
-   centre — the long banded-onyx table where flowers are gathered, wrapped and
-   invoiced.
+   downlights, tall window bays with floor-length linen on the right, a curved
+   flight of plaster steps on the left with a vase on each of its upper treads
+   and a raw concrete column standing up through them, an olive tree in a weathered pot,
+   a low white table with cylindrical stools, and — at the centre — the long
+   banded-onyx table where flowers are gathered, wrapped and invoiced.
 
    The floor is tumbled travertine laid as large slabs: no grout, edges worn
    pale, and a different figure in every slab. See `tex.tumbledTravertine`.
@@ -49,6 +49,52 @@ export const ROOM = {
 
 const EYE = 1.58;
 
+/* --- the plaster steps, on the left ------------------------------------- --
+   A curved four-tread bank, lathed as one stepped profile swept through part
+   of a circle. Because `amphitheatre` rises outward from the lathe's centre,
+   the lowest tread is the innermost one and the form faces that centre — so
+   moving the centre is how the steps are aimed.
+
+   They used to be centred hard against the left wall and swept the other way,
+   which pointed the first tread at the plaster and turned the 1.6 m back of
+   them toward the room. Rotated anticlockwise and brought off the wall, the
+   centre now sits out on the open floor: the risers face the room and the long
+   table, the bank climbs away toward the back-left corner, and the concrete
+   column at (-3.9, -5.4) comes up through the third tread, which runs on past
+   it to either side — the steps wrap the column rather than stopping at it.
+   ---------------------------------------------------------------------- */
+
+const STAIRS = {
+  x: -2.9,
+  z: -3.0,
+  innerRadius: 1.1,
+  tiers: 4,
+  tread: 0.6,
+  rise: 0.36,
+  back: 0.5,          // a flight of steps, not a room to sit around
+  thetaStart: Math.PI * 0.89,
+  thetaLength: Math.PI * 0.72,
+};
+
+/** Radius of the middle of tread `tier` — tread 0 is the one on the floor. */
+const stepRadius = (tier) => STAIRS.innerRadius + STAIRS.tread * (tier + 0.5);
+
+/**
+ * A display slot standing on the steps: on tread `tier`, `turn` of the way
+ * along the arc. The camera stands back in from it, on the open floor inside
+ * the bank, which is where a visitor looks up at the treads from.
+ */
+function stepSlot(tier, turn, distance, profile) {
+  const a = STAIRS.thetaStart + STAIRS.thetaLength * turn;
+  const r = stepRadius(tier);
+  return {
+    pos: [STAIRS.x + Math.sin(a) * r, STAIRS.rise * tier, STAIRS.z + Math.cos(a) * r],
+    profile,
+    from: [-Math.sin(a), 0, -Math.cos(a)],
+    distance,
+  };
+}
+
 /* Layout slots, in world space. `from` is the direction the camera stands in. */
 const SLOTS = {
   /* Two along the front-left, the third pushed to the back rail. The front of
@@ -77,7 +123,15 @@ const SLOTS = {
     { pos: [7.78, 1.76, 1.26], profile: 'bud', from: [-1, 0, -0.08] },
     { pos: [7.78, 1.76, 1.92], profile: 'bud', from: [-1, 0, -0.18] },
   ],
-  /* Tall glass on the stone, cut long. Kept out of the seating, the column,
+  /* On the plaster treads, one to a step and clear of the column that comes
+     up through the third of them. Stood well apart along the arc so each one
+     is a stop of its own rather than a row seen at an angle. */
+  steps: [
+    stepSlot(1, 0.20, 1.4, 'cylinder'),
+    stepSlot(2, 0.71, 1.6, 'cylinder'),
+    stepSlot(3, 0.48, 2.2, 'bud'),
+  ],
+  /* Tall glass on the stone, cut long. Kept out of the steps, the column,
      the olive tree, the low table and the frame and calendar viewing lines. */
   floor: [
     { pos: [-2.70, 0, 4.40], profile: 'tall', from: [0.2, 0, 1] },
@@ -104,6 +158,10 @@ const ARRANGEMENT = {
      exactly where they are, so shelf stock is cut to the gap — the blooms stay
      full size, only the stems come down. */
   shelf: { spread: 0.055, scale: 0.8, tilt: 0.24, height: 0.42 },
+  /* On the treads: cut longer than the shelves, because a step has open air
+     above it rather than a board 0.72 m up, but not as long as the floor
+     glass — the tread behind each vase is only 0.36 m higher. */
+  steps: { spread: 0.085, scale: 1, tilt: 0.3, height: 0.55 },
   /* Cut long, standing in tall glass on the stone, as in the reference. */
   floor: { spread: 0.15, scale: 1.45, tilt: 0.4, height: 0.78 },
 };
@@ -350,11 +408,14 @@ export function buildShop(content, { renderer } = {}) {
 
   /* --- floor ------------------------------------------------------------ */
 
-  /* Tumbled travertine in ~0.9 m slabs. The texture carries three slabs across,
-     each with its own figure, so the repeat lands every 2.7 m instead of on
-     every slab — which is what stops large-format stone reading as tile. */
+  /* Tumbled travertine in large 1.3 m slabs. The texture carries three slabs
+     across, each with its own figure, so the repeat lands every 3.9 m instead
+     of on every slab — which is what stops large-format stone reading as tile.
+
+     They were 0.9 m, which put eighteen slabs across the room: at that size the
+     seams read as a busy grid rather than as a stone floor. */
   const SLABS_PER_TILE = 3;
-  const SLAB_SIZE = 0.9;
+  const SLAB_SIZE = 1.3;
   const floorTex = tex.tumbledTravertine(theme.floor, { slabs: SLABS_PER_TILE });
   const repeatX = ROOM.width / (SLAB_SIZE * SLABS_PER_TILE);
   const repeatZ = ROOM.depth / (SLAB_SIZE * SLABS_PER_TILE);
@@ -685,27 +746,63 @@ export function buildShop(content, { renderer } = {}) {
   fill.position.set(-3, 4, 12);
   root.add(fill);
 
-  /* --- amphitheatre seating (left) -------------------------------------- */
+  /* --- the plaster steps (left) ----------------------------------------- */
 
   const seatMat = plasterMaterial(theme, { color: 0xfaf8f4, side: THREE.DoubleSide });
   const seating = new THREE.Mesh(
     amphitheatre({
-      tiers: 4,
-      innerRadius: 1.5,
-      tread: 0.66,
-      rise: 0.40,
+      tiers: STAIRS.tiers,
+      innerRadius: STAIRS.innerRadius,
+      tread: STAIRS.tread,
+      rise: STAIRS.rise,
       fillet: 0.08,
-      thetaStart: Math.PI * 0.34,
-      thetaLength: Math.PI * 0.72,
+      back: STAIRS.back,
+      thetaStart: STAIRS.thetaStart,
+      thetaLength: STAIRS.thetaLength,
       segments: 96,
     }),
     seatMat
   );
-  seating.position.set(-7.4, 0, -2.6);
+  /* Three millimetres off the stone. The lowest tread is a flat ring at y = 0,
+     which is exactly the plane of the floor: coplanar with it, the two surfaces
+     fight for depth and the ring shimmers. It mattered less when the steps were
+     tucked against the left wall than it does with them out on the floor. */
+  seating.position.set(STAIRS.x, 0.003, STAIRS.z);
   seating.castShadow = true;
   seating.receiveShadow = true;
   root.add(seating);
-  addCollider(-8, 0, -5.6, -4.1, 1.7, 0.6);
+
+  /* Colliders for a curved bank.
+
+     One box around the whole of it would either wall off the open floor inside
+     the arc — which is exactly where a visitor stands to look up at the treads,
+     and where the tread stops put the camera — or leave a corner of plaster
+     walk-through. A ring of boxes around the arc follows it closely instead,
+     each starting at the first riser rather than at the lathe's centre, so the
+     floor-level tread stays walkable.
+
+     Ten of them because a box around a slice of an arc reaches a little inside
+     the arc at its corners, and enough slices keeps that overshoot below the
+     clearance a camera stop on the floor inside needs. */
+  const STEP_COLLIDER_CHUNKS = 10;
+  const stepInner = STAIRS.innerRadius + STAIRS.tread;   // the first riser
+  const stepOuter = STAIRS.innerRadius + STAIRS.tiers * STAIRS.tread + STAIRS.back;
+  const stepHeight = STAIRS.tiers * STAIRS.rise;
+  for (let i = 0; i < STEP_COLLIDER_CHUNKS; i += 1) {
+    const from = STAIRS.thetaStart + (STAIRS.thetaLength * i) / STEP_COLLIDER_CHUNKS;
+    const to = STAIRS.thetaStart + (STAIRS.thetaLength * (i + 1)) / STEP_COLLIDER_CHUNKS;
+    let minX = Infinity; let maxX = -Infinity; let minZ = Infinity; let maxZ = -Infinity;
+    // Both ends and the middle: the middle is what catches the bulge of the arc.
+    for (const a of [from, (from + to) / 2, to]) {
+      for (const r of [stepInner, stepOuter]) {
+        const x = STAIRS.x + Math.sin(a) * r;
+        const z = STAIRS.z + Math.cos(a) * r;
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+        minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+      }
+    }
+    addCollider(minX, 0, minZ, maxX, stepHeight, maxZ);
+  }
 
   /* --- concrete column -------------------------------------------------- */
 
@@ -1003,14 +1100,30 @@ export function buildShop(content, { renderer } = {}) {
   vaseGroup.position.set(0.92, ROOM.island.height, 1.46);
   root.add(vaseGroup);
 
+  /* Half again the size it is drawn at, so it carries across the room.
+
+     Scaled on the meshes rather than on vaseGroup: the group also holds the
+     finished bouquet, and a bouquet half again as long would not fit on the
+     wrapping bench. The vase and its water scale; the stems do not. */
+  const SPECIAL_VASE_SCALE = 1.5;
   const SPECIAL_VASE_HEIGHT = SPECIAL_VASE_PROFILE[SPECIAL_VASE_PROFILE.length - 1][1];
   const heroVase = new THREE.Mesh(
     shadeOpaline(turned(SPECIAL_VASE_PROFILE, { segments: 64 }), SPECIAL_VASE_HEIGHT),
     opalineMaterial()
   );
   heroVase.name = 'hero-vase';
+  heroVase.scale.setScalar(SPECIAL_VASE_SCALE);
   heroVase.castShadow = true;
   vaseGroup.add(heroVase);
+
+  /* Where a gathered stem is cut off to, inside the vase.
+
+     It follows the vase: the lip is now at 0.53 m rather than 0.35, and stems
+     left at the old depth would have stood a ranunculus entirely inside the
+     glass. At 0.28 the cut ends are still under the water surface and the
+     shortest thing the shop stocks still stands proud of the lip. The wrap
+     measures its paper and ribbon off this, so the sequence is unchanged. */
+  const STEM_BASE_Y = 0.28;
 
   /* A closed column of water. It starts above the waist rather than at the
      origin, because this vase stands on a foot: water at y = 0 would show
@@ -1022,6 +1135,7 @@ export function buildShop(content, { renderer } = {}) {
     ], { segments: 44, smooth: 1 }),
     waterMaterial()
   );
+  water.scale.setScalar(SPECIAL_VASE_SCALE);
   water.visible = false;
   vaseGroup.add(water);
 
@@ -1051,11 +1165,12 @@ export function buildShop(content, { renderer } = {}) {
     rTop: 0.125,
     segments: 44,
     lift: 0.15,
-    // Stems are cut at y = 0.1 and lift by 0.15, so the paper has to start at
-    // the cut end (0.20) and rise over the lower stems — not at the group
-    // origin, which is down inside the vase.
-    coneBase: 0.20,
-    ribbonY: 0.30,
+    // Stems are cut at STEM_BASE_Y and lift by 0.15, so the paper has to start
+    // at the cut end and rise over the lower stems — not at the group origin,
+    // which is down inside the vase. Both are measured off the cut so they
+    // follow the vase when it changes size.
+    coneBase: STEM_BASE_Y + 0.10,
+    ribbonY: STEM_BASE_Y + 0.20,
     /* Where the finished bouquet comes to rest, relative to the vase.
 
        It is laid flat along the island's long axis, in the clear span kept
@@ -1067,8 +1182,16 @@ export function buildShop(content, { renderer } = {}) {
        its side has to clear its own radius, and that depends on the paper cone
        and on whatever the visitor happened to gather. */
     /* A tilt about +Z lays the stems toward -X, so the pivot sits at the right
-       end of the bench, just clear of the vase, and the bouquet extends left. */
-    rest: { x: -0.18, y: 0.02, z: 0.12, tilt: 1.45, turn: 0.34 },
+       end of the bench, just clear of the vase, and the bouquet extends left.
+
+       Both x and z are pulled in from where they were (-0.18, 0.12). The tilt
+       is about the group origin, so cutting the stems higher up carries the
+       whole bouquet further along the lay of its own accord — and because the
+       bunch is turned in the hand first, that lay is a little across the
+       counter as well as along it, which was putting the flower heads out over
+       the front edge of the stone. What it still has to clear is the vase, now
+       0.41 m across rather than 0.27. */
+    rest: { x: -0.07, y: 0.02, z: 0.05, tilt: 1.45, turn: 0.34 },
     clearance: 0.004,
   };
 
@@ -1247,23 +1370,35 @@ export function buildShop(content, { renderer } = {}) {
     new THREE.CylinderGeometry(0.16, 0.13, 0.5, 12),
     new THREE.MeshBasicMaterial({ visible: false })
   );
-  vaseHit.position.y = 0.25;
+  vaseHit.scale.setScalar(SPECIAL_VASE_SCALE);
+  vaseHit.position.y = 0.25 * SPECIAL_VASE_SCALE;
   vaseHit.userData = { vase: true, label: 'Your vase' };
   vaseGroup.add(vaseHit);
   interactive.push(vaseHit);
 
   /* --- printer ---------------------------------------------------------- */
 
+  /* Half again as big, and moved 0.11 m in along the counter so that all four
+     corners of it stay on the stone at that size. The paper is a child of the
+     group, so the print animation scales with it and needs no other change. */
+  const PRINTER_SCALE = 1.5;
+  const PRINTER_X = 1.75;
+  /* Back from 1.72 as well: the invoice feeds out toward the visitor, and a
+     sheet half again as long was hanging over the front edge of the stone. */
+  const PRINTER_Z = 1.58;
+
   const printer = buildPrinter();
-  printer.position.set(1.86, ROOM.island.height, 1.72);
+  printer.position.set(PRINTER_X, ROOM.island.height, PRINTER_Z);
   printer.rotation.y = -0.28;
+  printer.scale.setScalar(PRINTER_SCALE);
   root.add(printer);
 
   const printerHit = new THREE.Mesh(
     new THREE.BoxGeometry(0.5, 0.34, 0.42),
     new THREE.MeshBasicMaterial({ visible: false })
   );
-  printerHit.position.set(1.86, ROOM.island.height + 0.15, 1.72);
+  printerHit.scale.setScalar(PRINTER_SCALE);
+  printerHit.position.set(PRINTER_X, ROOM.island.height + 0.15 * PRINTER_SCALE, PRINTER_Z);
   printerHit.userData = { printer: true, label: 'Printer' };
   root.add(printerHit);
   interactive.push(printerHit);
@@ -1318,10 +1453,13 @@ export function buildShop(content, { renderer } = {}) {
   }
 
   registerHover(vaseHit, hoverRing(
-    0.15, 0.2, new THREE.Vector3(0, 0.004, 0), vaseGroup
+    0.15 * SPECIAL_VASE_SCALE, 0.2 * SPECIAL_VASE_SCALE,
+    new THREE.Vector3(0, 0.004, 0), vaseGroup
   ));
+  /* Sized by hand rather than by PRINTER_SCALE: it has to clear the bigger
+     shell, but at 1.5x it would hang over the raw edge of the table. */
   registerHover(printerHit, hoverRing(
-    0.27, 0.33, new THREE.Vector3(1.86, ROOM.island.height + 0.004, 1.72)
+    0.38, 0.44, new THREE.Vector3(PRINTER_X, ROOM.island.height + 0.004, PRINTER_Z)
   ));
   registerHover(portalHit, hoverRim(
     ROOM.portal.width + 0.14, ROOM.portal.height + 0.1,
@@ -1715,12 +1853,14 @@ export function buildShop(content, { renderer } = {}) {
     target: [0.3, 1.02, 1.6],
   };
 
+  /* Stood well back on the open floor, square to the middle of the arc, so
+     the whole run of risers is seen front-on rather than edge-on. */
   const seatingStop = {
     id: 'seating',
     kind: 'view',
     label: 'The Steps',
-    position: [-3.0, EYE, -1.0],
-    target: [-6.6, 1.1, -2.6],
+    position: [-0.65, EYE, -0.75],
+    target: [-4.60, 0.95, -4.70],
   };
 
   const portalStop = {
@@ -1739,6 +1879,7 @@ export function buildShop(content, { renderer } = {}) {
     calendarStop,
     ...stops.filter((s) => s.kind === 'frame'),
     seatingStop,
+    ...stops.filter((s) => s.kind === 'display' && displays.get(s.displayId)?.data.kind === 'steps'),
     ...stops.filter((s) => s.kind === 'display' && displays.get(s.displayId)?.data.kind === 'floor'),
     portalStop,
   ];
@@ -1950,7 +2091,7 @@ export function buildShop(content, { renderer } = {}) {
       // Held a little tighter than they used to be: this vase draws in at the
       // shoulder, and a wider fan put stems out through the glass.
       const r = Math.min(0.046, 0.010 + n * 0.005);
-      stem.position.set(Math.cos(yaw) * r, 0.1, Math.sin(yaw) * r);
+      stem.position.set(Math.cos(yaw) * r, STEM_BASE_Y, Math.sin(yaw) * r);
       const lean = Math.min(0.26, 0.06 + n * 0.02);
       stem.rotation.z = -Math.cos(yaw) * lean;
       stem.rotation.x = Math.sin(yaw) * lean;

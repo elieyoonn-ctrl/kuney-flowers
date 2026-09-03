@@ -27,6 +27,37 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* --- copy for the stops that are places, not things --------------------- --
+   A display carries its own panel copy and a frame carries its caption; the
+   rest of the tour is rooms and furniture. They get a line each so the side
+   panel can stay in step with Next and Previous wherever they land, instead of
+   shutting whenever the visitor steps off a flower. Keyed by stop id, and only
+   used in the shop — the garden has its own panel.
+   ---------------------------------------------------------------------- */
+
+const STOP_NOTES = {
+  entrance: {
+    kind: 'The room',
+    body: 'Sixteen metres by twenty-two, four and a half to the ceiling, in one lime plaster. The bright ellipse on the stone is a real cast shadow — daylight through a circular hole in the ceiling.',
+  },
+  island: {
+    kind: 'On the long table',
+    body: 'A raw-edged banded onyx monolith, lit from a concealed strip under the overhang. Everything happens here: the stems you gather stand in the peach opaline vase, and the invoice prints at the far end.',
+  },
+  seating: {
+    kind: 'The steps',
+    body: 'A curved flight of plaster steps, wrapping the concrete column that stands up through them. Three vases of stock stand on the upper treads, and the risers face the room — the front of the stairs, not the back of them.',
+  },
+  calendar: {
+    kind: 'On the back wall',
+    body: 'The plaster board, drawn from live stock: three bouquets a day, every day, with three days’ notice. A day at zero is sold out and cannot be chosen.',
+  },
+  portal: {
+    kind: 'Through the door',
+    body: 'The plaster threshold to the walled garden — gravel paths, raised beds, a long basin and olive trees in terracotta. Sow a seed there and come back tomorrow to water it.',
+  },
+};
+
 /* --- application ------------------------------------------------------- */
 
 class App {
@@ -36,6 +67,7 @@ class App {
     this.stopIndex = 0;
     this.selectedId = null;
     this.entered = false;
+    this.orderPanelFromTour = false;   // the tour may close what the tour opened
     this.transitioning = false;
     this.pickedStems = new Map();   // displayId → [hidden stem objects]
     this._orderTimers = [];         // wrap → print → invoice, cancellable
@@ -492,8 +524,15 @@ class App {
     this.rig.setMode('guided');
     this.rig.goTo(stop);
 
-    if (stop.displayId) this.selectDisplay(stop.displayId, { move: false });
-    else this.clearSelection();
+    /* The side panel follows the tour rather than standing in the way of it:
+       stepping swaps its contents for the new stop, keeps it open, brings it
+       back if the visitor had closed it, and never takes the focus off the
+       arrow that was just pressed. */
+    if (stop.displayId) this.selectDisplay(stop.displayId, { move: false, focus: false });
+    else {
+      this.clearSelection({ closeDetail: false });
+      this.syncStopDetail(stop);
+    }
 
     this.updateStepUI();
     if (announce) this.announce(`${stop.label}. Stop ${wrapped + 1} of ${stops.length}.`);
@@ -510,7 +549,7 @@ class App {
    */
   onArrive(stop) {
     if (!stop) return;
-    if (stop.kind === 'calendar') this.openOrderPanel({ focus: 'calendar' });
+    if (stop.kind === 'calendar') this.openOrderPanel({ focus: 'calendar', fromTour: true });
     if (stop.kind === 'plot') this.openGardenPanel(stop.plotIndex);
   }
 
@@ -633,7 +672,7 @@ class App {
     } else {
       title.textContent = 'Floor plan';
       feature(ROOM.island.x, ROOM.island.z, ROOM.island.width, ROOM.island.depth);
-      feature(-6.2, -2.6, 3.4, 5.0);       // amphitheatre seating
+      feature(-4.25, -4.35, 5.4, 5.4);     // the plaster steps
       feature(-3.9, -5.4, 0.72, 0.72);     // concrete column
       feature(0.6, -6.6, 0.9, 0.9);        // olive tree
       feature(5.0, 4.3, 2.9, 0.86);        // low table
@@ -689,7 +728,7 @@ class App {
 
   /* --- selection + detail ---------------------------------------------- */
 
-  selectDisplay(id, { move = true } = {}) {
+  selectDisplay(id, { move = true, focus = true } = {}) {
     const entry = this.scenes.shop?.displays.get(id);
     if (!entry) return;
     this.selectedId = id;
@@ -702,7 +741,7 @@ class App {
         this.rig.goTo(this.stops[index]);
       }
     }
-    this.openDetail(entry);
+    this.openDetail(entry, { focus });
     this.updateStepUI();
     this.syncRoute();
   }
@@ -712,15 +751,58 @@ class App {
     this.selectDisplay(id, { move: true });
   }
 
-  clearSelection() {
+  /**
+   * Drop the selection.
+   *
+   * `closeDetail` is off while the tour is stepping: the panel is about to be
+   * refilled for the stop being arrived at, and closing it first would make it
+   * slide out and back in on every press of Next.
+   */
+  clearSelection({ closeDetail = true } = {}) {
     this.selectedId = null;
     this.scenes.shop?.highlight(null);
-    this.closePanel('detail');
+    if (closeDetail) this.closePanel('detail');
     this.updateStepUI();
     this.syncRoute();
   }
 
-  openDetail(entry) {
+  /**
+   * Show, in the side panel, whatever the current stop is — for the stops that
+   * are places rather than displays or photographs.
+   *
+   * Deliberately does nothing while the order or garden panel is open: the
+   * visitor is in the middle of something there, and having Next swap it out
+   * from under them would lose it. The arrows work either way.
+   */
+  syncStopDetail(stop) {
+    if (!stop || this.space !== 'shop') return;
+    const busy = ['order', 'garden'].some((name) => (
+      this.dom.panels[name]?.classList.contains('is-open')
+      && !(name === 'order' && this.orderPanelFromTour)
+    ));
+    if (busy) return;
+
+    if (stop.frameId) {
+      this.openFrame(stop.frameId, { focus: false });
+      return;
+    }
+
+    const note = STOP_NOTES[stop.id];
+    if (!note) return;
+
+    role('detail-kind').textContent = note.kind;
+    role('detail-title').textContent = stop.label || note.kind;
+    role('detail-body').innerHTML = `
+      <div class="section">
+        <h3>About</h3>
+        <p class="prose">${esc(note.body)}</p>
+      </div>
+    `;
+    role('detail-foot').innerHTML = '';
+    this.openPanel('detail', { focus: false });
+  }
+
+  openDetail(entry, { focus = true } = {}) {
     const panel = this.dom.panels.detail;
     const d = entry.data;
     const picked = this.pickedStems.get(d.id) || [];
@@ -729,6 +811,7 @@ class App {
     role('detail-kind').textContent = {
       'vase-table': 'On the long table',
       shelf: 'Wall shelf',
+      steps: 'On the steps',
       floor: 'Floor arrangement',
     }[d.kind] || 'Display';
     role('detail-title').textContent = d.title;
@@ -782,10 +865,10 @@ class App {
       <button class="btn btn--ghost" data-action="share" data-id="${esc(d.id)}">Share this arrangement</button>
     `;
 
-    this.openPanel('detail');
+    this.openPanel('detail', { focus });
   }
 
-  openFrame(frameId) {
+  openFrame(frameId, { focus = true } = {}) {
     const frame = this.content.frames.find((f) => f.id === frameId);
     if (!frame) return;
     role('detail-kind').textContent = 'Photograph';
@@ -802,7 +885,7 @@ class App {
     role('detail-foot').innerHTML = `
       <a class="btn btn--ghost" href="${esc(this.content.contact.productUrl)}" target="_blank" rel="noopener">Order a bouquet like this</a>
     `;
-    this.openPanel('detail');
+    this.openPanel('detail', { focus });
   }
 
   /* --- picking ---------------------------------------------------------- */
@@ -1000,7 +1083,13 @@ class App {
       .join('');
   }
 
-  openOrderPanel({ focus = null } = {}) {
+  /**
+   * `fromTour` marks a panel the visitor did not ask for: arriving at the
+   * calendar stop opens it. The tour is then allowed to swap it back out for
+   * the next stop's copy, which one the visitor opened deliberately is not.
+   */
+  openOrderPanel({ focus = null, fromTour = false } = {}) {
+    this.orderPanelFromTour = fromTour;
     this.calendarPanel.render();
     this.openPanel('order');
     if (focus === 'calendar') {
@@ -1257,7 +1346,14 @@ class App {
 
   /* --- panels ----------------------------------------------------------- */
 
-  openPanel(name) {
+  /**
+   * Open one panel and close the others.
+   *
+   * `focus` is off when the panel is being refilled by the guided tour: taking
+   * the focus would pull it off the Next button the visitor just pressed, so
+   * pressing that button again — or holding Enter on it — would stop working.
+   */
+  openPanel(name, { focus = true } = {}) {
     for (const [key, el] of Object.entries(this.dom.panels)) {
       const open = key === name;
       el.classList.toggle('is-open', open);
@@ -1265,7 +1361,7 @@ class App {
     }
     this.dom.hud.classList.add('is-dimmed');
     const panel = this.dom.panels[name];
-    requestAnimationFrame(() => panel.focus());
+    if (focus) requestAnimationFrame(() => panel.focus());
   }
 
   closePanel(name) {
@@ -1384,6 +1480,10 @@ class App {
   }
 
   onClick(e) {
+    // Touching anything in the order panel makes it the visitor's, so the tour
+    // stops treating it as a panel it may close.
+    if (e.target.closest('#panel-order')) this.orderPanelFromTour = false;
+
     const planDot = e.target.closest('[data-stop]');
     if (planDot) {
       this.goToStopIndex(Number(planDot.dataset.stop));

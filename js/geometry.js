@@ -193,6 +193,12 @@ export const POT_PROFILE = [
  * Curved, multi-tiered amphitheatre seating: one lathe of a stepped profile
  * swept through part of a circle. Each tread gets a small fillet so the form
  * stays soft rather than architectural.
+ *
+ * The lowest tread is the innermost one, so the form faces the lathe's centre:
+ * where that centre is put is what decides which way the steps face.
+ *
+ * `back` is the flat platform beyond the top tread — wide when the form is
+ * seating for a room to sit around, narrow when it is a flight of steps.
  */
 export function amphitheatre({
   tiers = 4,
@@ -200,6 +206,7 @@ export function amphitheatre({
   tread = 0.62,
   rise = 0.42,
   fillet = 0.07,
+  back = 0.9,
   thetaStart = 0,
   thetaLength = Math.PI * 0.62,
   segments = 72,
@@ -215,8 +222,8 @@ export function amphitheatre({
     profile.push([r0 + tread + fillet * 0.5, y0 + rise]);
   }
   const top = innerRadius + tiers * tread;
-  profile.push([top + 0.9, tiers * rise]);
-  profile.push([top + 0.9, tiers * rise - 0.12]);
+  profile.push([top + back, tiers * rise]);
+  profile.push([top + back, tiers * rise - 0.12]);
   profile.push([innerRadius, 0]);
 
   return turned(profile, { segments, thetaStart, thetaLength, smooth: 1 });

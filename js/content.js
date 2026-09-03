@@ -164,7 +164,7 @@ export const DEFAULT_CONTENT = {
   ],
 
   /* --- Displays in the 3D shop ------------------------------------------
-     `kind`   vase-table | shelf | floor
+     `kind`   vase-table | shelf | steps | floor
      `slot`   index into the layout positions defined per kind in scene-shop.js
      `photo`  optional path, e.g. 'images/peony-01.jpg' — overrides the auto still
      `bloom`  procedural flower recipe id from js/flowers.js
@@ -400,6 +400,59 @@ export const DEFAULT_CONTENT = {
       bloom: 'craspedia',
       colorId: 'yellow',
       colors: [{ id: 'stock-yellow', count: 8 }],
+      photo: '',
+      pickable: true,
+    },
+
+    /* --- the plaster steps: one vase to a tread -------------------------- */
+    {
+      id: 'rose-peach-steps',
+      title: 'Garden Rose, Peach & Blush',
+      varieties: ['Rosa “Shimmer”', 'Rosa “Quicksand”'],
+      note:
+        'The quietest roses we cut, on the lowest tread. Apricot over a grey-pink that reads almost brown in the shade of the column.',
+      kind: 'steps',
+      slot: 0,
+      bloom: 'rose',
+      colorId: 'peach',
+      colors: [
+        { id: 'stock-peach', count: 6 },
+        { id: 'stock-blush', count: 6 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'dahlia-pale-steps',
+      title: 'Dahlia, White & Blush',
+      varieties: ['Dahlia “Café au Lait”', 'Dahlia “Snowbound”'],
+      note:
+        'Dinner-plate heads the colour of unbleached paper, set at eye height on the middle tread where the light off the plaster is softest.',
+      kind: 'steps',
+      slot: 1,
+      bloom: 'dahlia',
+      colorId: 'blush-pink',
+      colors: [
+        { id: 'stock-white', count: 5 },
+        { id: 'stock-blush', count: 5 },
+      ],
+      photo: '',
+      pickable: true,
+    },
+    {
+      id: 'ranunculus-pale-steps',
+      title: 'Ranunculus, Soft Pink & White',
+      varieties: ['Ranunculus “Elegance Bianco”', 'Ranunculus “Cloni Success”'],
+      note:
+        'A bud vase on the top tread, above the height of the long table. Hundreds of tissue-thin petals to a head, and a stem that curves as it drinks.',
+      kind: 'steps',
+      slot: 2,
+      bloom: 'ranunculus',
+      colorId: 'soft-pink',
+      colors: [
+        { id: 'stock-soft-pink', count: 5 },
+        { id: 'stock-white', count: 5 },
+      ],
       photo: '',
       pickable: true,
     },

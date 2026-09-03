@@ -489,10 +489,13 @@
   visibility: hidden;
 }
 
-/* When a detail panel opens, the rest of the interface recedes. */
+/* When a detail panel opens, the rest of the interface recedes.
+
+   The tour nav deliberately does not: Next and Previous have to keep working
+   with the panel open, and dimming them to 0.16 with pointer-events off was
+   what forced a visitor to close the panel before they could step on. */
 #hud.is-dimmed .hud__topbar,
 #hud.is-dimmed .hud__plan,
-#hud.is-dimmed .hud__steps,
 #hud.is-dimmed .hud__hint {
   opacity: 0.16;
   pointer-events: none;
@@ -514,27 +517,31 @@
   transition: opacity var(--dur) var(--ease);
 }
 
-/* The logo sits in the same pill the wordmark used to: same padding, same
-   radius, same backdrop. Only the mark inside it changed, so the height is
-   pinned to what a 0.95rem line of the serif occupied and the image is fitted
-   into it rather than driving the size itself. */
+/* The logo stands on its own now — no pill, no backdrop — at the size the
+   shop's own header gives it: a 130px wordmark.
+
+   images/kuneylogo.png is that wordmark centred in a large transparent canvas.
+   The letters are 83.3% of the file's width and 17.9% of its height, so the
+   image is sized to 156px (156 x 0.833 = 130px of actual wordmark) and the
+   transparent margin is pulled back out of the layout box. Without that the
+   link would be a 156 x 110px block over the top-left corner of the room,
+   swallowing clicks on the stone and the flowers behind it.
+
+   The pill was also what kept black letters legible; a soft white halo does
+   that job instead, and costs nothing when the wall behind is already pale. */
 .hud__brand {
   display: flex;
   align-items: center;
-  padding: 0.5rem 0.9rem;
-  border-radius: 999px;
-  background: var(--panel);
-  -webkit-backdrop-filter: var(--panel-blur);
-  backdrop-filter: var(--panel-blur);
-  border: 1px solid rgba(44, 42, 38, 0.1);
 }
 
 .hud__brand img {
   display: block;
-  height: 1.15rem;
-  width: auto;
-  max-width: 8.5rem;
-  object-fit: contain;
+  width: 156px;
+  height: auto;
+  /* 110px tall at that width: 41% of it is empty above and below the letters,
+     8.3% either side. */
+  margin: -45px -13px;
+  filter: drop-shadow(0 0 3px rgba(255, 253, 248, 0.75));
 }
 
 .hud__spacer {
@@ -1739,13 +1746,10 @@
 }
 
 @media (max-width: 520px) {
-  .hud__brand {
-    padding: 0.45rem 0.7rem;
-  }
-
+  /* Same wordmark, scaled to 96px on a small screen. */
   .hud__brand img {
-    height: 0.95rem;
-    max-width: 6.5rem;
+    width: 116px;
+    margin: -33px -10px;
   }
 
 }

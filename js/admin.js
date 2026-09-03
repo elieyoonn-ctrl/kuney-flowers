@@ -348,6 +348,7 @@ function displaysSection(c) {
   const kinds = [
     { value: 'vase-table', label: 'On the long table' },
     { value: 'shelf', label: 'Wall shelf' },
+    { value: 'steps', label: 'On the steps' },
     { value: 'floor', label: 'Floor arrangement' },
   ];
   const blooms = BLOOMS;
