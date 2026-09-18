@@ -382,6 +382,106 @@ function buildPrinter() {
   return group;
 }
 
+/* --- the mossy tree trunk ----------------------------------------------- --
+   The pillar that stands up through the steps is a photoscanned tree trunk,
+   mossy and grown over with fungi, in place of the board-formed concrete it
+   used to be.
+
+   The scan is a single piece about 1.19 m tall and 0.27 m across at its widest
+   — a narrow log, near five times as tall as it is thick. The pillar it stands
+   in for is 0.72 m square and runs the whole 4.4 m from floor to ceiling, so
+   the scan is brought up to that thickness first and then stretched the rest
+   of the way to the ceiling: a little over a quarter again its own height once
+   it is that wide. That much is invisible on bark. Matching the height first
+   and letting the thickness follow would instead have left a pole about a
+   fifth as thick as the pillar, with the steps wrapping nothing.
+
+   Both ends of the scan are open, ragged shells. The bottom is set slightly
+   below the floor and the top runs up past the ceiling, so neither rim is ever
+   in shot and the trunk is not seen to start or stop. */
+
+const TRUNK_URL = 'public/models/tree_trunk.glb';
+/* Across the widest point. The concrete box was 0.72 m square and the collider
+   around it is 1 m, so a little over the box keeps the footprint the steps
+   were cut to wrap, the one the floor plan draws, and stays inside the box a
+   visitor is already stopped by. */
+const TRUNK_WIDTH = 0.80;
+const TRUNK_OVERSHOOT = 0.15;   // above the ceiling — the ceiling is solid here
+const TRUNK_SINK = 0.06;        // below the floor
+/* Which way the trunk faces. Turned about its own axis, so this only chooses
+   which side of the scan is presented to the room. */
+const TRUNK_TURN = 0.6;
+
+/**
+ * Loads the trunk and stands it where `placeholder` is, then takes the
+ * placeholder away.
+ *
+ * The scan is 3 MB and arrives well after the room does, so the concrete
+ * column is built as before and stands in until this lands — and stays,
+ * untouched, if it never does. The pillar holds up that corner of the
+ * composition and the room should never be caught without it.
+ *
+ * Every number below is derived from the model's own measured bounds rather
+ * than written down, so re-exporting the asset at another scale cannot quietly
+ * leave the trunk floating, short of the ceiling, or off the pillar's centre.
+ */
+async function addTreeTrunk(root, placeholder, x, z, height) {
+  let model;
+  try {
+    /* Imported here rather than at the top of the module: the loader is only
+       ever reached in a browser, and the tests build this scene in node, where
+       the bare 'three/addons/' specifier has no import map to resolve it. */
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    model = (await new GLTFLoader().loadAsync(TRUNK_URL)).scene;
+  } catch (err) {
+    console.warn(`KUNEY: ${TRUNK_URL} did not load; keeping the concrete column.`, err);
+    return null;
+  }
+
+  /* Measured from the vertices, which is what the second argument buys, and it
+     is not optional here: the scan hangs off a rotated node, and measuring the
+     cheap way boxes the corners of that rotation instead of the wood. It reads
+     0.55 x 1.28 x 0.78 that way — near three times the real thickness — which
+     scales the trunk to nothing and stands a bare pole on the floor. */
+  const bounds = new THREE.Box3().setFromObject(model, true);
+  const size = bounds.getSize(new THREE.Vector3());
+  const middle = bounds.getCenter(new THREE.Vector3());
+
+  // Thickness set first, then the height stretched to span the room.
+  const across = TRUNK_WIDTH / Math.max(size.x, size.z);
+  const up = (height + TRUNK_OVERSHOOT + TRUNK_SINK) / size.y;
+  model.scale.set(across, up, across);
+  /* Centred side to side on the pillar's axis and sunk by its own base, so the
+     turn below spins it in place rather than swinging it off centre. */
+  model.position.set(
+    -middle.x * across,
+    -TRUNK_SINK - bounds.min.y * up,
+    -middle.z * across
+  );
+
+  const trunk = new THREE.Group();
+  trunk.name = 'tree-trunk';
+  trunk.rotation.y = TRUNK_TURN;
+  trunk.position.set(x, 0, z);
+  trunk.add(model);
+
+  /* Bark relief is only legible if it is lit as relief: the grooves need to
+     take the room's light on one side and hold their own shadow on the other.
+     The shadow map is left auto-updating, so arriving this late costs nothing. */
+  trunk.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+  });
+
+  root.add(trunk);
+
+  root.remove(placeholder);
+  placeholder.geometry.dispose();
+  placeholder.material.dispose();
+  return trunk;
+}
+
 /* --- main --------------------------------------------------------------- */
 
 export function buildShop(content, { renderer } = {}) {
@@ -804,7 +904,10 @@ export function buildShop(content, { renderer } = {}) {
     addCollider(minX, 0, minZ, maxX, stepHeight, maxZ);
   }
 
-  /* --- concrete column -------------------------------------------------- */
+  /* --- the pillar through the steps -------------------------------------- --
+     Built as the concrete column it has always been, then replaced by the
+     mossy trunk scan once that has come down the wire. See `addTreeTrunk`.
+     ---------------------------------------------------------------------- */
 
   const concreteTex = tex.concrete(theme.concrete);
   concreteTex.map.repeat.set(2, 3);
@@ -825,6 +928,11 @@ export function buildShop(content, { renderer } = {}) {
   column.receiveShadow = true;
   root.add(column);
   addCollider(-4.4, 0, -5.9, -3.4, ROOM.height, -4.9);
+  /* Gated on the renderer for the same reason the environment map is: without
+     one there is no browser to fetch 3 MB with, and the tests build the room
+     that way. The collider above is the pillar's and stands either way, so
+     what a visitor can walk into never depends on the download. */
+  if (renderer) addTreeTrunk(root, column, -3.9, -5.4, ROOM.height);
 
   /* --- olive tree in a weathered pot ------------------------------------ */
 
