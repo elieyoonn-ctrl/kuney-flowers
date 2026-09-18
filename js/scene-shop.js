@@ -1037,30 +1037,49 @@ export function buildShop(content, { renderer } = {}) {
   });
   addCollider(halfW - 0.45, 0.9, -1.2, halfW, 2.6, 2.4);
 
-  /* --- the long table: raw-edged banded onyx ----------------------------
+  /* --- the long table: raw-edged green travertine -----------------------
      A monolith, not a table on legs: a thick top with a chiselled raw edge
      over solid slab sides that run to the floor, and a concealed strip under
      the overhang washing light up the stone. Footprint, working height and
      the clear span kept as the wrapping bench are all exactly as before, so
      the vase, the printer, the paper roll and the whole wrapping sequence are
      untouched by the change.
+
+     The stone itself is photographed: a 2K PBR set in public/textures/. The
+     procedural onyx below is kept as the material the table is built with, so
+     the room is never missing a surface while the JPEGs are still in flight,
+     and a missing file leaves the table clad in stone rather than blank.
      ---------------------------------------------------------------------- */
 
   const TOP_THICKNESS = 0.16;
   const onyx = tex.bandedOnyx(theme.island, theme.islandVein);
 
+  /* One texture repeat covers this much real stone, on every face. The top's
+     UVs come out of ExtrudeGeometry in metres and the body faces are unit
+     planes scaled by their own size, so the two meet at the same grain and
+     nothing stretches along the length of the table. */
+  const STONE_TILE = 1.25;
+  const STONE_FILES = {
+    map: 'public/textures/Travertine011_2K-JPG_Color.jpg',
+    normalMap: 'public/textures/Travertine011_2K-JPG_NormalDX.jpg',
+    roughnessMap: 'public/textures/Travertine011_2K-JPG_Roughness.jpg',
+  };
+  /* A 4.4 m table is nearly always seen down its length, at exactly the raking
+     angle where a low anisotropy sample turns the grain to mush. */
+  const stoneAnisotropy = renderer?.capabilities?.getMaxAnisotropy?.() ?? 8;
+
   /**
-   * The stone, with the strata scaled to the face they run across.
+   * The stone, with the grain scaled to the face it runs across.
    *
    * A cloned texture is a separate upload to the GPU even when it shares its
    * image, so this is memoised by repeat: the two long faces are the same size
    * as each other and so are the two ends, which brings five faces down to
    * three sets of maps.
    */
-  const onyxMaterials = new Map();
-  const onyxMaterial = (repeatU, repeatV) => {
+  const stoneMaterials = new Map();
+  const stoneMaterial = (repeatU, repeatV) => {
     const key = `${repeatU.toFixed(3)}:${repeatV.toFixed(3)}`;
-    if (!onyxMaterials.has(key)) {
+    if (!stoneMaterials.has(key)) {
       const maps = {};
       for (const name of ['map', 'normalMap', 'roughnessMap']) {
         const t = onyx[name].clone();
@@ -1068,20 +1087,28 @@ export function buildShop(content, { renderer } = {}) {
         t.repeat.set(repeatU, repeatV);
         maps[name] = t;
       }
-      onyxMaterials.set(key, new THREE.MeshPhysicalMaterial({
+      stoneMaterials.set(key, new THREE.MeshPhysicalMaterial({
         ...maps,
-        normalScale: new THREE.Vector2(0.3, 0.3),
-        roughness: 0.16,
+        // Left white: the colour map carries the green of the stone itself.
+        // Negative on v because the downloaded normal map is DirectX-handed
+        // and three reads tangent-space normals the OpenGL way round.
+        normalScale: new THREE.Vector2(0.6, -0.6),
+        /* The photographed roughness is authored for a mirror-polished slab —
+           it averages 0.07, which under an env map reads as glass rather than
+           stone. `roughness` multiplies the map, so this lifts the surface to
+           around 0.2: a long wet highlight down the table, grain still there. */
+        roughness: 2.6,
         metalness: 0,
-        clearcoat: 0.5,
+        clearcoat: 0.25,
         clearcoatRoughness: 0.18,
         envMapIntensity: 1.1,
       }));
     }
-    return onyxMaterials.get(key);
+    return stoneMaterials.get(key);
   };
 
-  // The top is seen from above, so its strata run along the length of the slab.
+  // ExtrudeGeometry lays the top's UVs out in metres, so the repeat here is
+  // tiles per metre — the same grain as the sides, and square in both axes.
   const islandTop = new THREE.Mesh(
     slab(ROOM.island.width, ROOM.island.depth, TOP_THICKNESS, {
       radius: 0.05,
@@ -1089,7 +1116,7 @@ export function buildShop(content, { renderer } = {}) {
       wobble: 0.026,        // the raw, chiselled edge
       wobbleFrequency: 2.6,
     }),
-    onyxMaterial(1.6, 1.6)
+    stoneMaterial(1 / STONE_TILE, 1 / STONE_TILE)
   );
   islandTop.position.set(ROOM.island.x, ROOM.island.height - TOP_THICKNESS / 2, ROOM.island.z);
   islandTop.castShadow = true;
@@ -1105,12 +1132,11 @@ export function buildShop(content, { renderer } = {}) {
   const bodyWidth = ROOM.island.width - 0.16;
   const bodyDepth = ROOM.island.depth - 0.14;
   const bodyY = bodyHeight / 2;
-  const BAND_METRES = 0.9;   // one texture repeat covers this much of a face
 
   for (const side of [-1, 1]) {
     const face = new THREE.Mesh(
       new THREE.PlaneGeometry(bodyWidth, bodyHeight),
-      onyxMaterial(bodyWidth / BAND_METRES, bodyHeight / BAND_METRES)
+      stoneMaterial(bodyWidth / STONE_TILE, bodyHeight / STONE_TILE)
     );
     face.rotation.y = side > 0 ? 0 : Math.PI;
     face.position.set(ROOM.island.x, bodyY, ROOM.island.z + (side * bodyDepth) / 2);
@@ -1121,13 +1147,39 @@ export function buildShop(content, { renderer } = {}) {
   for (const side of [-1, 1]) {
     const end = new THREE.Mesh(
       new THREE.PlaneGeometry(bodyDepth, bodyHeight),
-      onyxMaterial(bodyDepth / BAND_METRES, bodyHeight / BAND_METRES)
+      stoneMaterial(bodyDepth / STONE_TILE, bodyHeight / STONE_TILE)
     );
     end.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
     end.position.set(ROOM.island.x + (side * bodyWidth) / 2, bodyY, ROOM.island.z);
     end.castShadow = true;
     end.receiveShadow = true;
     root.add(end);
+  }
+
+  /* Now that every face is standing, fetch the photographed stone and repaint
+     them. Each map is loaded once and handed to all three materials, differing
+     only in repeat; clones of one image share a single GPU upload, so the
+     table costs three textures rather than nine. Run after the meshes on
+     purpose — a material built later would never be reached. */
+  const stoneLoader = new THREE.TextureLoader();
+  for (const [slot, path] of Object.entries(STONE_FILES)) {
+    stoneLoader.load(path, (loaded) => {
+      // Colour is the only one of the three that is colour; the normal and
+      // roughness maps are data and must stay linear.
+      if (slot === 'map') loaded.colorSpace = THREE.SRGBColorSpace;
+      for (const [key, material] of stoneMaterials) {
+        const [repeatU, repeatV] = key.split(':').map(Number);
+        const t = loaded.clone();
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(repeatU, repeatV);
+        t.anisotropy = stoneAnisotropy;
+        t.needsUpdate = true;
+        material[slot]?.dispose();
+        material[slot] = t;
+        material.needsUpdate = true;
+      }
+    });
   }
 
   /* The concealed strip. An emissive band tucked into the shadow gap under the
