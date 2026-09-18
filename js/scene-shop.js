@@ -391,14 +391,24 @@ function buildPrinter() {
    — a narrow log, near five times as tall as it is thick. The pillar it stands
    in for is 0.72 m square and runs the whole 4.4 m from floor to ceiling, so
    the scan is brought up to that thickness first and then stretched the rest
-   of the way to the ceiling: a little over a quarter again its own height once
-   it is that wide. That much is invisible on bark. Matching the height first
-   and letting the thickness follow would instead have left a pole about a
-   fifth as thick as the pillar, with the steps wrapping nothing.
+   of the way to the ceiling. That much is invisible on bark. Matching the
+   height first and letting the thickness follow would instead have left a pole
+   about a fifth as thick as the pillar, with the steps wrapping nothing.
 
-   Both ends of the scan are open, ragged shells. The bottom is set slightly
-   below the floor and the top runs up past the ceiling, so neither rim is ever
-   in shot and the trunk is not seen to start or stop. */
+   Neither end of the scan is meant to be seen, and the two ends are not the
+   same problem. The top is closed — the mesh does not carry a single boundary
+   edge in its upper half — so it has only to clear the ceiling, and the
+   ceiling is an opaque plane with no thickness. The bottom is the open end:
+   every one of the model's 396 boundary edges is down there, in one ragged
+   tear, and that has to finish well inside the plaster of the steps.
+
+   Burying the ends is not the whole of it. Where wood passes through plaster
+   the two surfaces still meet on a hard, drawn line, because a scanned log
+   does not grow into a lime-plaster ceiling. Moss is what softens that: a
+   collar gathered at each crossing, lying on the plaster and climbing a little
+   way up the bark, ragged enough at both edges that the eye reads a thing
+   growing there rather than a ring laid on. See `mossCollar`.
+   ---------------------------------------------------------------------- */
 
 const TRUNK_URL = 'public/models/tree_trunk.glb';
 /* Across the widest point. The concrete box was 0.72 m square and the collider
@@ -406,15 +416,315 @@ const TRUNK_URL = 'public/models/tree_trunk.glb';
    were cut to wrap, the one the floor plan draws, and stays inside the box a
    visitor is already stopped by. */
 const TRUNK_WIDTH = 0.80;
-const TRUNK_OVERSHOOT = 0.15;   // above the ceiling — the ceiling is solid here
-const TRUNK_SINK = 0.06;        // below the floor
+
+/* How far the torn bottom rim reaches up the scan, as a fraction of the scan's
+   own height: the highest vertex sitting on a boundary edge — an edge with one
+   triangle to it rather than two — stands a fifth of the way up the model.
+
+   Measured once, offline, rather than at load. Welding and counting 96,000
+   edges to find it again costs more than arriving late to the room ever saved,
+   and the answer only moves if the asset does. `tests/trunk-blend.mjs`
+   measures the tear straight off the file and fails if it is no longer
+   buried, so a re-export cannot quietly open the bottom of the tree again. */
+const TRUNK_RIM_RISE = 0.207;
+
+/* Where the top of that tear has to finish, measured up from the floor of the
+   room.
+
+   The steps are a stepped bank and the trunk comes up through them off to one
+   side, so the plaster around its footprint stands anywhere between 0.49 m on
+   the side facing the room and 1.08 m behind it. The 0.49 is the number that
+   matters: it is the shallowest cover the tear gets anywhere. A quarter of a
+   metre inside that is past anything a raking view across the treads reaches. */
+const TRUNK_RIM_TARGET = 0.24;
+
+/* Clearance above the ceiling. The top of the scan is closed and the ceiling
+   is an opaque plane with no thickness, so a hand's breadth is plenty: there
+   is no rim up there to be caught in a grazing view, only wood that stops. */
+const TRUNK_OVERSHOOT = 0.20;
+
+/**
+ * How far below the floor the scan is sunk, so that the top of its torn rim
+ * comes to rest on `TRUNK_RIM_TARGET`.
+ *
+ * Solved rather than chosen, because sinking this trunk also stretches it: the
+ * model spans `height + OVERSHOOT + sink`, so the tear — which sits a fixed
+ * fraction of the way up the model — climbs almost as fast as the sink lowers
+ * it. It surfaces at `TRUNK_RIM_RISE * (height + OVERSHOOT + sink) - sink`.
+ * Setting that equal to the target and rearranging gives the line below.
+ *
+ * Sinking by eye is how the tear came to be standing clear of the steps in the
+ * first place: at the 6 cm this used to be, it surfaced at y 0.89, a third of
+ * a metre above plaster only 0.49 high, with the room looking straight into
+ * the hollow of the scan.
+ *
+ * At the room's own 4.4 m this comes out at 0.90, which stretches the scan to
+ * 4.63 times its own height rather than 3.88. Spent along the grain of bark,
+ * that is cheaper than a hole in the bottom of the tree.
+ */
+function trunkSink(height) {
+  return (TRUNK_RIM_RISE * (height + TRUNK_OVERSHOOT) - TRUNK_RIM_TARGET) / (1 - TRUNK_RIM_RISE);
+}
+
 /* Which way the trunk faces. Turned about its own axis, so this only chooses
    which side of the scan is presented to the room. */
 const TRUNK_TURN = 0.6;
 
+/* --- the moss collars ---------------------------------------------------- --
+   Green over the two crossings, and the only geometry in the room shaped by
+   noise rather than merely painted with it.
+
+   Both collars are the same figure: a cove drawn from a ring tucked inside the
+   bark out to a fringe lying on the plaster, with the reach of both edges read
+   off a noise field around the trunk so neither is a circle. The moss is the
+   garden's own green — `tex.lawn` — which is already blade noise over patchy
+   ground, and at collar scale reads as moss.
+   ---------------------------------------------------------------------- */
+
+const MOSS_HEX = '#6f7f55';
+const MOSS_SEGMENTS = 72;
+const MOSS_RINGS = 5;
+/* Up the bark, out over the plaster, and clear of it. The first two are
+   ceilings on a noise field rather than fixed amounts, so what shows is a
+   ragged edge; the third is only enough to keep the moss off the plaster it
+   lies on, and at 12 mm there is nothing left coplanar to fight over. */
+const MOSS_BASE_CLIMB = 0.30;
+const MOSS_BASE_SPREAD = 0.26;
+const MOSS_BASE_LIFT = 0.012;
+/* The same three at the ceiling, where the collar hangs rather than sits. It
+   is given a longer reach down the trunk than the base has up it: the base is
+   read against plaster a visitor stands over, the cap against a ceiling seen
+   from underneath and far enough off that a short one would not register. */
+const MOSS_CAP_DROP = 0.42;
+const MOSS_CAP_SPREAD = 0.30;
+const MOSS_CAP_LIFT = 0.008;
+
+/* Value noise, carried here rather than shared out of `textures.js`: over
+   there it shades canvases, and the whole of this change was meant to stay
+   inside the trunk. */
+function trunkHash(x, y, seed) {
+  let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(seed, 362437);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+
+function trunkNoise(x, y, seed) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = (x - xi) * (x - xi) * (3 - 2 * (x - xi));
+  const yf = (y - yi) * (y - yi) * (3 - 2 * (y - yi));
+  const a = trunkHash(xi, yi, seed);
+  const b = trunkHash(xi + 1, yi, seed);
+  const c = trunkHash(xi, yi + 1, seed);
+  const d = trunkHash(xi + 1, yi + 1, seed);
+  return (a * (1 - xf) + b * xf) * (1 - yf) + (c * (1 - xf) + d * xf) * yf;
+}
+
 /**
- * Loads the trunk and stands it where `placeholder` is, then takes the
- * placeholder away.
+ * Fractal noise read around a circle in the field, so `theta` and
+ * `theta + 2pi` land on the same value and a ring closes without a seam.
+ *
+ * `frequency` is the radius of that circle, and so sets how many lobes come
+ * round the trunk: near 1 gives half a dozen, which is what a collar wants.
+ * Returns 0..1.
+ */
+function aroundAxis(theta, { frequency = 1, octaves = 3, seed = 1, contrast = 2 } = {}) {
+  let sum = 0;
+  let amp = 1;
+  let norm = 0;
+  let f = frequency;
+  for (let o = 0; o < octaves; o += 1) {
+    sum += trunkNoise(Math.cos(theta) * f, Math.sin(theta) * f, seed + o * 91) * amp;
+    norm += amp;
+    amp *= 0.5;
+    f *= 2;
+  }
+  /* Fractal value noise crowds around the middle of its range. One turn of
+     contrast about 0.5 is what makes the lobes legible instead of a wobble. */
+  return Math.min(1, Math.max(0, ((sum / norm) - 0.5) * contrast + 0.5));
+}
+
+/**
+ * The bark's own outline: how far the wood reaches from the trunk's axis, over
+ * `bands` slices of its height and `sectors` around its turn, each holding the
+ * furthest vertex that fell in it.
+ *
+ * The moss needs this because the scan is a log and not a cylinder — it stands
+ * 0.30 m off its own axis on one side and 0.42 m on another. A collar built to
+ * any single radius would be swallowed by the wood on one side of the trunk
+ * and left hanging in mid-air on the other.
+ *
+ * Read in the room's frame, after the trunk has been placed and turned, so the
+ * sectors line up with the bark a visitor is actually looking at.
+ */
+function barkSilhouette(trunk, root, { low, high, bands = 20, sectors = 72 } = {}) {
+  const radii = new Float32Array(bands * sectors);
+  const span = Math.max(1e-6, high - low);
+  const v = new THREE.Vector3();
+  let widest = 0;
+
+  root.updateMatrixWorld(true);
+  trunk.updateMatrixWorld(true);
+  /* Inverted once here rather than per vertex: `worldToLocal` inverts the
+     matrix on every call, and there are 47,000 vertices to put through it. */
+  const toRoom = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const intoRoom = new THREE.Matrix4();
+
+  trunk.traverse((o) => {
+    if (!o.isMesh) return;
+    intoRoom.multiplyMatrices(toRoom, o.matrixWorld);
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i += 1) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(intoRoom);
+      const dx = v.x - trunk.position.x;
+      const dz = v.z - trunk.position.z;
+      const r = Math.hypot(dx, dz);
+      const band = Math.min(bands - 1, Math.max(0, Math.floor(((v.y - low) / span) * bands)));
+      let turn = Math.atan2(dz, dx) / (Math.PI * 2);
+      turn -= Math.floor(turn);
+      const at = band * sectors + Math.min(sectors - 1, Math.floor(turn * sectors));
+      if (r > radii[at]) radii[at] = r;
+      if (r > widest) widest = r;
+    }
+  });
+
+  /* A sector can come up empty where the wood is thin or torn, and an empty
+     sector is a notch cut out of the collar. Worse than empty is a sector
+     holding nothing but the inside of the scan — the far wall of its hollow,
+     or the near-axis middle of its closed top — which reads as a radius of
+     three millimetres and is not the outline of anything. Left alone it pulls
+     the collar's inner ring down onto the trunk's own axis.
+
+     So anything short of half the band's own reach is taken as unseen, filled
+     in from the sectors either side, and the whole ring softened once, which
+     also takes the staircase out of reading a scan through 72 boxes. */
+  for (let band = 0; band < bands; band += 1) {
+    const row = radii.subarray(band * sectors, (band + 1) * sectors);
+    let reach = 0;
+    for (const r of row) reach = Math.max(reach, r);
+    if (reach === 0) {
+      row.fill(widest);
+      continue;
+    }
+    const outline = reach * 0.5;
+    const gapped = Float32Array.from(row);
+    for (let s = 0; s < sectors; s += 1) {
+      if (gapped[s] >= outline) continue;
+      row[s] = reach;
+      for (let step = 1; step <= sectors; step += 1) {
+        const before = gapped[(s - step + sectors * 2) % sectors];
+        const after = gapped[(s + step) % sectors];
+        if (before >= outline || after >= outline) {
+          row[s] = Math.max(before, after);
+          break;
+        }
+      }
+    }
+    const sharp = Float32Array.from(row);
+    for (let s = 0; s < sectors; s += 1) {
+      row[s] = (sharp[(s - 1 + sectors) % sectors] + sharp[s] * 2 + sharp[(s + 1) % sectors]) / 4;
+    }
+  }
+
+  return (theta, y) => {
+    const band = Math.min(bands - 1, Math.max(0, Math.floor(((y - low) / span) * bands)));
+    let turn = theta / (Math.PI * 2);
+    turn -= Math.floor(turn);
+    const exact = turn * sectors;
+    const s0 = Math.floor(exact) % sectors;
+    const blend = exact - Math.floor(exact);
+    const row = band * sectors;
+    return radii[row + s0] * (1 - blend) + radii[row + ((s0 + 1) % sectors)] * blend;
+  };
+}
+
+/**
+ * A collar of moss: `rings` rings of `segments` vertices around the trunk's
+ * axis, where `sample(theta, t)` says how far out and how high each one sits.
+ * `t` runs 0 at the ring tucked into the bark to 1 at the fringe on the
+ * plaster, and `y` comes back in the room's own frame rather than the collar's,
+ * because what the fringe rests on is measured there.
+ */
+function mossCollar(segments, rings, sample) {
+  const count = segments * rings;
+  const position = new Float32Array(count * 3);
+  const uv = new Float32Array(count * 2);
+
+  for (let ring = 0; ring < rings; ring += 1) {
+    const t = ring / (rings - 1);
+    for (let s = 0; s < segments; s += 1) {
+      const theta = (s / segments) * Math.PI * 2;
+      const { r, y } = sample(theta, t);
+      const i = ring * segments + s;
+      position[i * 3] = Math.cos(theta) * r;
+      position[i * 3 + 1] = y;
+      position[i * 3 + 2] = Math.sin(theta) * r;
+      uv[i * 2] = s / segments;
+      uv[i * 2 + 1] = t;
+    }
+  }
+
+  const index = [];
+  for (let ring = 0; ring < rings - 1; ring += 1) {
+    for (let s = 0; s < segments; s += 1) {
+      const next = (s + 1) % segments;
+      const a = ring * segments + s;
+      const b = ring * segments + next;
+      const c = (ring + 1) * segments + s;
+      const d = (ring + 1) * segments + next;
+      index.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(position, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** The one material both collars are built with. */
+function mossMaterial() {
+  const moss = tex.lawn(MOSS_HEX);
+  const maps = {};
+  for (const name of ['map', 'normalMap', 'roughnessMap']) {
+    /* Cloned because `tex.lawn` memoises by colour: a repeat set on the canvas
+       itself would follow that green onto every other surface built from it. */
+    const t = moss[name].clone();
+    t.needsUpdate = true;
+    t.repeat.set(4, 1);
+    maps[name] = t;
+  }
+  return new THREE.MeshStandardMaterial({
+    ...maps,
+    normalScale: new THREE.Vector2(1.2, 1.2),
+    roughness: 1,
+    metalness: 0,
+    /* A collar is a sheet: seen from below at the ceiling, from above at the
+       steps, and from underneath wherever the fringe lifts off the plaster. */
+    side: THREE.DoubleSide,
+  });
+}
+
+/**
+ * How the scan is fitted to the room — thickness first, then stretched to span
+ * the clearances above and below — as plain arithmetic on the model's measured
+ * bounds.
+ *
+ * Pulled out of `addTreeTrunk` so it can be checked without a browser: the
+ * loader below needs one, these three numbers do not.
+ */
+export function fitTrunk(size, minY, height) {
+  const sink = trunkSink(height);
+  const across = TRUNK_WIDTH / Math.max(size.x, size.z);
+  const up = (height + TRUNK_OVERSHOOT + sink) / size.y;
+  return { across, up, sink, offsetY: -sink - minY * up };
+}
+
+/**
+ * Loads the trunk and stands it where `placeholder` is, dresses both crossings
+ * in moss, then takes the placeholder away.
  *
  * The scan is 3 MB and arrives well after the room does, so the concrete
  * column is built as before and stands in until this lands — and stays,
@@ -424,8 +734,15 @@ const TRUNK_TURN = 0.6;
  * Every number below is derived from the model's own measured bounds rather
  * than written down, so re-exporting the asset at another scale cannot quietly
  * leave the trunk floating, short of the ceiling, or off the pillar's centre.
+ *
+ * `ground` is the plaster the trunk comes up through. The base collar is laid
+ * on it by measurement rather than by arithmetic — the steps are a stepped
+ * bank, and around this trunk their surface stands at 0.50 m on the side
+ * facing the room, 0.72 m across the tread it comes through and 1.08 m behind
+ * it — so a collar at any one height would bury itself in one tread and float
+ * over the next. Given nothing to measure, the collar falls back to the floor.
  */
-async function addTreeTrunk(root, placeholder, x, z, height) {
+async function addTreeTrunk(root, placeholder, x, z, height, { ground } = {}) {
   let model;
   try {
     /* Imported here rather than at the top of the module: the loader is only
@@ -447,17 +764,11 @@ async function addTreeTrunk(root, placeholder, x, z, height) {
   const size = bounds.getSize(new THREE.Vector3());
   const middle = bounds.getCenter(new THREE.Vector3());
 
-  // Thickness set first, then the height stretched to span the room.
-  const across = TRUNK_WIDTH / Math.max(size.x, size.z);
-  const up = (height + TRUNK_OVERSHOOT + TRUNK_SINK) / size.y;
+  const { across, up, offsetY } = fitTrunk(size, bounds.min.y, height);
   model.scale.set(across, up, across);
   /* Centred side to side on the pillar's axis and sunk by its own base, so the
      turn below spins it in place rather than swinging it off centre. */
-  model.position.set(
-    -middle.x * across,
-    -TRUNK_SINK - bounds.min.y * up,
-    -middle.z * across
-  );
+  model.position.set(-middle.x * across, offsetY, -middle.z * across);
 
   const trunk = new THREE.Group();
   trunk.name = 'tree-trunk';
@@ -475,11 +786,158 @@ async function addTreeTrunk(root, placeholder, x, z, height) {
   });
 
   root.add(trunk);
+  root.add(addMossCollars(root, trunk, x, z, height, ground));
 
   root.remove(placeholder);
   placeholder.geometry.dispose();
   placeholder.material.dispose();
   return trunk;
+}
+
+/**
+ * The two collars, cap and base, as one group standing on the trunk's axis.
+ *
+ * Split out of `addTreeTrunk` only because it is a different kind of work:
+ * everything above is about where one downloaded thing goes, and everything
+ * here is about hiding the two places it meets the room.
+ */
+export function addMossCollars(root, trunk, x, z, height, ground) {
+  const silhouette = barkSilhouette(trunk, root, {
+    low: -trunkSink(height),
+    high: height + TRUNK_OVERSHOOT,
+  });
+  const material = mossMaterial();
+
+  /* What the fringe of the base collar comes to rest on, asked of the plaster
+     itself. A ray straight down from the ceiling in the room's own frame: the
+     nearest hit is the topmost surface, which is the one a visitor sees and
+     the only one the moss can sit on. Four hundred rays against a four
+     thousand triangle lathe, once, on an asset that was three megabytes late
+     already. */
+  const probe = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, -1, 0);
+  const from = new THREE.Vector3();
+  let target = null;
+  if (ground) {
+    /* A stand-in rather than the plaster itself: the raycaster works in world
+       space, and the collar is laid out in the room's, so probing `ground`
+       where it stands would come back wrong the moment the room is moved. It
+       shares the geometry and the material, so this costs a matrix and nothing
+       else — and the material is not incidental. A mesh made without one gets
+       a front-sided default, and the steps are lathed as a single open ribbon
+       whose underside faces away; probed front-sided, the topmost surface over
+       part of the trunk's footprint is simply not seen, and the collar is laid
+       on whatever lies below it instead. */
+    target = new THREE.Mesh(ground.geometry, ground.material);
+    target.position.copy(ground.position);
+    target.quaternion.copy(ground.quaternion);
+    target.scale.copy(ground.scale);
+    target.updateMatrixWorld(true);
+  }
+  /* Asked in the collar's own frame — offsets from the trunk's axis, which is
+     what the samplers below are working in — and answered in the room's, which
+     is where the plaster is and where the collar's `y` is written. Forgetting
+     to carry the axis across lands every ray on bare floor by the door. */
+  const plasterAt = (acrossX, acrossZ, fallback) => {
+    if (!target) return fallback;
+    from.set(x + acrossX, height, z + acrossZ);
+    probe.set(from, down);
+    const hits = probe.intersectObject(target, false);
+    return hits.length ? hits[0].point.y : fallback;
+  };
+
+  /* One cove, drawn twice. `flare` takes the collar out from the bark and
+     `along` takes it to the surface, and running them a quarter turn out of
+     phase is what makes the section concave: it clings to the wood first and
+     lies down flat at the end, the way a fillet does. */
+  const flare = (t) => 1 - Math.cos((t * Math.PI) / 2);
+  const along = (t) => Math.sin((t * Math.PI) / 2);
+  /* Kept off the fringe, which is resting on measured plaster and should stay
+     there, so this only roughens the part of the collar that is on the wood. */
+  const wobble = (theta, t) => (aroundAxis(theta, { frequency: 3.2, octaves: 2, seed: 41 }) - 0.5)
+    * 0.03 * (1 - t);
+
+  const collars = new THREE.Group();
+  collars.name = 'tree-trunk-moss';
+  collars.position.set(x, 0, z);
+
+  /* --- the cap, where the trunk goes into the ceiling ------------------- --
+     The ceiling is flat at `height` here: the oculus is six metres away, and
+     the nearest downlight is 1.4 m off the axis, well outside any reach the
+     collar has. So the fringe has only to stay just under the plane. */
+  const capDrop = (theta) => MOSS_CAP_DROP
+    * (0.42 + 0.58 * aroundAxis(theta, { frequency: 1.1, octaves: 3, seed: 7 }));
+  const capSpread = (theta) => MOSS_CAP_SPREAD
+    * (0.30 + 0.70 * aroundAxis(theta, { frequency: 1.5, octaves: 3, seed: 23 }));
+
+  collars.add(new THREE.Mesh(mossCollar(MOSS_SEGMENTS, MOSS_RINGS, (theta, t) => {
+    const top = height - MOSS_CAP_LIFT;
+    const y = top - capDrop(theta) * (1 - along(t));
+    const bark = silhouette(theta, y);
+    /* Starting inside the wood is the whole trick: the collar's own inner edge
+       never shows, because the bark is in front of it. */
+    const r = bark * 0.88 + (capSpread(theta) + bark * 0.12) * flare(t);
+    return { r: r + wobble(theta, t), y: y + wobble(theta, t) * 0.5 };
+  }), material));
+
+  /* --- the base, where it comes up through the steps -------------------- --
+     Laid on whatever each vertex finds beneath it, and never below the seam
+     the moss is there to cover: where the tread behind the trunk stands higher
+     than the tread it comes through, the collar ramps up onto it rather than
+     disappearing under the riser. */
+  const baseClimb = (theta) => MOSS_BASE_CLIMB
+    * (0.40 + 0.60 * aroundAxis(theta, { frequency: 1.0, octaves: 3, seed: 5 }));
+  const baseSpread = (theta) => MOSS_BASE_SPREAD
+    * (0.28 + 0.72 * aroundAxis(theta, { frequency: 1.4, octaves: 3, seed: 17 }));
+
+  /* The seam: the plaster where the bark actually comes through it, which is
+     the height the collar hangs from. Probed at the trunk's nominal half
+     width, because the seam is what moves here and not the radius — it runs
+     from 0.50 m on the side facing the room to 1.08 m behind the trunk, where
+     the bark's own radius over the same turn moves by a tenth of that. The
+     radius is then re-read at the collar's middle, once the seam is known,
+     which is as close as a log that barely tapers over 30 cm needs.
+
+     Kept by angle rather than found again for each of the five rings standing
+     on it: the seam is the same ray every time, and it is the only one of the
+     two the collar casts that does not move with the ring. */
+  const seams = new Map();
+  const seamAt = (theta) => {
+    let seam = seams.get(theta);
+    if (seam === undefined) {
+      seam = plasterAt(
+        Math.cos(theta) * (TRUNK_WIDTH / 2),
+        Math.sin(theta) * (TRUNK_WIDTH / 2),
+        0
+      );
+      seams.set(theta, seam);
+    }
+    return seam;
+  };
+
+  collars.add(new THREE.Mesh(mossCollar(MOSS_SEGMENTS, MOSS_RINGS, (theta, t) => {
+    const seam = seamAt(theta);
+    const climb = baseClimb(theta);
+    const bark = silhouette(theta, seam + climb * 0.5);
+    const r = bark * 0.88 + (baseSpread(theta) + bark * 0.12) * flare(t);
+    const rest = Math.max(
+      plasterAt(Math.cos(theta) * r, Math.sin(theta) * r, seam),
+      seam
+    ) + MOSS_BASE_LIFT;
+    const top = seam + climb;
+    return { r: r + wobble(theta, t), y: top + (rest - top) * along(t) };
+  }), material));
+
+  /* Taking the room's light and its shadows, but casting none of their own. A
+     sheet lying this close to the surface it is blending into shadows itself
+     before it shadows anything else, and a collar is a detail, not a form the
+     room is lit around. */
+  collars.traverse((o) => {
+    if (!o.isMesh) return;
+    o.receiveShadow = true;
+    o.castShadow = false;
+  });
+  return collars;
 }
 
 /* --- main --------------------------------------------------------------- */
@@ -867,6 +1325,7 @@ export function buildShop(content, { renderer } = {}) {
      which is exactly the plane of the floor: coplanar with it, the two surfaces
      fight for depth and the ring shimmers. It mattered less when the steps were
      tucked against the left wall than it does with them out on the floor. */
+  seating.name = 'plaster-steps';
   seating.position.set(STAIRS.x, 0.003, STAIRS.z);
   seating.castShadow = true;
   seating.receiveShadow = true;
@@ -932,7 +1391,7 @@ export function buildShop(content, { renderer } = {}) {
      one there is no browser to fetch 3 MB with, and the tests build the room
      that way. The collider above is the pillar's and stands either way, so
      what a visitor can walk into never depends on the download. */
-  if (renderer) addTreeTrunk(root, column, -3.9, -5.4, ROOM.height);
+  if (renderer) addTreeTrunk(root, column, -3.9, -5.4, ROOM.height, { ground: seating });
 
   /* --- olive tree in a weathered pot ------------------------------------ */
 
