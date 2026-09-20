@@ -18,6 +18,9 @@ import { buildGarden, GARDEN } from '../js/scene-garden.js';
 import { GardenGame } from '../js/garden-game.js';
 import { CameraRig } from '../js/camera-rig.js';
 import { renderBoard } from '../js/calendar.js';
+import { pixelHeadUrl } from '../js/flower-sprites.js';
+import { displayColorGroups } from '../js/content.js';
+import { existsSync } from 'node:fs';
 
 let pass = 0;
 const failures = [];
@@ -844,6 +847,60 @@ const REQUIRED_STOCK = {
   sweetpea: ['Light Pink'],
   craspedia: ['Yellow'],
 };
+
+/* The installation is the one display with no art: it is bare branches, and
+   there is no PNG of a branch to hang. Everything else must be painted. */
+const UNPAINTED = new Set(['branches']);
+
+check('every stocked colour is a hand-painted PNG that is actually on disk', () => {
+  const gaps = [];
+  for (const d of content.displays) {
+    if (UNPAINTED.has(d.bloom)) continue;
+    for (const g of displayColorGroups(content, d)) {
+      const url = pixelHeadUrl(d.bloom, g.hex);
+      if (!url) {
+        gaps.push(`${d.id}: ${d.bloom} in ${g.label} has no pixel head mapped`);
+      } else if (!existsSync(new URL(`../${url}`, import.meta.url))) {
+        gaps.push(`${d.id}: ${url} is mapped but not on disk`);
+      }
+    }
+  }
+  assert(gaps.length === 0, gaps.join('; '));
+});
+
+check('no stem in the room falls back to a placeholder head', () => {
+  for (const d of shop.displays.values()) {
+    if (UNPAINTED.has(d.data.bloom)) continue;
+    for (const stem of d.bunch.children) {
+      const heads = stem.children.filter((c) => c.name === 'head');
+      assert(heads.length > 0, `${d.id}: a stem carries no head at all`);
+      for (const head of heads) {
+        assert(head.isSprite,
+          `${d.id}: ${d.data.bloom} built procedural petals instead of its PNG`);
+      }
+    }
+  }
+});
+
+check('a multi-bloom stem hangs every head off the stem itself', () => {
+  const multi = [...shop.displays.values()]
+    .filter((d) => ['sweetpea', 'orchid', 'delphinium'].includes(d.data.bloom));
+  assert(multi.length >= 3, 'the multi-bloom varieties are not all in the room');
+  for (const d of multi) {
+    for (const stem of d.bunch.children) {
+      const heads = stem.children.filter((c) => c.name === 'head');
+      assert(heads.length > 1, `${d.id}: a ${d.data.bloom} stem grew a single head`);
+      // Spaced up the stem, not stacked on one point — and all parented to the
+      // stem group, so gathering it carries every bloom with it.
+      const ys = heads.map((h) => h.position.y);
+      assert(Math.max(...ys) - Math.min(...ys) > 0.02,
+        `${d.id}: the ${d.data.bloom} heads sit on top of each other`);
+      for (const head of heads) {
+        assert(head.parent === stem, `${d.id}: a head is not a child of its stem`);
+      }
+    }
+  }
+});
 
 check('every variety and colour the shop promises is standing in the room', () => {
   // Built from the room, not from the content, so a colour that fails to reach

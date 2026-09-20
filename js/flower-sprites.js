@@ -504,6 +504,17 @@ export function canSpriteHead(recipeId, hex) {
 }
 
 /**
+ * The PNG a species and colour is painted in, or null if it is not painted.
+ *
+ * Exported for the stock guard in tests/scene.mjs: a colour with no PNG falls
+ * through to a vector drawing or to procedural petals, and neither is art the
+ * shop is willing to stand in a bucket.
+ */
+export function pixelHeadUrl(recipeId, hex) {
+  return pixelFor(recipeId, hex)?.url ?? null;
+}
+
+/**
  * How many heads this stem carries and where, or null for a single head on
  * the tip. Positions are along the stem curve, so the caller needs the curve.
  */
