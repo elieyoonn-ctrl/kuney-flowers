@@ -10,14 +10,17 @@
    Adding a key here makes it available everywhere via store.getContent().
    ========================================================================== */
 
-/* Bumped to 4 when the shop was restocked.
+/* Bumped to 5 when the stock was cut to the pixel art a second time: the
+   peony vase gained Pink, the hydrangea's blue moved from Dark Blue to Light
+   Blue to match the painted mophead, and the Rose vase lost the last
+   'garden-rose' in its id.
    A saved browser copy holds a whole content object, `displays` included, and
    arrays are replaced wholesale rather than merged — so a snapshot taken
    before the restock would have put the old ten displays back into the new
    slots and quietly undone the room. The version gate is how this codebase
    says "that snapshot is not about this shop any more"; the old key is left
    untouched in localStorage rather than overwritten. */
-export const CONTENT_VERSION = 4;
+export const CONTENT_VERSION = 5;
 
 export const DEFAULT_CONTENT = {
   version: CONTENT_VERSION,
