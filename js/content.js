@@ -183,7 +183,7 @@ export const DEFAULT_CONTENT = {
   displays: [
     /* --- the long table: three deep, lush arrangements ------------------ */
     {
-      id: 'garden-rose',
+      id: 'rose-cool',
       title: 'Rose — Pink, White & Purple',
       varieties: ['Rosa “Keira”', 'Rosa “Patience”', 'Rosa “Blue Moon”'],
       note:
