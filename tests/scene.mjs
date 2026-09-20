@@ -153,7 +153,7 @@ check('colliders enclose the room and the furniture', () => {
   const inside = (x, z) => shop.colliders.some((b) =>
     x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z);
   assert(inside(ROOM.island.x, ROOM.island.z), 'the island is walk-through');
-  assert(inside(-3.9, -5.4), 'the concrete column is walk-through');
+  assert(inside(-3.9, -5.4), 'the column through the steps is walk-through');
   assert(inside(0.6, -6.6), 'the olive tree pot is walk-through');
   assert(!inside(0, 7), 'the entrance floor should be clear');
   assert(inside(-8.2, 0), 'the left wall is walk-through');
@@ -848,8 +848,10 @@ const REQUIRED_STOCK = {
   craspedia: ['Yellow'],
 };
 
-/* The installation is the one display with no art: it is bare branches, and
-   there is no PNG of a branch to hang. Everything else must be painted. */
+/* The installation is the one display that is not a bucket of cut stems: its
+   smoketree plumes hang off woody branching, so each stem carries a merged
+   twig mesh alongside its sprites and cannot be checked as all-sprite.
+   Everything else must be painted, and painted only. */
 const UNPAINTED = new Set(['branches']);
 
 check('every stocked colour is a hand-painted PNG that is actually on disk', () => {

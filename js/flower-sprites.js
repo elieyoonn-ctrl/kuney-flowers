@@ -440,6 +440,31 @@ const PIXEL = {
     },
   },
 
+  /* --- and the one that hangs its blooms on wood -------------------------
+     The seasonal installation. `twigs` is `multi`'s sibling: rather than
+     spacing heads up the stem it spaces `perTwig` of them along every woody
+     twig `buildBranch` grows, so the plumes sit where a smoketree sets them
+     and the branches read as one cloud of colour instead of a row of blooms
+     on a pole — the delphinium trick, worked over branching.
+
+     There is one smoketree PNG and no colour variants of it, so it is hung
+     with `anyColor` rather than mapped per bucket: the installation is a
+     standing display, not stock to be cut, and the one plume it is painted in
+     is what stands there whatever colour the content files it under.
+
+     Keying it on a colour name is what broke this the first time. Content is
+     resolved through `store.js`, where a browser's saved `displays` array
+     replaces the shipped one wholesale, so a stale admin snapshot could put
+     the installation back in a bucket the art was not mapped to and quietly
+     leave the branches bare. Art that exists in exactly one form should not
+     be reachable only through one spelling of its colour. */
+  branches: {
+    size: 0.096,        // 77% coverage — a 150 mm plume at the floor scale
+    anchor: 0.5,
+    twigs: { perTwig: 5, from: 0.12, to: 1.0, scale: [1.0, 0.78], spread: 0.026 },
+    anyColor: 'smoketree',
+  },
+
   tropical: {
     // Drawn cleft-up, point-down, so the stem meets the foot of the spathe.
     size: 0.2175,       // 93% coverage, 1.5x its old size
@@ -482,7 +507,9 @@ const COLOR_NAMES = {
 function pixelFor(recipeId, hex) {
   const spec = PIXEL[recipeId];
   const name = COLOR_NAMES[String(hex).toLowerCase()];
-  const entry = spec && name ? spec.colors[name] : null;
+  /* Painted per colour, unless the species has `anyColor` — one drawing that
+     stands in every bucket, and in a colour the palette does not even name. */
+  const entry = (name ? spec?.colors?.[name] : null) ?? spec?.anyColor ?? null;
   if (!entry) return null;
   // A colour is either a filename or a filename with its own size, for the
   // species that are really two flowers filed together.
@@ -493,6 +520,7 @@ function pixelFor(recipeId, hex) {
     size: size * (spec.pixelScale ?? PIXEL_SCALE),
     anchor,
     multi: spec.multi ?? null,
+    twigs: spec.twigs ?? null,
   };
 }
 
@@ -523,6 +551,16 @@ export function pixelHeadUrl(recipeId, hex) {
  */
 export function spriteLayout(recipeId, hex) {
   return pixelFor(recipeId, hex)?.multi ?? null;
+}
+
+/**
+ * How many heads this stem hangs on its own woody branching and where, or
+ * null for a species that carries its blooms on the stem itself. Positions
+ * are along each twig's curve, so the caller needs the twigs — see
+ * `buildBranch` in js/flowers.js.
+ */
+export function spriteTwigLayout(recipeId, hex) {
+  return pixelFor(recipeId, hex)?.twigs ?? null;
 }
 
 /* --- sprite ------------------------------------------------------------- */

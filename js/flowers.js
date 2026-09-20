@@ -12,7 +12,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { turned } from './geometry.js';
-import { spriteHead, spriteLayout, canSpriteHead, disposeFlowerSprites } from './flower-sprites.js';
+import {
+  spriteHead, spriteLayout, spriteTwigLayout, canSpriteHead, disposeFlowerSprites,
+} from './flower-sprites.js';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -720,7 +722,19 @@ function buildSpathe(recipe, colors, openness, rng) {
   return parts;
 }
 
-function buildBranch(recipe, colors, openness, rng, stem) {
+/**
+ * Bare woody branching up the stem, with a few small procedural blossoms on
+ * each twig.
+ *
+ * `curves` is an out-parameter: hand one in and every twig's curve is pushed
+ * onto it, which is how a caller hangs sprite plumes along the wood as well.
+ * The small blossoms are kept either way. They cost a few hundred triangles,
+ * they read as buds among the plumes rather than fighting them — and, more to
+ * the point, this generator is the room's shared one: dropping the draws they
+ * make here would shift every random thing built after the installation,
+ * including where a visitor's wrapped bouquet comes to rest.
+ */
+function buildBranch(recipe, colors, openness, rng, stem, { curves = null } = {}) {
   const parts = [];
   const blossom = floretGeometry(recipe, colors, openness, rng, 5, 1);
   const { count, blossoms } = recipe.branch;
@@ -742,6 +756,7 @@ function buildBranch(recipe, colors, openness, rng, stem) {
       );
     }
     const curve = new THREE.CatmullRomCurve3(pts);
+    curves?.push(curve);
     const twig = new THREE.TubeGeometry(curve, 8, 0.0032 * (1 - b / (count * 2)), 5, false);
     parts.push(withColor(twig, colors.branch || new THREE.Color('#6b5a4a')));
 
@@ -1066,7 +1081,41 @@ export function createStem(recipeId, hex, opts = {}) {
      all of them are children of this group, so they lean, raycast and gather
      with the stem whichever kind they are. */
   const layout = spriteLayout(recipeId, hex);
-  if (layout) {
+  const twigs = spriteTwigLayout(recipeId, hex);
+  if (twigs) {
+    /* Blooms hung on the stem's own woody branching. The twigs stay real
+       geometry, merged into one mesh exactly as they were, and the plumes are
+       sprites spaced along each of them — so the installation keeps its
+       branches and its height, and gains the heads it was missing. */
+    const curves = [];
+    const woodGeo = safeMerge(buildBranch(recipe, colors, openness, rng, stem, { curves }));
+    if (woodGeo) {
+      const wood = new THREE.Mesh(woodGeo, petalMaterial());
+      wood.name = 'head';
+      group.add(wood);
+    }
+
+    const { perTwig, from, to, scale: taper = [1, 1], spread = 0 } = twigs;
+    curves.forEach((curve, b) => {
+      for (let i = 0; i < perTwig; i += 1) {
+        const f = perTwig > 1 ? i / (perTwig - 1) : 0;
+        const t = THREE.MathUtils.clamp(from + (to - from) * f, 0, 1);
+        const on = curve.getPointAt(t);
+        const head = spriteHead(recipeId, recipe.sprite, hex, {
+          openness,
+          scale,
+          sizeMul: taper[0] + (taper[1] - taper[0]) * f,
+        });
+        /* Turned off the twig rather than threaded onto it: a plume sitting
+           dead on the wood reads as a bead, and the whole point of hanging
+           five to a twig is that they pile up into a cloud. */
+        const yaw = b * 1.7 + i * 2.4;
+        const out = spread * scale;
+        head.position.set(on.x + Math.sin(yaw) * out, on.y, on.z + Math.cos(yaw) * out);
+        group.add(head);
+      }
+    });
+  } else if (layout) {
     /* Several heads to a stem: an orchid cane, a sweet pea's florets, or the
        stacked segments a delphinium spike is built from. They are spaced along
        the stem curve rather than stood on the tip, so the stem keeps its full

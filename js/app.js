@@ -46,7 +46,7 @@ const STOP_NOTES = {
   },
   seating: {
     kind: 'The steps',
-    body: 'A curved flight of plaster steps, wrapping the concrete column that stands up through them. Three vases of stock stand on the upper treads, and the risers face the room — the front of the stairs, not the back of them.',
+    body: 'A curved flight of plaster steps, wrapping the bark-clad column that stands up through them. Three vases of stock stand on the upper treads, and the risers face the room — the front of the stairs, not the back of them.',
   },
   calendar: {
     kind: 'On the back wall',
