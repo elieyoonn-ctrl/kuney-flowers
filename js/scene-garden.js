@@ -571,7 +571,10 @@ export function buildGarden(content, { renderer } = {}) {
       if (!plot) return;
       if (plot.plant) {
         plot.host.remove(plot.plant);
-        plot.plant.traverse((o) => o.geometry?.dispose?.());
+        /* Sprites are skipped: every THREE.Sprite in the app shares one
+           geometry, so disposing a bloom's would take every other bloom in
+           the room with it. Their textures are cached and shared too. */
+        plot.plant.traverse((o) => { if (!o.isSprite) o.geometry?.dispose?.(); });
         plot.plant = null;
       }
       if (!spec) return;

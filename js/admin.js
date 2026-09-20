@@ -20,7 +20,7 @@ const MONTHS = [
 ];
 
 const BLOOMS = [
-  { value: 'rose', label: 'Garden Rose' },
+  { value: 'rose', label: 'Rose & Garden Rose' },
   { value: 'peony', label: 'Peony' },
   { value: 'ranunculus', label: 'Ranunculus' },
   { value: 'dahlia', label: 'Dahlia' },

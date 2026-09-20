@@ -5,19 +5,15 @@
    The browser-only surfaces (canvas textures, renderer, DOM) are stubbed just
    enough to let the modules import. */
 
-import * as THREE from 'three';
-
 /* --- stubs ------------------------------------------------------------- */
 
-const memory = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (memory.has(k) ? memory.get(k) : null),
-  setItem: (k, v) => memory.set(k, String(v)),
-  removeItem: (k) => memory.delete(k),
-  clear: () => memory.clear(),
-};
-globalThis.location = { search: '', pathname: '/', hash: '', origin: 'http://localhost' };
-globalThis.fetch = async () => ({ ok: false });
+/* The same stub the scene tests use: it carries storage, location and fetch,
+   and a 2D canvas the sprite blooms can be drawn onto. */
+import { installDom } from './dom-stub.mjs';
+
+const { memory } = installDom();
+
+import * as THREE from 'three';
 
 /* --- harness ----------------------------------------------------------- */
 
@@ -65,6 +61,15 @@ function size(geo) {
   const v = new THREE.Vector3();
   geo.boundingBox.getSize(v);
   return v;
+}
+
+/* How wide a bloom actually stands, in metres.
+
+   A mesh head carries its size in its geometry; a sprite head is a unit quad
+   that carries its size in its scale. Measuring the geometry alone would call
+   every sprite bloom exactly one metre across. */
+function headWidth(head) {
+  return size(head.geometry).x * head.scale.x;
 }
 
 /* --- geometry ---------------------------------------------------------- */
@@ -172,13 +177,15 @@ check('openness changes the bloom without breaking it', () => {
   // A closed bud must be narrower than an open flower.
   const closed = flowers.createStem('rose', '#fff', { rng: geom.seeded(9), openness: 0 });
   const open = flowers.createStem('rose', '#fff', { rng: geom.seeded(9), openness: 1 });
-  const cw = size(closed.getObjectByName('head').geometry).x;
-  const ow = size(open.getObjectByName('head').geometry).x;
+  const cw = headWidth(closed.getObjectByName('head'));
+  const ow = headWidth(open.getObjectByName('head'));
   assert(ow > cw, `open rose (${ow.toFixed(3)}) should be wider than a bud (${cw.toFixed(3)})`);
 });
 
 check('merged heads carry every attribute needed to merge', () => {
-  const stem = flowers.createStem('dahlia', '#b83a3f', { rng: geom.seeded(1) });
+  /* Branches are what is left of the merged-geometry path now that the
+     stocked varieties are pixel sprites, so they are what guards it. */
+  const stem = flowers.createStem('branches', '#f8f5ef', { rng: geom.seeded(1) });
   const head = stem.getObjectByName('head');
   for (const attr of ['position', 'normal', 'uv', 'color']) {
     assert(head.geometry.attributes[attr], `head is missing ${attr}`);
@@ -233,12 +240,8 @@ check('a grouped bunch can be cut to a length, blooms unchanged', () => {
   assert(highest(short) < highest(tall) * 0.75,
     `cutting to length did nothing: ${highest(short)} vs ${highest(tall)}`);
   // The head is sized by `scale`, not by the stem length, so it must survive.
-  const headWidth = (b) => {
-    const head = b.children[0].getObjectByName('head');
-    head.geometry.computeBoundingBox();
-    return size(head.geometry).x;
-  };
-  near(headWidth(short), headWidth(tall), 0.001, 'the bloom shrank with the stem');
+  const bloom = (b) => headWidth(b.children[0].getObjectByName('head'));
+  near(bloom(short), bloom(tall), 0.001, 'the bloom shrank with the stem');
 });
 
 check('the varieties the shop lists all have a recipe', () => {
@@ -253,8 +256,11 @@ check('the varieties the shop lists all have a recipe', () => {
     const stem = flowers.createStem(id, '#c62430', { rng: geom.seeded(2) });
     const head = stem.getObjectByName('head');
     assert(head, `${id}: no head`);
-    const w = size(head.geometry).x;
-    assert(w > 0.012 && w < 0.3, `${id}: implausible head width ${w.toFixed(3)}`);
+    const w = headWidth(head);
+    /* A pixel head is measured by its square frame, which the art only partly
+       fills, so the ceiling is well above the bloom you actually see — an
+       anthurium's 326 mm quad carries a 304 mm spathe. */
+    assert(w > 0.012 && w < 0.9, `${id}: implausible head width ${w.toFixed(3)}`);
   }
 });
 

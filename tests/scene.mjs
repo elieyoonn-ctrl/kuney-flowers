@@ -220,8 +220,12 @@ function wallBlocks(scene, stop, exclude = []) {
   const dir = target.clone().sub(origin).normalize();
   const ray = new THREE.Raycaster(origin, dir, 0.01, origin.distanceTo(target) + 0.4);
   scene.root.updateMatrixWorld(true);
-  return ray.intersectObject(scene.root, true).filter((h) => {
-    if (!h.object.isMesh) return false;
+  /* Walls are meshes. Collecting them rather than casting at the whole root
+     also keeps the sprite blooms out of it — a sprite cannot be raycast
+     without a camera, and a flower has never stopped anyone seeing a door. */
+  const meshes = [];
+  scene.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  return ray.intersectObjects(meshes, false).filter((h) => {
     if (exclude.includes(h.object)) return false;
     // Ignore the invisible click plates and the glow cards standing in the gap.
     if (h.object.material?.visible === false) return false;
@@ -293,7 +297,7 @@ check('there is nothing to wrap in an empty shop', () => {
 
 check('wrapping takes the stems out of the vase and into the bouquet', () => {
   shop.clearVase();
-  for (let i = 0; i < 6; i += 1) shop.addPickedStem('peony', '#eec3cb', i);
+  for (let i = 0; i < 6; i += 1) shop.addPickedStem('peony', '#f3b3c6', i);
   const holder = shop.vase.holder;
   const bouquet = shop.bouquet.group;
   const permanent = 4;   // two sheets, ribbon, tails
@@ -388,6 +392,15 @@ check('a finished bouquet never lands on anything, whatever was gathered', () =>
   )];
   assert(blooms.length >= 5, 'expected several gatherable flower types');
 
+  /* Gathered in a colour the variety is actually bucketed in, so the pixel
+     heads are in the bouquet rather than the fallback petals. They are the
+     largest thing in it — a hydrangea mophead is most of what has to fit on
+     the marble — so an off-stock hex would test the easy case. */
+  const stockedHex = (bloom) => {
+    const d = content.displays.find((x) => x.bloom === bloom && x.pickable !== false);
+    return content.stockColors.find((c) => c.id === d.colors[0].id).hex;
+  };
+
   const obstacles = { 'the vase': shop.vase.hero, 'the printer': shop.printer };
   for (const d of shop.displays.values()) {
     if (d.data.kind === 'vase-table') obstacles[d.id] = d.group;
@@ -399,7 +412,8 @@ check('a finished bouquet never lands on anything, whatever was gathered', () =>
   for (const bloom of blooms) {
     for (const count of [1, 6, 12, 18]) {
       shop.clearVase();
-      for (let i = 0; i < count; i += 1) shop.addPickedStem(bloom, '#eec3cb', i);
+      const hex = stockedHex(bloom);
+      for (let i = 0; i < count; i += 1) shop.addPickedStem(bloom, hex, i);
       shop.wrap({ instant: true });
       shop.root.updateMatrixWorld(true);
       box.setFromObject(shop.bouquet.group);
@@ -431,7 +445,7 @@ check('a finished bouquet never lands on anything, whatever was gathered', () =>
 
 check('the paper actually covers the stem cuts', () => {
   shop.clearVase();
-  for (let i = 0; i < 6; i += 1) shop.addPickedStem('peony', '#eec3cb', i);
+  for (let i = 0; i < 6; i += 1) shop.addPickedStem('peony', '#f3b3c6', i);
   shop.wrap({ instant: true });
   shop.root.updateMatrixWorld(true);
   const paper = new THREE.Box3().setFromObject(shop.bouquet.paperInner);
@@ -811,18 +825,24 @@ check('hovering lights one thing at a time and can be cleared', () => {
    are content, so this checks the content and the room agree about them.
    ---------------------------------------------------------------------- */
 
+/* A variety is bucketed in exactly the colours it has pixel art for, so this
+   is both what the shop promises and what public/flowers/ can draw. */
 const REQUIRED_STOCK = {
-  rose: ['Red', 'Pink', 'Yellow', 'Purple', 'White', 'Orange'],
+  rose: ['Red', 'Pink', 'Purple', 'White', 'Orange'],
+  peony: ['Light Pink', 'White'],
   dahlia: ['Red', 'Pink', 'Orange'],
-  hydrangea: ['Purple', 'Green', 'Light Blue', 'Pink'],
+  hydrangea: ['Purple', 'Green', 'Dark Blue', 'Pink'],
   tropical: ['Red', 'Pink', 'Green', 'White'],
-  lisianthus: ['Purple', 'Pink', 'White'],
+  lisianthus: ['Purple', 'Pink'],
   delphinium: ['Light Blue', 'Dark Blue', 'Purple'],
   gerbera: ['Pink', 'Peach', 'Yellow', 'Red'],
   tulip: ['Red', 'Orange', 'Pink', 'Purple'],
   orchid: ['White', 'Pink'],
   calla: ['Yellow', 'White'],
   iris: ['Purple', 'Yellow'],
+  ranunculus: ['Orange'],
+  sweetpea: ['Light Pink'],
+  craspedia: ['Yellow'],
 };
 
 check('every variety and colour the shop promises is standing in the room', () => {
@@ -839,9 +859,9 @@ check('every variety and colour the shop promises is standing in the room', () =
   const gaps = [];
   for (const [bloom, colours] of Object.entries(REQUIRED_STOCK)) {
     for (const colour of colours) {
-      // "Soft Pink" satisfies pink: it is the same bucket to a customer.
+      // "Light Pink" satisfies pink: it is the same bucket to a customer.
       const n = (built.get(`${bloom}/${colour}`) || 0)
-        + (colour === 'Pink' ? built.get(`${bloom}/Soft Pink`) || 0 : 0);
+        + (colour === 'Pink' ? built.get(`${bloom}/Light Pink`) || 0 : 0);
       if (n < 5) gaps.push(`${bloom} ${colour} (${n})`);
     }
   }
@@ -1156,7 +1176,7 @@ check('plants appear, change with growth, and can be removed', () => {
 
 check('replanting does not stack sway animations', () => {
   for (let i = 0; i < 6; i += 1) {
-    garden.setPlant(1, { recipeId: 'peony', hex: '#eec3cb', stage: 3, scale: 0.8, openness: 0.5 });
+    garden.setPlant(1, { recipeId: 'peony', hex: '#f3b3c6', stage: 3, scale: 0.8, openness: 0.5 });
   }
   garden.update(1 / 60, 2.5);
   const r = garden.plots[1].plant.rotation;

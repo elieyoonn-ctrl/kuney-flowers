@@ -71,12 +71,15 @@ export const DEFAULT_CONTENT = {
      *ask* for and drives the order chips and the invoice; this is what is
      standing in the buckets on any given day. Mixing the two would put
      twenty chips in the order panel and promise things we do not promise.
+
+     Every entry here is a colour some species is actually painted in. A
+     variety is only ever bucketed in the colours it has art for, so nothing
+     in the room is standing in a colour the shop cannot show.
      ---------------------------------------------------------------------- */
   stockColors: [
     { id: 'stock-red', label: 'Red', hex: '#c62430' },
     { id: 'stock-pink', label: 'Pink', hex: '#e8699b' },
-    { id: 'stock-soft-pink', label: 'Soft Pink', hex: '#f3b3c6' },
-    { id: 'stock-blush', label: 'Blush', hex: '#eec3cb' },
+    { id: 'stock-light-pink', label: 'Light Pink', hex: '#f3b3c6' },
     { id: 'stock-peach', label: 'Peach', hex: '#f6a473' },
     { id: 'stock-orange', label: 'Orange', hex: '#ee7420' },
     { id: 'stock-yellow', label: 'Yellow', hex: '#f2c01e' },
@@ -85,7 +88,6 @@ export const DEFAULT_CONTENT = {
     { id: 'stock-dark-blue', label: 'Dark Blue', hex: '#2f4ea6' },
     { id: 'stock-purple', label: 'Purple', hex: '#8b5cb6' },
     { id: 'stock-white', label: 'White', hex: '#f8f5ef' },
-    { id: 'stock-pastel', label: 'Dreamy Pastel', hex: '#e7d8ea' },
   ],
 
   /* --- The two things we can actually cater for -------------------------- */
@@ -182,7 +184,7 @@ export const DEFAULT_CONTENT = {
     /* --- the long table: three deep, lush arrangements ------------------ */
     {
       id: 'garden-rose',
-      title: 'Garden Rose — Pink, White & Purple',
+      title: 'Rose — Pink, White & Purple',
       varieties: ['Rosa “Keira”', 'Rosa “Patience”', 'Rosa “Blue Moon”'],
       note:
         'Cupped heads that open slowly over a week. Cut in three tones and bucketed together, because the pinks read pinker beside the white.',
@@ -191,7 +193,7 @@ export const DEFAULT_CONTENT = {
       bloom: 'rose',
       colorId: 'soft-pink',
       colors: [
-        { id: 'stock-soft-pink', count: 6 },
+        { id: 'stock-pink', count: 6 },
         { id: 'stock-white', count: 6 },
         { id: 'stock-purple', count: 6 },
       ],
@@ -200,34 +202,33 @@ export const DEFAULT_CONTENT = {
     },
     {
       id: 'rose-warm',
-      title: 'Garden Rose — Red, Orange & Yellow',
-      varieties: ['Rosa “Hearts”', 'Rosa “Free Spirit”', 'Rosa “Golden Mustard”'],
+      title: 'Garden Rose — Red & Orange',
+      varieties: ['Rosa “Hearts”', 'Rosa “Free Spirit”'],
       note:
-        'The warm end of the rose bench. Heavy, many-petalled heads in scarlet, terracotta and old gold.',
+        'The warm end of the rose bench, and the densest heads we cut. Many-petalled, in scarlet and terracotta.',
       kind: 'vase-table',
       slot: 1,
       bloom: 'rose',
       colorId: 'red',
       colors: [
-        { id: 'stock-red', count: 6 },
-        { id: 'stock-orange', count: 6 },
-        { id: 'stock-yellow', count: 6 },
+        { id: 'stock-red', count: 9 },
+        { id: 'stock-orange', count: 9 },
       ],
       photo: '',
       pickable: true,
     },
     {
       id: 'peony-blush',
-      title: 'Peony, Blush & White',
+      title: 'Peony, Light Pink & White',
       varieties: ['Paeonia lactiflora “Sarah Bernhardt”', 'Paeonia “Duchesse de Nemours”'],
       note:
-        'The shortest season we keep. Heavy, layered heads in the palest blush and in cream, cut just as the bud gives.',
+        'The shortest season we keep. Heavy, layered heads in the palest pink and in cream, cut just as the bud gives.',
       kind: 'vase-table',
       slot: 2,
       bloom: 'peony',
-      colorId: 'blush-pink',
+      colorId: 'soft-pink',
       colors: [
-        { id: 'stock-blush', count: 6 },
+        { id: 'stock-light-pink', count: 6 },
         { id: 'stock-white', count: 5 },
       ],
       photo: '',
@@ -301,17 +302,16 @@ export const DEFAULT_CONTENT = {
     },
     {
       id: 'lisianthus-purple',
-      title: 'Lisianthus, Purple, Pink & White',
-      varieties: ['Eustoma “Rosita Lavender”', 'Eustoma “Alissa Pink”', 'Eustoma “Croma White”'],
+      title: 'Lisianthus, Purple & Pink',
+      varieties: ['Eustoma “Rosita Lavender”', 'Eustoma “Alissa Pink”'],
       note: 'Rose-like without the weight, holding a fortnight in a cool room.',
       kind: 'shelf',
       slot: 4,
       bloom: 'lisianthus',
       colorId: 'purple',
       colors: [
-        { id: 'stock-purple', count: 5 },
-        { id: 'stock-pink', count: 5 },
-        { id: 'stock-white', count: 5 },
+        { id: 'stock-purple', count: 8 },
+        { id: 'stock-pink', count: 7 },
       ],
       photo: '',
       pickable: true,
@@ -366,27 +366,27 @@ export const DEFAULT_CONTENT = {
     },
     {
       id: 'ranunculus-peach',
-      title: 'Ranunculus, Peach',
+      title: 'Ranunculus, Orange',
       varieties: ['Ranunculus “Clooney Hanoi”', 'Scabiosa stellata'],
-      note: 'Tissue-thin petals in warm apricot, wound tight around a dark eye.',
+      note: 'Tissue-thin petals in warm apricot-orange, wound tight around a dark eye.',
       kind: 'shelf',
       slot: 8,
       bloom: 'ranunculus',
       colorId: 'peach',
-      colors: [{ id: 'stock-peach', count: 8 }],
+      colors: [{ id: 'stock-orange', count: 8 }],
       photo: '',
       pickable: true,
     },
     {
       id: 'sweet-pea',
-      title: 'Sweet Pea, Dreamy Pastel',
+      title: 'Sweet Pea, Light Pink',
       varieties: ['Lathyrus odoratus', 'Ammi majus'],
       note: 'Scented, fluttering, faintly translucent. Best appreciated up close.',
       kind: 'shelf',
       slot: 9,
       bloom: 'sweetpea',
-      colorId: 'dreamy-pastel',
-      colors: [{ id: 'stock-pastel', count: 8 }],
+      colorId: 'soft-pink',
+      colors: [{ id: 'stock-light-pink', count: 8 }],
       photo: '',
       pickable: true,
     },
@@ -407,52 +407,46 @@ export const DEFAULT_CONTENT = {
     /* --- the plaster steps: one vase to a tread -------------------------- */
     {
       id: 'rose-peach-steps',
-      title: 'Garden Rose, Peach & Blush',
-      varieties: ['Rosa “Shimmer”', 'Rosa “Quicksand”'],
+      title: 'Rose & Garden Rose, Pink & Orange',
+      varieties: ['Rosa “Shimmer” (rose)', 'Rosa “Quicksand” (garden rose)'],
       note:
-        'The quietest roses we cut, on the lowest tread. Apricot over a grey-pink that reads almost brown in the shade of the column.',
+        'The one vase on the tread that holds both forms: the broad, open rose in pink beside the dense many-petalled garden rose in apricot-orange. Cut together because the difference in the heads is the point.',
       kind: 'steps',
       slot: 0,
       bloom: 'rose',
       colorId: 'peach',
       colors: [
-        { id: 'stock-peach', count: 6 },
-        { id: 'stock-blush', count: 6 },
+        { id: 'stock-pink', count: 6 },
+        { id: 'stock-orange', count: 6 },
       ],
       photo: '',
       pickable: true,
     },
     {
       id: 'dahlia-pale-steps',
-      title: 'Dahlia, White & Blush',
-      varieties: ['Dahlia “Café au Lait”', 'Dahlia “Snowbound”'],
+      title: 'Dahlia, Pink',
+      varieties: ['Dahlia “Café au Lait Rosé”'],
       note:
-        'Dinner-plate heads the colour of unbleached paper, set at eye height on the middle tread where the light off the plaster is softest.',
+        'Dinner-plate heads, set at eye height on the middle tread where the light off the plaster is softest.',
       kind: 'steps',
       slot: 1,
       bloom: 'dahlia',
-      colorId: 'blush-pink',
-      colors: [
-        { id: 'stock-white', count: 5 },
-        { id: 'stock-blush', count: 5 },
-      ],
+      colorId: 'soft-pink',
+      colors: [{ id: 'stock-pink', count: 10 }],
       photo: '',
       pickable: true,
     },
     {
       id: 'ranunculus-pale-steps',
-      title: 'Ranunculus, Soft Pink & White',
-      varieties: ['Ranunculus “Elegance Bianco”', 'Ranunculus “Cloni Success”'],
+      title: 'Ranunculus, Orange — Bud Vase',
+      varieties: ['Ranunculus “Cloni Success”'],
       note:
         'A bud vase on the top tread, above the height of the long table. Hundreds of tissue-thin petals to a head, and a stem that curves as it drinks.',
       kind: 'steps',
       slot: 2,
       bloom: 'ranunculus',
-      colorId: 'soft-pink',
-      colors: [
-        { id: 'stock-soft-pink', count: 5 },
-        { id: 'stock-white', count: 5 },
-      ],
+      colorId: 'peach',
+      colors: [{ id: 'stock-orange', count: 10 }],
       photo: '',
       pickable: true,
     },
@@ -490,7 +484,7 @@ export const DEFAULT_CONTENT = {
     },
     {
       id: 'hydrangea-cool',
-      title: 'Hydrangea, Purple & Light Blue',
+      title: 'Hydrangea, Purple & Blue',
       varieties: ['Hydrangea macrophylla “Verena”', 'Hydrangea “Blue Sky”'],
       note:
         'Whole mopheads, scores of florets to a stem. The blue is a soil colour, not a dye — it will not hold in every season.',
@@ -500,7 +494,7 @@ export const DEFAULT_CONTENT = {
       colorId: 'purple',
       colors: [
         { id: 'stock-purple', count: 6 },
-        { id: 'stock-light-blue', count: 6 },
+        { id: 'stock-dark-blue', count: 6 },
       ],
       photo: '',
       pickable: true,
@@ -547,10 +541,10 @@ export const DEFAULT_CONTENT = {
       kind: 'floor',
       slot: 5,
       bloom: 'hydrangea',
-      colorId: 'dreamy-pastel',
+      colorId: 'soft-pink',
       colors: [
         { id: 'stock-green', count: 6 },
-        { id: 'stock-soft-pink', count: 6 },
+        { id: 'stock-pink', count: 6 },
       ],
       photo: '',
       pickable: true,

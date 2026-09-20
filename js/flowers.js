@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { turned } from './geometry.js';
+import { spriteHead, spriteLayout, canSpriteHead, disposeFlowerSprites } from './flower-sprites.js';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -189,8 +190,9 @@ function stemGeometry({ height = 0.5, radius = 0.0035, bend = 0.05, lean = 0, rn
  */
 export const RECIPES = {
   rose: {
-    label: 'Garden Rose',
+    label: 'Rose & Garden Rose',
     head: 'layered',
+    sprite: { width: 0.100, height: 0.100, anchor: 0.42 },
     stem: { height: 0.52, radius: 0.0042, bend: 0.045 },
     layers: [
       { count: 6, radius: 0.004, pitch: 0.16, scale: 0.46 },
@@ -308,6 +310,7 @@ export const RECIPES = {
   craspedia: {
     label: 'Craspedia',
     head: 'globe',
+    sprite: { width: 0.038, height: 0.038, anchor: 0.50 },
     stem: { height: 0.5, radius: 0.0032, bend: 0.035 },
     globe: { radius: 0.016, bumps: 34 },
     leaves: 0,
@@ -316,6 +319,7 @@ export const RECIPES = {
   tropical: {
     label: 'Anthurium',
     head: 'spathe',
+    sprite: { width: 0.110, height: 0.135, anchor: 0.20 },
     stem: { height: 0.6, radius: 0.0048, bend: 0.05 },
     spathe: { length: 0.115, width: 0.098 },
     leaves: 1,
@@ -381,6 +385,9 @@ export const RECIPES = {
   tulip: {
     label: 'Tulip',
     head: 'layered',
+    // Pixel art only: `spriteHead` takes its size from the PNG, so the width
+    // and height here are just the fallback the vector path would have used.
+    sprite: { width: 0.072, height: 0.092, anchor: 0.18 },
     stem: { height: 0.52, radius: 0.0058, bend: 0.07 },
     // Two whorls of three: the classic six-tepal cup, held nearly closed.
     layers: [
@@ -507,6 +514,7 @@ function foliageMaterial() {
 export function disposeFlowerMaterials() {
   for (const m of materialCache.values()) m.dispose();
   materialCache.clear();
+  disposeFlowerSprites();
 }
 
 /* --- head builders ------------------------------------------------------ */
@@ -1052,46 +1060,78 @@ export function createStem(recipeId, hex, opts = {}) {
     group.add(mesh);
   }
 
-  // Head — built at the origin, then moved to the stem tip.
-  let parts = [];
-  switch (recipe.head) {
-    case 'layered': parts = buildLayered(recipe, colors, openness, rng); break;
-    case 'radial': parts = buildRadial(recipe, colors, openness, rng); break;
-    case 'spiral': parts = buildSpiral(recipe, colors, openness, rng); break;
-    case 'globe': parts = buildGlobe(recipe, colors, openness, rng); break;
-    case 'spathe': parts = buildSpathe(recipe, colors, openness, rng); break;
-    case 'spike': parts = buildSpike(recipe, colors, openness, rng, stem); break;
-    case 'floret': parts = buildFloret(recipe, colors, openness, rng, stem); break;
-    case 'branch': parts = buildBranch(recipe, colors, openness, rng, stem); break;
-    case 'umbel': parts = buildUmbel(recipe, colors, openness, rng); break;
-    case 'daisy': parts = buildDaisy(recipe, colors, openness, rng); break;
-    case 'trumpet': parts = buildTrumpet(recipe, colors, openness, rng); break;
-    case 'raceme': parts = buildRaceme(recipe, colors, openness, rng, stem); break;
-    default: parts = buildLayered(recipe, colors, openness, rng);
-  }
-
-  if (recipe.core && ['layered', 'radial', 'spiral'].includes(recipe.head)) {
-    const core = new THREE.SphereGeometry(recipe.core.radius, 10, 8);
-    withColor(core, new THREE.Color(recipe.core.color).convertSRGBToLinear());
-    parts.push(core);
-  }
-
-  const headGeo = safeMerge(parts);
-  if (headGeo) {
-    const head = new THREE.Mesh(headGeo, recipe.gloss ? lacquerMaterial() : petalMaterial());
-    head.name = 'head';
-    // Spikes, florets, racemes and branches are already positioned along the stem.
-    if (!['spike', 'floret', 'branch', 'raceme'].includes(recipe.head)) {
-      head.position.copy(stem.tip);
-      head.scale.setScalar(scale);
-      // Let the head follow the stem's lean so it never looks pinned on.
-      const lean = new THREE.Vector3(stem.tangent.x, 0, stem.tangent.z);
-      if (lean.lengthSq() > 1e-6) {
-        head.rotation.z = -lean.x * 0.9;
-        head.rotation.x = lean.z * 0.9;
-      }
+  /* Head — either a billboarded sprite (a pixel-art PNG where one is painted
+     for this colour, otherwise drawn vector art) or real petals. All of them
+     are named 'head', so nothing downstream has to know which kind it got, and
+     all of them are children of this group, so they lean, raycast and gather
+     with the stem whichever kind they are. */
+  const layout = spriteLayout(recipeId, hex);
+  if (layout) {
+    /* Several heads to a stem: an orchid cane, a sweet pea's florets, or the
+       stacked segments a delphinium spike is built from. They are spaced along
+       the stem curve rather than stood on the tip, so the stem keeps its full
+       height and the blooms sit where they grow. */
+    const { count, from, to, scale: taper = [1, 1], spread = 0 } = layout;
+    for (let i = 0; i < count; i += 1) {
+      const f = count > 1 ? i / (count - 1) : 0;
+      const t = THREE.MathUtils.clamp(from + (to - from) * f, 0, 1);
+      const on = stem.curve.getPointAt(t);
+      const head = spriteHead(recipeId, recipe.sprite, hex, {
+        openness,
+        scale,
+        sizeMul: taper[0] + (taper[1] - taper[0]) * f,
+      });
+      // Alternating sides up the stem, as a raceme actually sets its buds.
+      const yaw = i * 2.4;
+      const out = spread * scale;
+      head.position.set(on.x + Math.sin(yaw) * out, on.y, on.z + Math.cos(yaw) * out);
+      group.add(head);
     }
+  } else if (canSpriteHead(recipeId, hex)) {
+    const head = spriteHead(recipeId, recipe.sprite, hex, { openness, scale });
+    head.position.copy(stem.tip);
     group.add(head);
+  } else {
+    let parts = [];
+    switch (recipe.head) {
+      case 'layered': parts = buildLayered(recipe, colors, openness, rng); break;
+      case 'radial': parts = buildRadial(recipe, colors, openness, rng); break;
+      case 'spiral': parts = buildSpiral(recipe, colors, openness, rng); break;
+      case 'globe': parts = buildGlobe(recipe, colors, openness, rng); break;
+      case 'spathe': parts = buildSpathe(recipe, colors, openness, rng); break;
+      case 'spike': parts = buildSpike(recipe, colors, openness, rng, stem); break;
+      case 'floret': parts = buildFloret(recipe, colors, openness, rng, stem); break;
+      case 'branch': parts = buildBranch(recipe, colors, openness, rng, stem); break;
+      case 'umbel': parts = buildUmbel(recipe, colors, openness, rng); break;
+      case 'daisy': parts = buildDaisy(recipe, colors, openness, rng); break;
+      case 'trumpet': parts = buildTrumpet(recipe, colors, openness, rng); break;
+      case 'raceme': parts = buildRaceme(recipe, colors, openness, rng, stem); break;
+      default: parts = buildLayered(recipe, colors, openness, rng);
+    }
+
+    if (recipe.core && ['layered', 'radial', 'spiral'].includes(recipe.head)) {
+      const core = new THREE.SphereGeometry(recipe.core.radius, 10, 8);
+      withColor(core, new THREE.Color(recipe.core.color).convertSRGBToLinear());
+      parts.push(core);
+    }
+
+    const headGeo = safeMerge(parts);
+    if (headGeo) {
+      const head = new THREE.Mesh(headGeo, recipe.gloss ? lacquerMaterial() : petalMaterial());
+      head.name = 'head';
+      // Spikes, florets, racemes and branches are already positioned along the stem.
+      if (!['spike', 'floret', 'branch', 'raceme'].includes(recipe.head)) {
+        head.position.copy(stem.tip);
+        head.scale.setScalar(scale);
+        // Let the head follow the stem's lean so it never looks pinned on.
+        const lean = new THREE.Vector3(stem.tangent.x, 0, stem.tangent.z);
+        if (lean.lengthSq() > 1e-6) {
+          head.rotation.z = -lean.x * 0.9;
+          head.rotation.x = lean.z * 0.9;
+        }
+      }
+      group.add(head);
+    }
   }
 
   group.userData.height = stemHeight;

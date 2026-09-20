@@ -2148,7 +2148,10 @@ export function buildShop(content, { renderer } = {}) {
       Object.assign(stem.userData, stemData);
       tallest = Math.max(tallest, stem.userData.height || 0);
       stem.traverse((o) => {
-        if (o.isMesh) {
+        // Sprite heads are pick targets too — the bloom is most of what there
+        // is to aim at, and on the sprite species it is the only part of the
+        // stem that is not a mesh.
+        if (o.isMesh || o.isSprite) {
           Object.assign(o.userData, stemData);
           interactive.push(o);
         }
@@ -2748,7 +2751,10 @@ export function buildShop(content, { renderer } = {}) {
       api.resetWrap();
       for (const child of [...stemHolder.children]) {
         stemHolder.remove(child);
-        child.traverse((o) => o.geometry?.dispose?.());
+        /* Sprites are skipped: every THREE.Sprite in the app shares one
+           geometry, so disposing a bloom's would take every other bloom in
+           the room with it. Their textures are cached and shared too. */
+        child.traverse((o) => { if (!o.isSprite) o.geometry?.dispose?.(); });
       }
       water.visible = false;
     },
