@@ -834,7 +834,7 @@ const REQUIRED_STOCK = {
   rose: ['Red', 'Pink', 'Purple', 'White', 'Orange'],
   peony: ['Light Pink', 'White'],
   dahlia: ['Red', 'Pink', 'Orange'],
-  hydrangea: ['Purple', 'Green', 'Dark Blue', 'Pink'],
+  hydrangea: ['Purple', 'Green', 'Light Blue', 'Pink'],
   tropical: ['Red', 'Pink', 'Green', 'White'],
   lisianthus: ['Purple', 'Pink'],
   delphinium: ['Light Blue', 'Dark Blue', 'Purple'],

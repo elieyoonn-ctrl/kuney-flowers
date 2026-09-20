@@ -397,8 +397,11 @@ const PIXEL = {
     pixelScale: 1,
     // A mophead is heavy enough to sit down into the stem rather than on it.
     anchor: 0.40,
+    /* `hydrangea_blue` is painted a soft cornflower, not the navy that
+       `stock-dark-blue` carries, so the mophead is bucketed as Light Blue.
+       Dark Blue stays a delphinium colour — no hydrangea is painted in it. */
     colors: {
-      blue: 'hydrangea_blue', green: 'hydrangea_green',
+      lightblue: 'hydrangea_blue', green: 'hydrangea_green',
       pink: 'hydrangea_pink', purple: 'hydrangea_purple',
     },
   },

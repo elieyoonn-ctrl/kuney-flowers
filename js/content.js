@@ -484,7 +484,7 @@ export const DEFAULT_CONTENT = {
     },
     {
       id: 'hydrangea-cool',
-      title: 'Hydrangea, Purple & Blue',
+      title: 'Hydrangea, Purple & Light Blue',
       varieties: ['Hydrangea macrophylla “Verena”', 'Hydrangea “Blue Sky”'],
       note:
         'Whole mopheads, scores of florets to a stem. The blue is a soil colour, not a dye — it will not hold in every season.',
@@ -494,7 +494,7 @@ export const DEFAULT_CONTENT = {
       colorId: 'purple',
       colors: [
         { id: 'stock-purple', count: 6 },
-        { id: 'stock-dark-blue', count: 6 },
+        { id: 'stock-light-blue', count: 6 },
       ],
       photo: '',
       pickable: true,
