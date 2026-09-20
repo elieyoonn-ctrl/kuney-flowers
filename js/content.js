@@ -218,16 +218,21 @@ export const DEFAULT_CONTENT = {
       pickable: true,
     },
     {
-      id: 'peony-blush',
-      title: 'Peony, Light Pink & White',
-      varieties: ['Paeonia lactiflora “Sarah Bernhardt”', 'Paeonia “Duchesse de Nemours”'],
+      id: 'peony-pink',
+      title: 'Peony — Pink, Light Pink & White',
+      varieties: [
+        'Paeonia “Jules Elie”',
+        'Paeonia lactiflora “Sarah Bernhardt”',
+        'Paeonia “Duchesse de Nemours”',
+      ],
       note:
-        'The shortest season we keep. Heavy, layered heads in the palest pink and in cream, cut just as the bud gives.',
+        'The shortest season we keep. Heavy, layered heads in deep pink, in the palest pink and in cream, cut just as the bud gives.',
       kind: 'vase-table',
       slot: 2,
       bloom: 'peony',
       colorId: 'soft-pink',
       colors: [
+        { id: 'stock-pink', count: 6 },
         { id: 'stock-light-pink', count: 6 },
         { id: 'stock-white', count: 5 },
       ],

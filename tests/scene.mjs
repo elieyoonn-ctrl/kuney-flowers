@@ -832,7 +832,7 @@ check('hovering lights one thing at a time and can be cleared', () => {
    is both what the shop promises and what public/flowers/ can draw. */
 const REQUIRED_STOCK = {
   rose: ['Red', 'Pink', 'Purple', 'White', 'Orange'],
-  peony: ['Light Pink', 'White'],
+  peony: ['Pink', 'Light Pink', 'White'],
   dahlia: ['Red', 'Pink', 'Orange'],
   hydrangea: ['Purple', 'Green', 'Light Blue', 'Pink'],
   tropical: ['Red', 'Pink', 'Green', 'White'],
