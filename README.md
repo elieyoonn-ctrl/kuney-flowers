@@ -70,31 +70,45 @@ npm test                  # 118 assertions + a DOM audit, no browser needed
 
 ### The stock
 
-Twenty-four vases, fifteen varieties, forty-nine colour groups, five to ten
-stems in every one of them — around 277 stems standing in the room.
+Twenty-four vases, fifteen varieties, forty-six colour groups, five to ten
+stems in every one of them — 283 stems standing in the room. A `·` separates
+one vase from the next.
+
+Every colour below is a colour that species is *painted* in: the stock is cut
+to `public/flowers/`, not the other way round, and two tests in
+`tests/scene.mjs` fail the build if a vase ever stands in a colour with no PNG
+behind it.
 
 | | Colours |
 | --- | --- |
-| Garden rose | red, orange, yellow · pink, white, purple · peach, blush |
-| Peony | blush, white |
-| Dahlia | red, pink, orange · white, blush |
+| Rose · garden rose | pink, white, purple · red, orange · pink, orange |
+| Peony | pink, light pink, white |
+| Dahlia | pink · red, pink, orange |
 | Hydrangea | purple, light blue · green, pink |
 | Anthurium | red, pink · green, white |
-| Lisianthus | purple, pink, white |
+| Lisianthus | purple, pink |
 | Delphinium | light blue, dark blue, purple |
 | Gerbera | red, pink · peach, yellow |
 | Tulip | red, orange · pink, purple |
 | Orchid | white, pink |
 | Calla lily | white, yellow |
 | Iris | purple, yellow |
-| Ranunculus · sweet pea · craspedia | peach, soft pink, white · pastel · yellow |
+| Ranunculus | orange · orange |
+| Sweet pea | light pink |
+| Craspedia | yellow |
+
+The rose bench is two flowers under one recipe: the broad, open `rose_*` art in
+pink, white and purple, and the dense many-petalled `gardenrose_*` in red and
+orange. The one vase on the steps holds both, which is the point of it. Dark
+blue is a delphinium colour only — the painted hydrangea mophead is a soft
+cornflower, so it is bucketed as light blue.
 
 A vase holds several colours of one variety, never several varieties, and each
 colour takes a contiguous wedge of the vase rather than being shuffled through
 it — that is how stock is actually bucketed, and it is what lets a visitor see
 the shape of a colour instead of a speckle of everything. Each stem carries its
-own colour, so gathering the yellow rose out of the warm bench puts a yellow
-rose in your vase.
+own colour, so gathering the orange garden rose out of the warm bench puts an
+orange garden rose in your vase.
 
 Where the stems are cut to depends on where they stand: short for the wall
 shelves, whose boards are 0.72 m apart, medium on the plaster treads, long for
@@ -204,7 +218,7 @@ everybody:
 3. Re-upload the site
 
 `data/content.json` is merged over the defaults in `js/content.js`, so it only
-needs to contain what you changed. It ships as `{ "version": 4 }` — an empty
+needs to contain what you changed. It ships as `{ "version": 5 }` — an empty
 override.
 
 Resolution order, later winning: `js/content.js` → `data/content.json` →

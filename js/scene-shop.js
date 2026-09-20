@@ -2134,7 +2134,7 @@ export function buildShop(content, { renderer } = {}) {
     group.add(bunch);
 
     // Per-stem pick targets. Each stem carries its own colour, so gathering a
-    // yellow rose out of a mixed vase drops a yellow rose into your vase.
+    // light pink peony out of a mixed vase drops a light pink peony in your vase.
     let tallest = 0;
     bunch.children.forEach((stem, i) => {
       const stemData = {

@@ -918,9 +918,9 @@ class App {
     this.pickedStems.set(displayId, hidden);
 
     /* The stem's own colour, not the display's. A mixed vase holds several
-       colours of one variety, so gathering the yellow rose out of the warm
-       bench has to put a yellow rose in your vase — reading the colour off the
-       display would quietly turn them all red. */
+       colours of one variety, so gathering the orange garden rose out of the
+       warm bench has to put an orange garden rose in your vase — reading the
+       colour off the display would quietly turn them all red. */
     const hex = stem.userData.hex || entry.colour.hex;
     const colorId = stem.userData.colorId || entry.colour.id;
     const colorLabel = stem.userData.colorLabel || entry.colour.label;
