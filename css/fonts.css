@@ -38,6 +38,24 @@
   src: url('../fonts/cormorant-500.woff2') format('woff2');
 }
 
+/* Assistant — body and UI text, as on kuneyflowers.com */
+
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/assistant-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../fonts/assistant-700.woff2') format('woff2');
+}
+
 /* Inter — controls, descriptions and administration */
 
 @font-face {

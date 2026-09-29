@@ -222,6 +222,17 @@
   margin: 0.6rem 0 0;
 }
 
+/* The wordmark in place of the set KUNEY. Letters span 83.4% of the image's
+   width and 18% of its height (0.707 × width), so the margins trim the empty
+   canvas around them — the same crop the HUD logo uses. */
+.hero__logo {
+  --w: clamp(14rem, 42vw, 30rem);
+  display: block;
+  width: var(--w);
+  height: auto;
+  margin: calc(var(--w) * -0.29) 0 calc(var(--w) * -0.29) calc(var(--w) * -0.083);
+}
+
 .hero__title b {
   display: block;
   font-weight: 300;
@@ -536,11 +547,11 @@
 
 .hud__brand img {
   display: block;
-  width: 156px;
+  width: 218px;
   height: auto;
-  /* 110px tall at that width: 41% of it is empty above and below the letters,
+  /* 154px tall at that width: 41% of it is empty above and below the letters,
      8.3% either side. */
-  margin: -45px -13px;
+  margin: -63px -18px;
   filter: drop-shadow(0 0 3px rgba(255, 253, 248, 0.75));
 }
 
@@ -1746,10 +1757,10 @@
 }
 
 @media (max-width: 520px) {
-  /* Same wordmark, scaled to 96px on a small screen. */
+  /* Same wordmark, scaled to 162px on a small screen. */
   .hud__brand img {
-    width: 116px;
-    margin: -33px -10px;
+    width: 162px;
+    margin: -46px -13px;
   }
 
 }

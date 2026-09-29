@@ -27,7 +27,7 @@
      editorial serifs already present on macOS and iOS. */
   --serif: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino,
     'Book Antiqua', Georgia, 'Times New Roman', serif;
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
+  --sans: 'Assistant', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
     Roboto, Helvetica, Arial, sans-serif;
   --mono: 'SFMono-Regular', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
@@ -70,8 +70,10 @@ body {
   background: var(--bone);
   color: var(--charcoal);
   font-family: var(--sans);
-  font-size: 16px;
-  line-height: 1.65;
+  /* Matches kuneyflowers.com: Assistant 400, 15px, 0.6px tracking, 1.8 leading. */
+  font-size: 15px;
+  line-height: 1.8;
+  letter-spacing: 0.6px;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

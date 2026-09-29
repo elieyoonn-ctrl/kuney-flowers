@@ -1193,31 +1193,24 @@ export function buildShop(content, { renderer } = {}) {
   paperRoll.castShadow = true;
   root.add(paperRoll);
 
-  const shears = new THREE.Group();
-  for (const side of [-1, 1]) {
-    const blade = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.004, 0.011),
-      new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.28, metalness: 0.75 })
-    );
-    blade.position.set(0.07, 0, side * 0.006);
-    blade.rotation.y = side * 0.06;
-    blade.castShadow = true;
-    shears.add(blade);
-
-    const handle = new THREE.Mesh(
-      new THREE.TorusGeometry(0.021, 0.005, 8, 18),
-      new THREE.MeshStandardMaterial({ color: 0x2f2d29, roughness: 0.5 })
-    );
-    handle.position.set(-0.02, 0, side * 0.012);
-    handle.rotation.y = Math.PI / 2;
-    shears.add(handle);
-  }
-  /* Lifted clear of the stone by the reach of the handles. The rings stand on
-     edge — a torus of 21 mm turned a quarter turn about Y, so 26 mm of it hangs
-     below the group's origin — and at the 6 mm this used to be, both of them
-     were buried in the tabletop up to the blades. */
-  shears.position.set(-0.92, ROOM.island.height + 0.027, 1.20);
-  shears.rotation.y = -0.5;
+  /* The painted scissors from public/scissors.png, laid flat on the stone.
+     The art spans ~72% of its square's diagonal, so a 0.34 m quad draws them
+     at 1.3x the ~0.19 m of the modelled pair they replace. Raised 2 mm so
+     the quad neither clips into nor flickers against the marble. */
+  const SCISSORS_SIZE = 0.34;
+  const scissorsMap = new THREE.TextureLoader().load('public/scissors.png');
+  scissorsMap.colorSpace = THREE.SRGBColorSpace;
+  scissorsMap.magFilter = THREE.NearestFilter;
+  scissorsMap.minFilter = THREE.NearestFilter;
+  scissorsMap.generateMipmaps = false;
+  const shears = new THREE.Mesh(
+    new THREE.PlaneGeometry(SCISSORS_SIZE, SCISSORS_SIZE),
+    new THREE.MeshStandardMaterial({ map: scissorsMap, alphaTest: 0.5, roughness: 0.6 })
+  );
+  shears.name = 'scissors';
+  shears.rotation.set(-Math.PI / 2, 0, -0.5);
+  shears.position.set(-0.92, ROOM.island.height + 0.002, 1.20);
+  shears.castShadow = true;
   root.add(shears);
 
   /* --- the customer's vase --------------------------------------------- --

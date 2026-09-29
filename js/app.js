@@ -287,7 +287,6 @@ class App {
     this.camera.position.copy(savedPos);
     this.camera.rotation.copy(savedRot);
 
-    this.renderFeatured();
   }
 
   /** Best available image for a display: owner photo, then captured still. */
@@ -301,7 +300,8 @@ class App {
   renderLanding() {
     const c = this.content;
     role('hero-eyebrow').textContent = c.brand.tagline;
-    role('hero-name').textContent = c.brand.logoText;
+    // The hero name is the logo image; the brand text becomes its alt.
+    role('hero-name').alt = c.brand.logoText;
     role('hero-mark').textContent = c.brand.logoMark;
     role('hero-season').textContent = `${c.brand.seasonLabel} — ${c.brand.seasonName}`;
     role('hero-intro').textContent = c.brand.intro;
@@ -364,12 +364,6 @@ class App {
    *  a still captured for them. One list, so the two cannot drift apart. */
   get featuredDisplays() {
     return this.content.displays.slice(0, 4);
-  }
-
-  renderFeatured() {
-    const grid = role('featured-grid');
-    if (!grid) return;
-    grid.innerHTML = this.featuredDisplays.map((d) => this.cardHTML(d)).join('');
   }
 
   cardHTML(display) {
@@ -1133,11 +1127,13 @@ class App {
     const wrapTime = shop.wrap({ instant: quiet });
     if (wrapTime > 0) {
       // Framed on the wrapping bench: the vase on the right of shot, the clear
-      // marble to its left where the finished bouquet is laid down.
+      // marble to its left where the finished bouquet is laid down. Pulled
+      // back and up so the stems lifting clear of the vase, the paper and the
+      // lay-down onto the marble all stay in frame.
       this.rig.goTo({
         id: 'wrapping',
-        position: [0.72, 1.38, 2.52],
-        target: [0.55, 1.02, 1.55],
+        position: [0.62, 1.78, 3.30],
+        target: [0.60, 1.18, 1.50],
       }, { duration: 1.1 });
       this.announce('Wrapping your bouquet.');
     }
