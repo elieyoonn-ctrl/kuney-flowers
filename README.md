@@ -50,7 +50,7 @@ npm test                  # 118 assertions + a DOM audit, no browser needed
 ## What a visitor does
 
 1. Lands on a full-screen still captured from the live 3D room.
-2. Presses **Enter KUNEY FLOWERS SHOP** and arrives at the entrance.
+2. Presses **Enter KUNEY FLOWER SHOP** and arrives at the entrance.
 3. Walks the room with the arrow keys, or by clicking the floor — and can
    follow the guided tour of its thirty-two stops with Next/Previous, the
    floor plan, or by clicking a display directly. Either way, at any time.

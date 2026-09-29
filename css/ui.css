@@ -423,16 +423,16 @@
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
 }
 
-/* Set as kuneyflowers.com sets its footer headings ("Customer service",
-   "Need help choosing?"): Assistant, upper case, barely tracked — bold and
-   black here so the four columns read at a glance. */
+/* Same face and tracking as the size labels (Standard / Large /
+   Extravagant), a touch heavier and black so the four columns read at a
+   glance. */
 .site-foot h4 {
-  font-family: var(--sans);
+  font-family: var(--heading);
   font-size: 1.125rem;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #000;
-  font-weight: 700;
+  font-weight: 500;
   margin-bottom: 0.9rem;
 }
 
