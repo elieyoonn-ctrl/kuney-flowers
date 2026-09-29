@@ -48,7 +48,7 @@ export function html(summary, content) {
     <article class="inv" aria-labelledby="inv-title">
       <header class="inv__head">
         <div>
-          <p class="inv__brand">${escapeHtml(summary.brand.name)}</p>
+          <img class="inv__brand" src="images/kuneylogo.png" alt="${escapeHtml(summary.brand.name)}" />
           <p class="inv__sub">${escapeHtml(inv.subheading)}</p>
         </div>
         <div class="inv__meta">

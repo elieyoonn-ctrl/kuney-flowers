@@ -280,26 +280,6 @@
   gap: 0.85rem;
 }
 
-.hero__scroll {
-  position: absolute;
-  left: var(--gutter);
-  bottom: 2rem;
-  font-size: 0.66rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--charcoal-faint);
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.hero__scroll::after {
-  content: '';
-  width: 1px;
-  height: 34px;
-  background: linear-gradient(var(--charcoal-faint), transparent);
-}
-
 /* Featured */
 
 .featured {
@@ -392,6 +372,12 @@
   gap: 2rem;
 }
 
+/* The eyebrow and heading sit ~0.43rem apart on their line boxes alone;
+   this takes that gap to 1.4x. */
+.sizes #sizes-title {
+  margin-top: 0.17rem;
+}
+
 .sizes__grid {
   display: grid;
   gap: 1px;
@@ -437,13 +423,15 @@
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
 }
 
+/* Set as kuneyflowers.com sets its footer headings ("Customer service",
+   "Need help choosing?"): Assistant, regular, upper case, barely tracked. */
 .site-foot h4 {
-  font-family: var(--heading);
-  font-size: 0.68rem;
-  letter-spacing: 0.2em;
+  font-family: var(--sans);
+  font-size: 1.125rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--charcoal-faint);
-  font-weight: 500;
+  font-weight: 400;
   margin-bottom: 0.9rem;
 }
 
@@ -548,6 +536,8 @@
 .hud__brand {
   display: flex;
   align-items: center;
+  /* Half the top bar's side padding again: 1.5x the logo's left inset. */
+  margin-left: calc(clamp(0.85rem, 2.5vw, 1.8rem) * 0.5);
 }
 
 .hud__brand img {
@@ -836,7 +826,7 @@
 }
 
 .panel__head h2 {
-  font-size: clamp(1.4rem, 3vw, 1.85rem);
+  font-size: clamp(1.19rem, 2.55vw, 1.5725rem);
   margin-top: 0.35rem;
 }
 
@@ -1361,10 +1351,12 @@
 }
 
 .inv__brand {
-  font-family: var(--heading);
-  font-size: 1.55rem;
-  letter-spacing: 0.24em;
-  font-weight: 300;
+  display: block;
+  width: 170px;
+  height: auto;
+  /* The file's transparent margin (41% above and below, 8.3% either side —
+     see .hud__brand img) pulled back out of the layout box. */
+  margin: -49px -14px;
 }
 
 .inv__sub {
