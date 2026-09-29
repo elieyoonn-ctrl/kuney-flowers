@@ -336,7 +336,6 @@ class App {
     role('foot-delivery').innerHTML = c.delivery
       .map((d) => `<li>${esc(d.zone)} — ${esc(d.label)}</li>`)
       .join('');
-    role('foot-note').textContent = c.brand.footerNote;
     role('foot-copy').textContent = `© ${new Date().getFullYear()} ${c.brand.name}`;
 
     if (!reducedMotion()) this.spawnMotes();

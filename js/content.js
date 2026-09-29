@@ -35,8 +35,6 @@ export const DEFAULT_CONTENT = {
     seasonLabel: 'Current Season',
     seasonName: 'Late Summer Selection',
     enterLabel: 'Enter KUNEY FLOWER SHOP',
-    footerNote:
-      'Bouquets are composed from the finest stems available on the day of arrangement. No two are alike.',
   },
 
   contact: {

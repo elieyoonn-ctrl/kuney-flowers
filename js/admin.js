@@ -208,7 +208,6 @@ function brandSection(c) {
       ${textField(c, { path: 'brand.seasonName', label: 'Current season' })}
       ${textField(c, { path: 'brand.enterLabel', label: 'Enter button' })}
       ${areaField(c, { path: 'brand.intro', label: 'Introduction', rows: 4 })}
-      ${areaField(c, { path: 'brand.footerNote', label: 'Footer note', rows: 2 })}
     </div>`);
 }
 

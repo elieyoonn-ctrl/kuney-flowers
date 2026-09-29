@@ -424,14 +424,15 @@
 }
 
 /* Set as kuneyflowers.com sets its footer headings ("Customer service",
-   "Need help choosing?"): Assistant, regular, upper case, barely tracked. */
+   "Need help choosing?"): Assistant, upper case, barely tracked — bold and
+   black here so the four columns read at a glance. */
 .site-foot h4 {
   font-family: var(--sans);
   font-size: 1.125rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--charcoal-faint);
-  font-weight: 400;
+  color: #000;
+  font-weight: 700;
   margin-bottom: 0.9rem;
 }
 
