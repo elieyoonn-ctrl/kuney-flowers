@@ -34,7 +34,7 @@ export const DEFAULT_CONTENT = {
       'Step inside a still, sunlit space where the season’s finest stems are gathered and arranged by hand. Wander the shop, choose a colour and an occasion, then let our florist compose something singular for you.',
     seasonLabel: 'Current Season',
     seasonName: 'Late Summer Selection',
-    enterLabel: 'Enter KUNEY FLOWERS SHOP',
+    enterLabel: 'Enter KUNEY FLOWER SHOP',
     footerNote:
       'Bouquets are composed from the finest stems available on the day of arrangement. No two are alike.',
   },

@@ -63,7 +63,7 @@
 }
 
 .loader__mark {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: clamp(1.6rem, 4vw, 2.4rem);
   letter-spacing: 0.34em;
   text-indent: 0.34em;
@@ -219,14 +219,16 @@
 .hero__title {
   font-size: clamp(2.9rem, 9vw, 6.4rem);
   letter-spacing: 0.02em;
-  margin: 0.6rem 0 0;
+  /* Matched to the gap below the logo: the eyebrow's line box adds ~0.28rem
+     of half-leading under it, FLOWERS adds ~0.1em above itself. */
+  margin: 1rem 0 0;
 }
 
 /* The wordmark in place of the set KUNEY. Letters span 83.4% of the image's
    width and 18% of its height (0.707 × width), so the margins trim the empty
    canvas around them — the same crop the HUD logo uses. */
 .hero__logo {
-  --w: clamp(14rem, 42vw, 30rem);
+  --w: clamp(11.2rem, 33.6vw, 24rem);
   display: block;
   width: var(--w);
   height: auto;
@@ -241,7 +243,8 @@
   font-family: var(--sans);
   text-transform: uppercase;
   color: var(--charcoal-soft);
-  margin-top: 1.1rem;
+  line-height: 1;
+  margin-top: 1.28rem;
 }
 
 .hero__season {
@@ -361,14 +364,16 @@
   inset: 0;
   display: grid;
   place-content: center;
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 2.6rem;
   letter-spacing: 0.14em;
   color: rgba(44, 42, 38, 0.18);
 }
 
 .card__title {
-  font-family: var(--serif);
+  font-family: var(--heading);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   font-size: 1.22rem;
 }
 
@@ -433,7 +438,7 @@
 }
 
 .site-foot h4 {
-  font-family: var(--sans);
+  font-family: var(--heading);
   font-size: 0.68rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -640,7 +645,9 @@
 
 .hud__stepnow b {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--heading);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   font-size: 1rem;
   font-weight: 400;
   white-space: nowrap;
@@ -862,7 +869,7 @@
 /* Panel sections */
 
 .section > h3 {
-  font-family: var(--sans);
+  font-family: var(--heading);
   font-size: 0.66rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -996,7 +1003,9 @@
 }
 
 .chip--size strong {
-  font-family: var(--serif);
+  font-family: var(--heading);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   font-size: 1.1rem;
   font-weight: 400;
 }
@@ -1045,7 +1054,7 @@
 }
 
 .readout--total b {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.5rem;
 }
 
@@ -1130,7 +1139,7 @@
 }
 
 .cal__num {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.06rem;
   line-height: 1;
 }
@@ -1352,7 +1361,7 @@
 }
 
 .inv__brand {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.55rem;
   letter-spacing: 0.24em;
   font-weight: 300;
@@ -1428,7 +1437,7 @@
 }
 
 .inv__total b {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.9rem;
   font-weight: 400;
 }
@@ -1451,7 +1460,7 @@
 }
 
 .inv__cols h3 {
-  font-family: var(--sans);
+  font-family: var(--heading);
   font-size: 0.62rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -1526,7 +1535,7 @@
 
 .garden-stats b {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.6rem;
   font-weight: 400;
   line-height: 1.1;
@@ -1575,7 +1584,9 @@
 }
 
 .plot__top b {
-  font-family: var(--serif);
+  font-family: var(--heading);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   font-size: 1.05rem;
   font-weight: 400;
 }
@@ -1630,7 +1641,9 @@
 }
 
 .reward b {
-  font-family: var(--serif);
+  font-family: var(--heading);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   font-size: 1.2rem;
   font-weight: 400;
 }

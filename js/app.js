@@ -1129,11 +1129,13 @@ class App {
       // Framed on the wrapping bench: the vase on the right of shot, the clear
       // marble to its left where the finished bouquet is laid down. Pulled
       // back and up so the stems lifting clear of the vase, the paper and the
-      // lay-down onto the marble all stay in frame.
+      // lay-down onto the marble all stay in frame. Set high and looking
+      // down at ~40° so the tops of the flowers clear the frame and less of
+      // the counter fills the bottom of it.
       this.rig.goTo({
         id: 'wrapping',
-        position: [0.62, 1.78, 3.30],
-        target: [0.60, 1.18, 1.50],
+        position: [0.64, 2.50, 2.92],
+        target: [0.62, 1.28, 1.46],
       }, { duration: 1.1 });
       this.announce('Wrapping your bouquet.');
     }

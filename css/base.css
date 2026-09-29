@@ -29,6 +29,8 @@
     'Book Antiqua', Georgia, 'Times New Roman', serif;
   --sans: 'Assistant', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
     Roboto, Helvetica, Arial, sans-serif;
+  /* Headings — clean uppercase sans with open tracking, after kuneyflowers.com. */
+  --heading: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --mono: 'SFMono-Regular', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Rhythm */
@@ -84,10 +86,11 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--serif);
-  font-weight: 300;
-  letter-spacing: 0.005em;
-  line-height: 1.12;
+  font-family: var(--heading);
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.2;
   margin: 0;
 }
 

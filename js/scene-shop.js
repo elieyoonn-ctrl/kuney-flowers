@@ -1208,10 +1208,39 @@ export function buildShop(content, { renderer } = {}) {
     new THREE.MeshStandardMaterial({ map: scissorsMap, alphaTest: 0.5, roughness: 0.6 })
   );
   shears.name = 'scissors';
-  shears.rotation.set(-Math.PI / 2, 0, -0.5);
-  shears.position.set(-0.92, ROOM.island.height + 0.002, 1.20);
+  /* Turned 30° about the vertical, then tipped 7° up toward the camera so the
+     quad catches the light and reads with a little perspective. Raised by the
+     height the tilt swings its low edge down, so that edge rests on the stone. */
+  const SCISSORS_TURN = -0.52;
+  const SCISSORS_TILT = 0.12;
+  shears.rotation.order = 'YXZ';
+  shears.rotation.set(-Math.PI / 2 + SCISSORS_TILT, SCISSORS_TURN, 0);
+  shears.position.set(
+    -0.92,
+    ROOM.island.height + 0.002 + (SCISSORS_SIZE / 2) * Math.sin(SCISSORS_TILT),
+    1.20
+  );
   shears.castShadow = true;
   root.add(shears);
+
+  // A soft contact shadow on the marble: the scissors' own silhouette in
+  // translucent black, flat on the stone and nudged just off the art.
+  const shearsShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(SCISSORS_SIZE * 1.04, SCISSORS_SIZE * 1.04),
+    new THREE.MeshBasicMaterial({
+      map: scissorsMap,
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+    })
+  );
+  shearsShadow.name = 'scissors-shadow';
+  shearsShadow.rotation.order = 'YXZ';
+  shearsShadow.rotation.set(-Math.PI / 2, SCISSORS_TURN, 0);
+  shearsShadow.position.set(-0.912, ROOM.island.height + 0.001, 1.208);
+  shearsShadow.renderOrder = 1;
+  root.add(shearsShadow);
 
   /* --- the customer's vase --------------------------------------------- --
      The one vase in the room that is not clear glass. The stock stands in

@@ -26,7 +26,7 @@ body.admin {
 }
 
 .admin-nav__mark {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.05rem;
   letter-spacing: 0.28em;
   text-indent: 0.28em;
@@ -189,7 +189,7 @@ body.admin {
 }
 
 .repeat__head b {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.1rem;
   font-weight: 400;
 }
@@ -254,7 +254,7 @@ body.admin {
 }
 
 .calendar-editor__month {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.4rem;
   min-width: 8em;
 }
@@ -312,7 +312,7 @@ body.admin {
 }
 
 .cal-day__num {
-  font-family: var(--serif);
+  font-family: var(--heading);
   font-size: 1.1rem;
 }
 
