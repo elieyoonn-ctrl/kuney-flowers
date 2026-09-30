@@ -1781,8 +1781,9 @@
     right: 0;
     bottom: 0;
     width: 100%;
-    max-height: 82vh;
-    max-height: 82svh;
+    max-height: 85vh;
+    max-height: 85svh;
+    overflow: hidden;
     border-left: 0;
     border-top: var(--rule-faint);
     border-radius: 16px 16px 0 0;
@@ -1812,8 +1813,18 @@
     padding: 1.7rem calc(1.5rem + var(--safe-r)) 1rem calc(1.5rem + var(--safe-l));
   }
 
+  /* The body is the one part of the sheet that scrolls: head and foot stay
+     put, and min-height: 0 lets it shrink inside the capped flex column
+     rather than pushing the foot off the bottom of the screen. */
   .panel__body {
+    min-height: 0;
+    overflow-y: auto;
     padding-left: calc(1.5rem + var(--safe-l));
+  }
+
+  .panel__head,
+  .panel__foot {
+    flex: none;
   }
 
   .panel__foot {
