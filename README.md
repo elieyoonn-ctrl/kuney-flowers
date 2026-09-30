@@ -39,10 +39,13 @@ Then:
 | `/?admin=1` | The shop with in-place calendar editing turned on |
 
 Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
-any web host. There is no build step and no server-side code.
+any web host. There is nothing to compile and no server-side code;
+`npm run build` only copies the files the site loads into `dist/`, leaving out
+references, design notes and tests. `vercel.json` already points Vercel at it.
 
 ```bash
 npm test                  # 118 assertions + a DOM audit, no browser needed
+npm run build             # dist/ — publish this folder
 ```
 
 ---

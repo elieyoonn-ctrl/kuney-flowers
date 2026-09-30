@@ -1,3 +1,901 @@
 {
-  "version": 5
+  "version": 5,
+  "brand": {
+    "name": "KUNEY FLOWERS",
+    "logoText": "KUNEY",
+    "logoMark": "",
+    "tagline": "Seasonal florist-choice bouquets, Hong Kong",
+    "intro": "Step inside a still, sunlit space where the season’s finest stems are gathered and arranged by hand. Wander the shop, choose a colour and an occasion, and let our florist compose a custom creation for you. Expertly handcrafted by KUNEY FLOWERS, every unique arrangement uses the freshest seasonal materials inspired by nature — bringing a floral vision like no other, where no two pieces are identical.",
+    "seasonLabel": "",
+    "seasonName": "",
+    "enterLabel": "Enter KUNEY FLOWERS SHOP",
+    "footerNote": "Bouquets are composed from the finest stems available on the day of arrangement. No two are alike."
+  },
+  "contact": {
+    "whatsapp": "+852 9612 4061",
+    "whatsappDigits": "85296124061",
+    "email": "",
+    "instagram": "https://www.instagram.com/kuneyflowers",
+    "threads": "https://www.threads.com/kuneyflowers",
+    "siteUrl": "https://kuneyflowers.com/",
+    "productUrl": "https://kuneyflowers.com/products/let-us-create-something-unique-florist-choice"
+  },
+  "theme": {
+    "floor": "#e6dece",
+    "wall": "#f3efe8",
+    "plaster": "#f6f3ed",
+    "concrete": "#cfc9be",
+    "island": "#ded2ba",
+    "islandVein": "#94a291",
+    "tableGlow": "#ffe4bd",
+    "curtain": "#dbd0bd",
+    "terracotta": "#b5866b",
+    "wrapPaper": "#efe7d8",
+    "ribbon": "#8c9a82",
+    "daylight": "#fff6e8",
+    "daylightIntensity": 3.1,
+    "accent": "#8c9a82"
+  },
+  "stockColors": [
+    {
+      "id": "stock-red",
+      "label": "Red",
+      "hex": "#c62430"
+    },
+    {
+      "id": "stock-pink",
+      "label": "Pink",
+      "hex": "#e8699b"
+    },
+    {
+      "id": "stock-light-pink",
+      "label": "Light Pink",
+      "hex": "#f3b3c6"
+    },
+    {
+      "id": "stock-peach",
+      "label": "Peach",
+      "hex": "#f6a473"
+    },
+    {
+      "id": "stock-orange",
+      "label": "Orange",
+      "hex": "#ee7420"
+    },
+    {
+      "id": "stock-yellow",
+      "label": "Yellow",
+      "hex": "#f2c01e"
+    },
+    {
+      "id": "stock-green",
+      "label": "Green",
+      "hex": "#8dab5e"
+    },
+    {
+      "id": "stock-light-blue",
+      "label": "Light Blue",
+      "hex": "#8cc2e8"
+    },
+    {
+      "id": "stock-dark-blue",
+      "label": "Dark Blue",
+      "hex": "#2f4ea6"
+    },
+    {
+      "id": "stock-purple",
+      "label": "Purple",
+      "hex": "#8b5cb6"
+    },
+    {
+      "id": "stock-white",
+      "label": "White",
+      "hex": "#f8f5ef"
+    }
+  ],
+  "palette": [
+    {
+      "id": "soft-pink",
+      "label": "Soft Pink",
+      "hex": "#f7d9e0"
+    },
+    {
+      "id": "blush-pink",
+      "label": "Blush Pink",
+      "hex": "#eec3cb"
+    },
+    {
+      "id": "peach",
+      "label": "Peach",
+      "hex": "#f6c9a8"
+    },
+    {
+      "id": "red",
+      "label": "Red",
+      "hex": "#b83a3f"
+    },
+    {
+      "id": "white",
+      "label": "White",
+      "hex": "#f7f4ee"
+    },
+    {
+      "id": "purple",
+      "label": "Purple",
+      "hex": "#a58ac0"
+    },
+    {
+      "id": "blue",
+      "label": "Blue",
+      "hex": "#8fa9c9"
+    },
+    {
+      "id": "yellow",
+      "label": "Yellow",
+      "hex": "#f0d38a"
+    },
+    {
+      "id": "tropical",
+      "label": "Tropical",
+      "hex": "#e0703f"
+    },
+    {
+      "id": "dreamy-pastel",
+      "label": "Dreamy Pastel",
+      "hex": "#e7d8ea"
+    }
+  ],
+  "occasions": [
+    {
+      "id": "birthday",
+      "label": "Birthday"
+    },
+    {
+      "id": "anniversary",
+      "label": "Anniversary"
+    },
+    {
+      "id": "newborn",
+      "label": "Newborn"
+    },
+    {
+      "id": "graduation",
+      "label": "Graduation"
+    }
+  ],
+  "sizes": [
+    {
+      "id": "standard",
+      "label": "Standard",
+      "price": 1599,
+      "note": "A generous hand-tied bouquet."
+    },
+    {
+      "id": "large",
+      "label": "Large",
+      "price": 2399,
+      "note": "Fuller, with more focal stems."
+    },
+    {
+      "id": "extravagant",
+      "label": "Extravagant",
+      "price": 3299,
+      "note": "Our most abundant composition."
+    }
+  ],
+  "currency": "HKD",
+  "invoice": {
+    "heading": "ORDER SUMMARY",
+    "subheading": "Florist’s Choice — Seasonal Bouquet",
+    "note": "Our florist will select only the finest seasonal flowers and create a one-of-a-kind bouquet. Out of respect for creative space, we do not list the individual floral materials selected. We respond to delivery enquiries only.",
+    "gameNote": "The stems you gathered in the virtual shop are a keepsake of your visit only. They do not set the variety or the count of the flowers in the bouquet delivered.",
+    "payLabel": "Purchase online",
+    "whatsappLabel": "Send to WhatsApp",
+    "saveLabel": "Save invoice image",
+    "bankNote": "Prefer bank transfer? Save or screenshot this invoice and send it to us on WhatsApp — we will reply with transfer details."
+  },
+  "delivery": [
+    {
+      "zone": "Kowloon & Hong Kong Island",
+      "fee": 0,
+      "label": "Complimentary"
+    },
+    {
+      "zone": "New Territories",
+      "fee": 150,
+      "label": "HKD 150"
+    },
+    {
+      "zone": "Outlying Islands",
+      "fee": null,
+      "label": "HKD 500 – 800"
+    }
+  ],
+  "terms": [
+    "Payment in advance.",
+    "Cancellations of orders are not accepted. All orders placed are final.",
+    "If you wish to change your order, 48 hours notice (prior to delivery date) is required.",
+    "Payments are non-refundable.",
+    "All payment shall be made in HK dollars only."
+  ],
+  "displays": [
+    {
+      "id": "rose-cool",
+      "title": "Roses",
+      "varieties": [
+        "Pink Mondial soft pink rose",
+        "Playa Blanca white rose",
+        "Ocean Song purple rose"
+      ],
+      "note": "The Roses collection features our signature hand-peeled premium roses imported from Ecuador. Every petal is delicately hand-peeled, for a full and stunning visual impact.",
+      "kind": "vase-table",
+      "slot": 0,
+      "bloom": "rose",
+      "colorId": "soft-pink",
+      "colors": [
+        {
+          "id": "stock-pink",
+          "count": 6
+        },
+        {
+          "id": "stock-white",
+          "count": 6
+        },
+        {
+          "id": "stock-purple",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "rose-warm",
+      "title": "Garden Roses",
+      "varieties": [
+        "David Austin Tess red garden rose",
+        "David Austin Juliet champagne garden rose"
+      ],
+      "note": "Soft orange-red buds gradually open to reveal medium-sized, beautifully cupped rosettes in warm apricot tones. Graceful and free-flowering, this English Shrub Rose carries a delightful fruity Tea fragrance which brings a joyful warmth to the garden.",
+      "kind": "shelf",
+      "slot": 1,
+      "bloom": "rose",
+      "colorId": "red",
+      "colors": [
+        {
+          "id": "stock-red",
+          "count": 9
+        },
+        {
+          "id": "stock-orange",
+          "count": 9
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "peony-pink",
+      "title": "Peonies",
+      "varieties": [
+        "Etched Salmon",
+        "Pillow Talk",
+        "Bowl of Creme"
+      ],
+      "note": "The shortest season we keep. Heavy, layered heads in deep pink, in the palest pink and in cream, cut just as the bud gives.",
+      "kind": "vase-table",
+      "slot": 2,
+      "bloom": "peony",
+      "colorId": "soft-pink",
+      "colors": [
+        {
+          "id": "stock-pink",
+          "count": 6
+        },
+        {
+          "id": "stock-light-pink",
+          "count": 6
+        },
+        {
+          "id": "stock-white",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "gerbera-bright",
+      "title": "Gerbera",
+      "varieties": [
+        "Suri",
+        "Babble"
+      ],
+      "note": "Big, bold and beautiful gerberas are a modern-day classic and are guaranteed to add a splash of colour and cheer in any bouquet.",
+      "kind": "shelf",
+      "slot": 0,
+      "bloom": "gerbera",
+      "colorId": "red",
+      "colors": [
+        {
+          "id": "stock-red",
+          "count": 5
+        },
+        {
+          "id": "stock-pink",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "gerbera-warm",
+      "title": "Gerbera",
+      "varieties": [
+        "Moet ",
+        "Asmara"
+      ],
+      "note": "The softer half of the gerbera shelf — apricot through to butter yellow.",
+      "kind": "steps",
+      "slot": 1,
+      "bloom": "gerbera",
+      "colorId": "peach",
+      "colors": [
+        {
+          "id": "stock-peach",
+          "count": 5
+        },
+        {
+          "id": "stock-yellow",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "tulip-warm",
+      "title": "Tulips",
+      "varieties": [
+        "Hollandia",
+        "Orange Marmalade"
+      ],
+      "note": "Six tepals held in a closed cup, on a thick stem that keeps moving in water.",
+      "kind": "shelf",
+      "slot": 2,
+      "bloom": "tulip",
+      "colorId": "red",
+      "colors": [
+        {
+          "id": "stock-red",
+          "count": 5
+        },
+        {
+          "id": "stock-orange",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "tulip-cool",
+      "title": "Tulips",
+      "varieties": [
+        "Bella Blush",
+        "Lilac Perfection"
+      ],
+      "note": "Cut tight and left to open in the room — they will lean toward the window by morning.",
+      "kind": "shelf",
+      "slot": 3,
+      "bloom": "tulip",
+      "colorId": "soft-pink",
+      "colors": [
+        {
+          "id": "stock-pink",
+          "count": 5
+        },
+        {
+          "id": "stock-purple",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "lisianthus-purple",
+      "title": "Lisianthus",
+      "varieties": [
+        "Eustoma Rosita Violet",
+        "Eustoma Alissa Pink"
+      ],
+      "note": "Rose-like without the weight, holding a fortnight in a cool room.",
+      "kind": "shelf",
+      "slot": 4,
+      "bloom": "lisianthus",
+      "colorId": "purple",
+      "colors": [
+        {
+          "id": "stock-purple",
+          "count": 8
+        },
+        {
+          "id": "stock-pink",
+          "count": 7
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "iris-mixed",
+      "title": "Iris",
+      "varieties": [
+        "Scent Sational",
+        "Golden Panther"
+      ],
+      "note": "Three falls hanging past the horizontal, three standards arching up, and a gold beard between them.",
+      "kind": "shelf",
+      "slot": 5,
+      "bloom": "iris",
+      "colorId": "purple",
+      "colors": [
+        {
+          "id": "stock-purple",
+          "count": 5
+        },
+        {
+          "id": "stock-yellow",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "calla-mixed",
+      "title": "Calla Lily",
+      "varieties": [
+        "Zant Crystal Blush",
+        "Zant Florex Gold"
+      ],
+      "note": "One furled spathe on a thick, faintly translucent stem. Architectural, and it lasts.",
+      "kind": "shelf",
+      "slot": 6,
+      "bloom": "calla",
+      "colorId": "white",
+      "colors": [
+        {
+          "id": "stock-white",
+          "count": 5
+        },
+        {
+          "id": "stock-yellow",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "orchid-mixed",
+      "title": "Orchids",
+      "varieties": [
+        "Phalaenopsis Amabilis",
+        "Phalaenopsis Pink Girl"
+      ],
+      "note": "Flowers spaced up an arching cane, each one flat and wide with a contrasting lip.",
+      "kind": "vase-table",
+      "slot": 7,
+      "bloom": "orchid",
+      "colorId": "white",
+      "colors": [
+        {
+          "id": "stock-white",
+          "count": 5
+        },
+        {
+          "id": "stock-pink",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "ranunculus-peach",
+      "title": "Ranunculus",
+      "varieties": [
+        "Tecolote Ranunculus Sunset"
+      ],
+      "note": "Tissue-thin petals in warm apricot-orange, wound tight around a dark eye.",
+      "kind": "shelf",
+      "slot": 8,
+      "bloom": "ranunculus",
+      "colorId": "peach",
+      "colors": [
+        {
+          "id": "stock-orange",
+          "count": 8
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "sweet-pea",
+      "title": "Sweet Pea",
+      "varieties": [
+        "Valerie Harrod"
+      ],
+      "note": "Scented, fluttering, faintly translucent. Best appreciated up close.",
+      "kind": "shelf",
+      "slot": 9,
+      "bloom": "sweetpea",
+      "colorId": "soft-pink",
+      "colors": [
+        {
+          "id": "stock-light-pink",
+          "count": 8
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "craspedia-yellow",
+      "title": "Craspedia",
+      "varieties": [
+        "Craspedia Globosa"
+      ],
+      "note": "Small suns on bare stems. Dries perfectly and keeps for a year.",
+      "kind": "shelf",
+      "slot": 10,
+      "bloom": "craspedia",
+      "colorId": "yellow",
+      "colors": [
+        {
+          "id": "stock-yellow",
+          "count": 8
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "rose-peach-steps",
+      "title": "Roses & Garden Roses",
+      "varieties": [
+        "David Austin Juliet champagne garden rose",
+        "Quicksand vintage pink rose"
+      ],
+      "note": "The one vase on the tread that holds both forms: the broad, open rose in pink beside the dense many-petalled garden rose in apricot-orange. Cut together because the difference in the heads is the point.",
+      "kind": "steps",
+      "slot": 0,
+      "bloom": "rose",
+      "colorId": "peach",
+      "colors": [
+        {
+          "id": "stock-pink",
+          "count": 6
+        },
+        {
+          "id": "stock-orange",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "dahlia-pale-steps",
+      "title": "Dahlia",
+      "varieties": [
+        "Dahlia “Café au Lait Rosé”"
+      ],
+      "note": "Dinner-plate heads, set at eye height on the middle tread where the light off the plaster is softest.",
+      "kind": "steps",
+      "slot": 1,
+      "bloom": "dahlia",
+      "colorId": "soft-pink",
+      "colors": [
+        {
+          "id": "stock-pink",
+          "count": 10
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "ranunculus-pale-steps",
+      "title": "Ranunculus",
+      "varieties": [
+        "Ranunculus Cloni Success"
+      ],
+      "note": "A bud vase on the top tread, above the height of the long table. Hundreds of tissue-thin petals to a head, and a stem that curves as it drinks.",
+      "kind": "steps",
+      "slot": 2,
+      "bloom": "ranunculus",
+      "colorId": "peach",
+      "colors": [
+        {
+          "id": "stock-orange",
+          "count": 10
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "anthurium-tropical",
+      "title": "Anthurium",
+      "varieties": [
+        "Anthurium Cerato",
+        "Anthurium Giant Blush"
+      ],
+      "note": "Lacquered, sculptural, unapologetic. Our warmest palette.",
+      "kind": "vase-table",
+      "slot": 0,
+      "bloom": "tropical",
+      "colorId": "tropical",
+      "colors": [
+        {
+          "id": "stock-red",
+          "count": 6
+        },
+        {
+          "id": "stock-pink",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "branch-installation",
+      "title": "Seasonal Branch Installation",
+      "varieties": [
+        "Smoke Tree"
+      ],
+      "note": "A standing installation renewed each season. Available for events and windows by enquiry.",
+      "kind": "floor",
+      "slot": 1,
+      "bloom": "branches",
+      "colorId": "white",
+      "colors": [
+        {
+          "id": "stock-white",
+          "count": 5
+        }
+      ],
+      "photo": "",
+      "pickable": false
+    },
+    {
+      "id": "hydrangea-cool",
+      "title": "Hydrangea",
+      "varieties": [
+        "Rodeo Purple",
+        "Verena Blue"
+      ],
+      "note": "Whole mopheads, scores of florets to a stem. The blue is a soil colour, not a dye — it will not hold in every season.",
+      "kind": "floor",
+      "slot": 2,
+      "bloom": "hydrangea",
+      "colorId": "purple",
+      "colors": [
+        {
+          "id": "stock-purple",
+          "count": 6
+        },
+        {
+          "id": "stock-light-blue",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "delphinium-blue",
+      "title": "Delphinium",
+      "varieties": [
+        "Dewi Ice Blue",
+        "Volkerfrieden",
+        "Dewi Zofia"
+      ],
+      "note": "A vertical, almost architectural blue — the only true blue we carry.",
+      "kind": "floor",
+      "slot": 3,
+      "bloom": "delphinium",
+      "colorId": "blue",
+      "colors": [
+        {
+          "id": "stock-light-blue",
+          "count": 6
+        },
+        {
+          "id": "stock-dark-blue",
+          "count": 6
+        },
+        {
+          "id": "stock-purple",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "dahlia-red",
+      "title": "Dahlia",
+      "varieties": [
+        "Raspberry Delight",
+        "Cafe au Lait Rose",
+        "Cornel Brons"
+      ],
+      "note": "Near-black at the centre, opening to oxblood. Cut for drama.",
+      "kind": "floor",
+      "slot": 4,
+      "bloom": "dahlia",
+      "colorId": "red",
+      "colors": [
+        {
+          "id": "stock-red",
+          "count": 6
+        },
+        {
+          "id": "stock-pink",
+          "count": 6
+        },
+        {
+          "id": "stock-orange",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "hydrangea-warm",
+      "title": "Hydrangea",
+      "varieties": [
+        "Cannonball Green",
+        "Hydrangea macrophylla “Rosita”"
+      ],
+      "note": "With its soft and fluffy texture-  limes going over to blush petals.",
+      "kind": "floor",
+      "slot": 0,
+      "bloom": "hydrangea",
+      "colorId": "soft-pink",
+      "colors": [
+        {
+          "id": "stock-green",
+          "count": 6
+        },
+        {
+          "id": "stock-pink",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    },
+    {
+      "id": "anthurium-pure",
+      "title": "Anthurium",
+      "varieties": [
+        "Anthurium Ecstasy",
+        "Anthurium Graciosa"
+      ],
+      "note": "The same waxed spathe in green and in white. Reads as sculpture rather than as flowers.",
+      "kind": "floor",
+      "slot": 6,
+      "bloom": "tropical",
+      "colorId": "white",
+      "colors": [
+        {
+          "id": "stock-green",
+          "count": 6
+        },
+        {
+          "id": "stock-white",
+          "count": 6
+        }
+      ],
+      "photo": "",
+      "pickable": true
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame-01",
+      "title": "PEONY FEAST",
+      "caption": "",
+      "photo": "images/KUNEY peony bouquet.jpg"
+    },
+    {
+      "id": "frame-02",
+      "title": "DREAMY & SLEEK",
+      "caption": "DAHLIA/ SMOKE TREE/ CHERRY BLOSSOM/ VIBURNUM/ DELPHINIUM/ TULIP   LILAC, BLUSH BUTTERFLY RANUNCULUS   VANDA, MINT ORCHID JEWELS, SUBTLY FRAGRANT",
+      "photo": "images/KUNEY dahlia smoketreejpg.jpg"
+    },
+    {
+      "id": "frame-03",
+      "title": "Pink Mondial 30 stems",
+      "caption": "",
+      "photo": "images/KUNEY pink rose bouquet.WEBP"
+    }
+  ],
+  "calendar": {
+    "dailyLimit": 3,
+    "leadTimeDays": 3,
+    "closedWeekdays": [],
+    "overrides": {},
+    "closed": [],
+    "heading": "Delivery Availability",
+    "subheading": "Bouquets available per day"
+  },
+  "garden": {
+    "title": "The Garden",
+    "intro": "Sow a seed, return each day to water it, and watch it come into bloom. Tend the beds and we will keep something aside for you.",
+    "plotCount": 6,
+    "waterPerDay": 3,
+    "stageHours": [
+      0,
+      6,
+      20,
+      44,
+      72
+    ],
+    "stageNames": [
+      "Seed",
+      "Sprout",
+      "Bud",
+      "Opening",
+      "In Bloom"
+    ],
+    "rewards": [
+      {
+        "day": 1,
+        "label": "A packet of seeds",
+        "seeds": 2
+      },
+      {
+        "day": 2,
+        "label": "Two packets of seeds",
+        "seeds": 2
+      },
+      {
+        "day": 3,
+        "label": "Watering can, refilled",
+        "seeds": 3
+      },
+      {
+        "day": 4,
+        "label": "A rare seed",
+        "seeds": 3
+      },
+      {
+        "day": 5,
+        "label": "Three packets of seeds",
+        "seeds": 4
+      },
+      {
+        "day": 6,
+        "label": "Gardener’s trowel",
+        "seeds": 4
+      },
+      {
+        "day": 7,
+        "label": "Full bed of seeds",
+        "seeds": 6
+      }
+    ],
+    "bloomReward": "A bloom for the shop window",
+    "ctaLabel": "Visit the real flower shop"
+  }
 }
