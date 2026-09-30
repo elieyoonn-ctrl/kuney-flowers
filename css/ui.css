@@ -75,12 +75,15 @@
   pointer-events: none;
 }
 
+/* Same wordmark image as the hero: the letters fill 83.3% of its width and
+   17.9% of its height, so the transparent margin is pulled back out. Sized so
+   the wordmark matches the old 1.6-2.4rem spaced "KUNEY" text. */
 .loader__mark {
-  font-family: var(--heading);
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
-  font-weight: 300;
+  --w: clamp(10rem, 25vw, 15rem);
+  display: block;
+  width: var(--w);
+  height: auto;
+  margin: calc(var(--w) * -0.29) calc(var(--w) * -0.083);
 }
 
 .loader__bar {
