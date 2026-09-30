@@ -66,6 +66,8 @@ class App {
     this.space = 'shop';
     this.stopIndex = 0;
     this.selectedId = null;
+    this.detailDisplayId = null;    // the display the detail panel is showing
+    this.detailsViewedId = null;    // phone: display whose sheet was read and closed
     this.entered = false;
     this.orderPanelFromTour = false;   // the tour may close what the tour opened
     this.transitioning = false;
@@ -770,6 +772,7 @@ class App {
     const entry = this.scenes.shop?.displays.get(id);
     if (!entry) return;
     this.selectedId = id;
+    this.detailsViewedId = null;
     this.scenes.shop.highlight(id);
     if (move) {
       const index = this.stops.findIndex((s) => s.displayId === id);
@@ -798,6 +801,7 @@ class App {
    */
   clearSelection({ closeDetail = true } = {}) {
     this.selectedId = null;
+    this.detailsViewedId = null;
     this.scenes.shop?.highlight(null);
     if (closeDetail) this.closePanel('detail');
     this.updateStepUI();
@@ -814,6 +818,22 @@ class App {
     if (!this.entered || this.transitioning || !this.rig) return;
     if (this.selectedId) this.clearSelection();
     this.rig.setMode('free', 'release');
+  }
+
+  /**
+   * On a phone, closing the sheet of a display the visitor has just read keeps
+   * the camera zoomed on it, so further taps on its flowers gather stems
+   * instead of bringing the sheet back. Leaving the view (the back arrow, the
+   * tour arrows, walking off) clears the flag and the sheet shows again.
+   * Returns whether it applied.
+   */
+  closeDetailForGathering() {
+    const id = this.selectedId;
+    if (!this.isTouch() || !id || this.detailDisplayId !== id
+        || !this.dom.panels.detail?.classList.contains('is-open')) return false;
+    this.closePanels();
+    this.detailsViewedId = id;
+    return true;
   }
 
   /**
@@ -922,6 +942,7 @@ class App {
     `;
 
     this.openPanel('detail', { focus });
+    this.detailDisplayId = d.id;
   }
 
   openFrame(frameId, { focus = true } = {}) {
@@ -1430,6 +1451,7 @@ class App {
    * pressing that button again — or holding Enter on it — would stop working.
    */
   openPanel(name, { focus = true } = {}) {
+    this.detailDisplayId = null;
     for (const [key, el] of Object.entries(this.dom.panels)) {
       const open = key === name;
       el.classList.toggle('is-open', open);
@@ -1627,6 +1649,7 @@ class App {
         this.releaseToFreeRoam();
         break;
       case 'close-panel':
+        if (this.closeDetailForGathering()) break;
         this.closePanels();
         this.releaseToFreeRoam();
         break;
@@ -1812,8 +1835,9 @@ class App {
       if (seconds > 0) {
         this.announce('Walking.');
         // The bottom sheet covers most of the floor on a phone; walking off
-        // means the visitor is done with it.
-        if (this.isTouch() && this.dom.panels.detail?.classList.contains('is-open')) {
+        // means the visitor is done with it, and with the display it was on.
+        if (this.isTouch() && (this.selectedId
+            || this.dom.panels.detail?.classList.contains('is-open'))) {
           this.clearSelection();
         }
       }
@@ -1841,8 +1865,11 @@ class App {
       if (index >= 0) this.goToStopIndex(index, { announce: false });
       this.openGardenPanel(data.plotIndex);
     } else if (data.displayId) {
-      // Selecting a display moves to it; a second tap gathers a stem.
-      if (this.selectedId === data.displayId && data.pickable) {
+      // Selecting a display moves to it; a second tap gathers a stem. On a
+      // phone that holds once its sheet has been read and closed, too.
+      const gather = this.selectedId === data.displayId
+        || (this.isTouch() && this.detailsViewedId === data.displayId);
+      if (gather && data.pickable) {
         let stem = hit;
         while (stem && stem.name !== 'stem') stem = stem.parent;
         this.pickStem(data.displayId, stem);
