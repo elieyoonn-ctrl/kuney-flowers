@@ -14,6 +14,11 @@
 #canvas-host {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   opacity: 0;
   transition: opacity 900ms var(--ease);
 }
@@ -39,6 +44,14 @@
 
 #veil.is-instant {
   transition: none;
+}
+
+/* The renderer draws at the host's size; CSS keeps the canvas filling it
+   between a viewport change and the next resize, so an iOS toolbar collapse
+   or a rotation never shows a strip of bare page. */
+#canvas-host canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* --- loading ------------------------------------------------------------ */
@@ -103,8 +116,12 @@
   position: absolute;
   inset: 0;
   z-index: 30;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  padding-left: var(--safe-l);
+  padding-right: var(--safe-r);
   background: var(--bone);
   transition: opacity 900ms var(--ease), visibility 900ms;
 }
@@ -121,7 +138,7 @@
   min-height: 100svh;
   display: grid;
   align-content: center;
-  padding: clamp(4rem, 12vh, 8rem) var(--gutter) clamp(3rem, 8vh, 6rem);
+  padding: calc(clamp(4rem, 12vh, 8rem) + var(--safe-t)) var(--gutter) clamp(3rem, 8vh, 6rem);
   overflow: hidden;
 }
 
@@ -193,6 +210,7 @@
 
 .hero__inner {
   position: relative;
+  min-width: 0;
   max-width: 62ch;
 }
 
@@ -326,9 +344,11 @@
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
-.card:hover .card__art {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lift);
+@media (hover: hover) {
+  .card:hover .card__art {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
 }
 
 .card__art img,
@@ -411,7 +431,7 @@
 /* Footer */
 
 .site-foot {
-  padding: clamp(2.5rem, 6vh, 4.5rem) var(--gutter) 3rem;
+  padding: clamp(2.5rem, 6vh, 4.5rem) var(--gutter) calc(3rem + var(--safe-b));
   border-top: var(--rule);
   display: grid;
   gap: 2rem;
@@ -450,6 +470,7 @@
   font-weight: 400;
   line-height: 1.8;
   color: var(--charcoal-faint);
+  overflow-wrap: anywhere;
 }
 
 /* Links and link-buttons share one box model so every column's first line
@@ -539,7 +560,10 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: clamp(0.85rem, 2vw, 1.4rem) clamp(0.85rem, 2.5vw, 1.8rem);
+  padding: calc(clamp(0.85rem, 2vw, 1.4rem) + var(--safe-t))
+    calc(clamp(0.85rem, 2.5vw, 1.8rem) + var(--safe-r))
+    clamp(0.85rem, 2vw, 1.4rem)
+    calc(clamp(0.85rem, 2.5vw, 1.8rem) + var(--safe-l));
   transition: opacity var(--dur) var(--ease);
 }
 
@@ -607,7 +631,7 @@
 .hud__steps {
   position: absolute;
   left: 50%;
-  bottom: clamp(0.9rem, 2.5vw, 1.6rem);
+  bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + var(--safe-b));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -619,7 +643,7 @@
   backdrop-filter: var(--panel-blur);
   border: 1px solid rgba(44, 42, 38, 0.1);
   box-shadow: var(--shadow-soft);
-  max-width: calc(100vw - 1.6rem);
+  max-width: calc(100vw - 1.6rem - var(--safe-l) - var(--safe-r));
   transition: opacity var(--dur) var(--ease);
 }
 
@@ -679,7 +703,7 @@
 .hud__hint {
   position: absolute;
   left: 50%;
-  bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 66px);
+  bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 66px + var(--safe-b));
   transform: translateX(-50%);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
@@ -705,8 +729,8 @@
 
 .hud__plan {
   position: absolute;
-  left: clamp(0.85rem, 2.5vw, 1.8rem);
-  bottom: clamp(0.9rem, 2.5vw, 1.6rem);
+  left: calc(clamp(0.85rem, 2.5vw, 1.8rem) + var(--safe-l));
+  bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + var(--safe-b));
   width: 168px;
   padding: 0.7rem;
   border-radius: 14px;
@@ -772,8 +796,8 @@
 
 .hud__basket {
   position: absolute;
-  right: clamp(0.85rem, 2.5vw, 1.8rem);
-  bottom: clamp(0.9rem, 2.5vw, 1.6rem);
+  right: calc(clamp(0.85rem, 2.5vw, 1.8rem) + var(--safe-r));
+  bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + var(--safe-b));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -844,7 +868,14 @@
   align-items: flex-start;
   gap: 1rem;
   padding: 1.4rem 1.5rem 1rem;
+  padding-top: calc(1.4rem + var(--safe-t));
+  padding-right: calc(1.5rem + var(--safe-r));
   border-bottom: var(--rule-faint);
+}
+
+.panel__head > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .panel__head h2 {
@@ -861,14 +892,17 @@
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 1.4rem 1.5rem 2rem;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.4rem calc(1.5rem + var(--safe-r)) 2rem 1.5rem;
   display: grid;
   gap: 1.5rem;
   align-content: start;
+  min-width: 0;
 }
 
+
 .panel__foot {
-  padding: 1rem 1.5rem 1.4rem;
+  padding: 1rem calc(1.5rem + var(--safe-r)) calc(1.4rem + var(--safe-b)) 1.5rem;
   border-top: var(--rule-faint);
   display: grid;
   gap: 0.6rem;
@@ -1057,6 +1091,8 @@
 .readout b {
   font-weight: 400;
   text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .readout--total {
@@ -1129,7 +1165,9 @@
   display: grid;
   align-content: space-between;
   gap: 0.1rem;
+  min-width: 0;
   min-height: 54px;
+  overflow: hidden;
   padding: 0.32rem 0.36rem;
   border: 1px solid rgba(44, 42, 38, 0.1);
   border-radius: 4px;
@@ -1160,6 +1198,7 @@
   font-size: 0.56rem;
   line-height: 1.25;
   color: var(--charcoal-faint);
+  overflow-wrap: anywhere;
 }
 
 .cal__status b {
@@ -1278,8 +1317,13 @@
   z-index: 45;
   display: grid;
   place-items: start center;
-  padding: clamp(0.8rem, 3vw, 2.5rem);
+  padding: calc(clamp(0.8rem, 3vw, 2.5rem) + var(--safe-t))
+    calc(clamp(0.8rem, 3vw, 2.5rem) + var(--safe-r))
+    calc(clamp(0.8rem, 3vw, 2.5rem) + var(--safe-b))
+    calc(clamp(0.8rem, 3vw, 2.5rem) + var(--safe-l));
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   background: rgba(38, 36, 32, 0.5);
   -webkit-backdrop-filter: blur(6px);
@@ -1431,6 +1475,8 @@
 
 .inv__row dd {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-align: right;
   font-size: 0.94rem;
 }
@@ -1682,7 +1728,7 @@
 
 #toasts {
   position: absolute;
-  top: clamp(4.6rem, 9vw, 5.6rem);
+  top: calc(clamp(4.6rem, 9vw, 5.6rem) + var(--safe-t));
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
@@ -1735,6 +1781,7 @@
     right: 0;
     bottom: 0;
     width: 100%;
+    max-height: 82vh;
     max-height: 82svh;
     border-left: 0;
     border-top: var(--rule-faint);
@@ -1759,16 +1806,26 @@
     background: rgba(44, 42, 38, 0.18);
   }
 
+  /* A bottom sheet sits below the notch, so only the side insets apply at
+     the top; the foot keeps its home-indicator padding from above. */
   .panel__head {
-    padding-top: 1.7rem;
+    padding: 1.7rem calc(1.5rem + var(--safe-r)) 1rem calc(1.5rem + var(--safe-l));
+  }
+
+  .panel__body {
+    padding-left: calc(1.5rem + var(--safe-l));
+  }
+
+  .panel__foot {
+    padding-left: calc(1.5rem + var(--safe-l));
   }
 
   .hud__basket {
-    bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 62px);
+    bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 62px + var(--safe-b));
   }
 
   .hud__steps {
-    width: calc(100vw - 1.6rem);
+    width: calc(100vw - 1.6rem - var(--safe-l) - var(--safe-r));
     justify-content: space-between;
   }
 
@@ -1778,8 +1835,12 @@
   }
 
   .hud__hint {
-    bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 74px);
+    bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 74px + var(--safe-b));
     font-size: 0.66rem;
+  }
+
+  .hud__stepnow b {
+    font-size: 0.9rem;
   }
 }
 
@@ -1790,13 +1851,173 @@
     margin: -46px -13px;
   }
 
+  .hero__actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .sizes__grid > div {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .panel__body {
+    padding-left: calc(1.1rem + var(--safe-l));
+    padding-right: calc(1.1rem + var(--safe-r));
+  }
+
+  .panel__head,
+  .panel__foot {
+    padding-left: calc(1.1rem + var(--safe-l));
+    padding-right: calc(1.1rem + var(--safe-r));
+  }
+
+  .cal__cell {
+    min-height: 48px;
+    padding: 0.26rem 0.22rem;
+  }
+
+  .cal__status i {
+    font-size: 0.46rem;
+    letter-spacing: 0.02em;
+  }
+
+  .inv__meta {
+    text-align: left;
+  }
+}
+
+/* A landscape phone wide enough to keep the basket clear of the centred
+   tour bar puts it back down in its corner. */
+@media (max-height: 460px) and (min-width: 640px) {
+  .hud__basket {
+    bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + var(--safe-b));
+  }
+}
+
+/* The narrowest phones (320–380px): logo, HUD buttons and the tour bar
+   tighten so the top bar and the step bar never run off the side. */
+@media (max-width: 380px) {
+  .hud__topbar {
+    gap: 0.5rem;
+  }
+
+  .hud__brand img {
+    width: 128px;
+    margin: -36px -10px;
+  }
+
+  .hud__group {
+    gap: 0.15rem;
+    padding: 0.2rem;
+  }
+
+  .hud__group .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .hud__steps {
+    gap: 0.2rem;
+    padding: 0.3rem;
+  }
+
+  .hud__stepbtn {
+    width: 46px;
+    height: 46px;
+  }
+
+  .hud__stepnow {
+    padding: 0 0.4rem;
+  }
+
+  .hud__basket {
+    bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 56px + var(--safe-b));
+  }
+
+  .hud__hint {
+    bottom: calc(clamp(0.9rem, 2.5vw, 1.6rem) + 66px + var(--safe-b));
+  }
+
+  .btn {
+    padding: 0.75rem 1.2rem;
+    letter-spacing: 0.12em;
+  }
 }
 
 /* Keep the space usable in landscape on a phone. */
 @media (max-height: 460px) {
+  #app {
+    --side-panel: min(400px, 50vw);
+  }
+
   .hud__plan,
   .hud__hint {
     display: none;
+  }
+
+  /* In landscape the sheet would cover almost everything; as a side panel it
+     leaves the room visible beside it. */
+  .panel,
+  .panel--wide {
+    top: 0;
+    left: auto;
+    width: var(--side-panel);
+    max-height: none;
+    border-radius: 0;
+    border-top: 0;
+    border-left: var(--rule-faint);
+    transform: translateX(100%);
+  }
+
+  .panel.is-open {
+    transform: translateX(0);
+  }
+
+  .panel::before {
+    display: none;
+  }
+
+  .panel__head {
+    padding-top: calc(1rem + var(--safe-t));
+  }
+
+  .panel__foot {
+    gap: 0.4rem;
+    padding-top: 0.6rem;
+    padding-bottom: calc(0.8rem + var(--safe-b));
+  }
+
+  .panel__foot .btn {
+    min-height: 40px;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .hud__steps {
+    width: auto;
+    gap: 0.2rem;
+  }
+
+  .hud__stepbtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hud__stepnow b {
+    max-width: 30vw;
+  }
+
+  /* With a panel open, the tour bar centres in the strip of room left beside
+     it rather than sliding underneath (Safari 15.4+; older ones keep it
+     centred on the screen). */
+  #app:has(.panel.is-open) .hud__steps {
+    left: calc((100vw - var(--side-panel)) / 2);
+    max-width: calc(100vw - var(--side-panel) - 1.6rem);
+  }
+
+  .hero {
+    min-height: 0;
+    padding-top: calc(4.5rem + var(--safe-t));
+    padding-bottom: 2.5rem;
   }
 }
 

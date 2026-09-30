@@ -33,6 +33,13 @@
   --heading: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --mono: 'SFMono-Regular', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
+  /* Device safe areas (notch, home indicator, rounded corners). Zero on
+     anything without them; needs viewport-fit=cover, set in index.html. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+
   /* Rhythm */
   --gutter: clamp(1.25rem, 4vw, 4.5rem);
   --rule: 1px solid rgba(44, 42, 38, 0.14);
@@ -110,6 +117,24 @@ button {
   cursor: pointer;
 }
 
+/* No double-tap zoom delay or grey tap flash on controls (iOS Safari). */
+a,
+button,
+label,
+summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS zooms the page into any field set below 16px, and leaves it zoomed. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
 img {
   display: block;
   max-width: 100%;
@@ -118,6 +143,9 @@ img {
 canvas {
   display: block;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* --- Shared primitives -------------------------------------------------- */
@@ -160,9 +188,11 @@ canvas {
     transform var(--dur-fast) var(--ease-soft);
 }
 
-.btn:hover {
-  background: transparent;
-  color: var(--charcoal);
+@media (hover: hover) {
+  .btn:hover {
+    background: transparent;
+    color: var(--charcoal);
+  }
 }
 
 .btn:active {
@@ -175,9 +205,11 @@ canvas {
   border-color: rgba(44, 42, 38, 0.28);
 }
 
-.btn--ghost:hover {
-  background: rgba(44, 42, 38, 0.06);
-  border-color: rgba(44, 42, 38, 0.5);
+@media (hover: hover) {
+  .btn--ghost:hover {
+    background: rgba(44, 42, 38, 0.06);
+    border-color: rgba(44, 42, 38, 0.5);
+  }
 }
 
 .btn--sage {
@@ -185,8 +217,10 @@ canvas {
   --btn-fg: #fff;
 }
 
-.btn--sage:hover {
-  color: var(--sage-deep);
+@media (hover: hover) {
+  .btn--sage:hover {
+    color: var(--sage-deep);
+  }
 }
 
 /* A truly disabled control is inert. `aria-disabled` is used for controls that
@@ -202,9 +236,11 @@ canvas {
   cursor: default;
 }
 
-.btn[aria-disabled='true']:hover {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
+@media (hover: hover) {
+  .btn[aria-disabled='true']:hover {
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+  }
 }
 
 /* Icon-only control used inside the 3D space */
@@ -224,9 +260,11 @@ canvas {
     background var(--dur-fast) var(--ease-soft);
 }
 
-.icon-btn:hover {
-  color: var(--charcoal);
-  border-color: rgba(44, 42, 38, 0.4);
+@media (hover: hover) {
+  .icon-btn:hover {
+    color: var(--charcoal);
+    border-color: rgba(44, 42, 38, 0.4);
+  }
 }
 
 .icon-btn svg {

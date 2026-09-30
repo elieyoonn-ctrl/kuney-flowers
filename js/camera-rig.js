@@ -96,6 +96,12 @@ export class CameraRig {
 
     this._on(dom, 'pointerdown', (e) => {
       if (!this.enabled || e.button !== 0) return;
+      // A second finger (an attempted pinch) must not take over the look
+      // drag, nor let the gesture end as a tap that walks or picks.
+      if (!e.isPrimary && this._pointer.active) {
+        this._pointer.moved = Infinity;
+        return;
+      }
       this._pointer.active = true;
       this._pointer.id = e.pointerId;
       this._pointer.x = e.clientX;

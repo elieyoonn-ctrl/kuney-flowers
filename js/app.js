@@ -161,11 +161,11 @@ class App {
       alpha: false,
       powerPreference: 'high-performance',
     });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
     // Cap the pixel ratio: the space is soft and diffuse, so extra samples
     // cost frames without buying much.
-    const cap = window.innerWidth < 900 ? 1.6 : 2;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+    this.renderer.setPixelRatio(this.pixelRatio());
+    const { w, h } = this.viewportSize();
+    this.renderer.setSize(w, h, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.02;
@@ -174,22 +174,68 @@ class App {
     this.dom.host.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(
-      window.innerWidth < 700 ? 62 : 52,
-      window.innerWidth / window.innerHeight,
-      0.05,
-      140
-    );
+    this.camera = new THREE.PerspectiveCamera(this.fovFor(w, h), w / h, 0.05, 140);
 
-    window.addEventListener('resize', () => this.onResize(), { passive: true });
+    /* Phones and tablets change size in more ways than 'resize' reports on
+       time: iOS Safari's toolbar collapsing, a rotation (whose first resize can
+       still carry the old dimensions), split view on an iPad. Watch the host
+       itself and the visual viewport too, and coalesce into one resize per
+       frame so a rotation does not reallocate the drawing buffer five times. */
+    const schedule = () => {
+      if (this._resizeQueued) return;
+      this._resizeQueued = true;
+      requestAnimationFrame(() => {
+        this._resizeQueued = false;
+        this.onResize();
+      });
+    };
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('orientationchange', () => {
+      schedule();
+      // iOS settles the new layout a beat after the event.
+      setTimeout(schedule, 250);
+    }, { passive: true });
+    window.visualViewport?.addEventListener('resize', schedule, { passive: true });
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(schedule).observe(this.dom.host);
+    }
+  }
+
+  /** The size of the space on screen, in CSS pixels. */
+  viewportSize() {
+    const host = this.dom.host;
+    const w = host?.clientWidth || window.innerWidth;
+    const h = host?.clientHeight || window.innerHeight;
+    return { w: Math.max(1, w), h: Math.max(1, h) };
+  }
+
+  pixelRatio() {
+    const cap = Math.min(window.innerWidth, window.innerHeight) < 900 &&
+      Math.max(window.innerWidth, window.innerHeight) < 1400 ? 1.6 : 2;
+    return Math.min(window.devicePixelRatio || 1, cap);
+  }
+
+  /**
+   * Vertical field of view for a viewport. The stops are framed for a
+   * landscape screen; held upright, a phone at the same vertical angle sees a
+   * sliver of the room, so the angle opens as the screen narrows — capped
+   * before the edges start to stretch.
+   */
+  fovFor(w, h) {
+    const aspect = w / h;
+    if (aspect >= 1) return w < 700 ? 62 : 52;
+    return Math.min(74, 62 + (1 - aspect) * 22);
   }
 
   onResize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    this.renderer.setSize(w, h);
+    if (!this.renderer || !this.camera) return;
+    const { w, h } = this.viewportSize();
+    const ratio = this.pixelRatio();
+    if (this.renderer.getPixelRatio() !== ratio) this.renderer.setPixelRatio(ratio);
+    const size = this.renderer.getSize(new THREE.Vector2());
+    if (size.x !== w || size.y !== h) this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
-    this.camera.fov = w < 700 ? 62 : 52;
+    this.camera.fov = this.fovFor(w, h);
     this.camera.updateProjectionMatrix();
   }
 
