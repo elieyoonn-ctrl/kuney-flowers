@@ -779,7 +779,9 @@ class App {
       if (index >= 0) {
         this.stopIndex = index;
         this.rig.setMode('guided');
-        this.rig.goTo(this.stops[index]);
+        // On a phone the visitor stays zoomed on a display to gather from it,
+        // so a swipe looks around freely instead of springing back.
+        this.rig.goTo(this.stops[index], { freeLook: this.isTouch() });
       }
     }
     this.openDetail(entry, { focus });

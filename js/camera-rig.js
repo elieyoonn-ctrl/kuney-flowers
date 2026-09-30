@@ -58,6 +58,9 @@ export class CameraRig {
     this.lookLimitYaw = opts.lookLimitYaw ?? THREE.MathUtils.degToRad(38);
     this.lookLimitPitch = opts.lookLimitPitch ?? THREE.MathUtils.degToRad(17);
     this.lookRecentre = opts.lookRecentre ?? 0.9;
+    // Set per stop by goTo: the look is unbounded and never springs back, so
+    // the stop only frames the view rather than holding it.
+    this.freeLook = false;
 
     this.eyeHeight = opts.eyeHeight ?? 1.58;
     this.speed = opts.speed ?? 2.5;
@@ -121,12 +124,18 @@ export class CameraRig {
 
       // Touch drags feel natural at a lower gain than a mouse.
       const gain = (e.pointerType === 'touch' ? 0.0032 : 0.0026) *
-        (this.mode === 'free' ? 1.35 : 1);
+        (this.mode === 'free' || this.freeLook ? 1.35 : 1);
 
       if (this.mode === 'free') {
         this.yaw -= dx * gain;
         this.pitch = THREE.MathUtils.clamp(
           this.pitch - dy * gain, -this.pitchLimit, this.pitchLimit
+        );
+      } else if (this.freeLook) {
+        this.lookYaw -= dx * gain;
+        this.lookPitch = THREE.MathUtils.clamp(
+          this.lookPitch - dy * gain,
+          -this.pitchLimit - this.pitch, this.pitchLimit - this.pitch
         );
       } else {
         this.lookYaw = THREE.MathUtils.clamp(
@@ -200,6 +209,7 @@ export class CameraRig {
       this.position.y = this.eyeHeight;
       this.stop = null;
       this._tween = null;
+      this.freeLook = false;
     }
     this.mode = mode;
     this.onModeChange(mode, reason);
@@ -208,7 +218,8 @@ export class CameraRig {
   /* --- guided movement -------------------------------------------------- */
 
   /**
-   * Ease to a stop.
+   * Ease to a stop. `opts.freeLook` lets the visitor look anywhere from it,
+   * with nothing springing the view back to the stop's framing.
    * @param {{position:number[]|THREE.Vector3, target:number[]|THREE.Vector3, id?:string}} stop
    */
   goTo(stop, opts = {}) {
@@ -249,6 +260,7 @@ export class CameraRig {
     this.lookYaw = 0;
     this.lookPitch = 0;
     this.stop = stop;
+    this.freeLook = !!opts.freeLook;
     return duration;
   }
 
@@ -431,7 +443,7 @@ export class CameraRig {
     } else {
       // Relax the look offsets back toward the stop's framing.
       const relax = Math.exp(-this.lookRecentre * step * 3);
-      if (!this._pointer.active) {
+      if (!this._pointer.active && !this.freeLook) {
         this.lookYaw *= relax;
         this.lookPitch *= relax;
       }
