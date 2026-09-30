@@ -373,9 +373,9 @@
 }
 
 /* The eyebrow and heading sit ~0.43rem apart on their line boxes alone;
-   this takes that gap to 1.4x. */
+   0.17rem took that to 1.4x (~0.60rem), this takes it 1.4x again (~0.84rem). */
 .sizes #sizes-title {
-  margin-top: 0.17rem;
+  margin-top: 0.41rem;
 }
 
 .sizes__grid {
@@ -421,28 +421,49 @@
   display: grid;
   gap: 2rem;
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  align-items: start;
 }
 
-/* Same face and tracking as the size labels (Standard / Large /
-   Extravagant), a touch heavier and black so the four columns read at a
-   glance. */
+/* Same face, weight, tracking and colour as the size labels (Standard /
+   Large / Extravagant); only the size differs. */
 .site-foot h4 {
   font-family: var(--heading);
   font-size: 1.125rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #000;
-  font-weight: 500;
-  margin-bottom: 0.9rem;
+  color: var(--charcoal);
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 0 0 0.9rem;
 }
 
+/* Same type as the size descriptions ("A generous hand-tied bouquet."). */
 .site-foot ul {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
+  align-content: start;
   gap: 0.5rem;
-  font-size: 0.88rem;
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  font-weight: 400;
+  line-height: 1.8;
+  color: var(--charcoal-faint);
+}
+
+/* Links and link-buttons share one box model so every column's first line
+   sits on the same baseline. */
+.site-foot li {
+  margin: 0;
+  padding: 0;
+}
+
+.site-foot li > a,
+.site-foot li > .u-link {
+  display: inline-block;
+  vertical-align: top;
+  line-height: inherit;
 }
 
 .site-foot a:hover,

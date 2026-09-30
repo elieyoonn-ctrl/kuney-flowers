@@ -329,7 +329,6 @@ class App {
       <li><a href="${esc(c.contact.siteUrl)}" target="_blank" rel="noopener">kuneyflowers.com</a></li>
     `;
     role('foot-contact').innerHTML = `
-      <li><a href="mailto:${esc(c.contact.email)}">${esc(c.contact.email)}</a></li>
       <li><a href="${esc(c.contact.instagram)}" target="_blank" rel="noopener">Instagram</a></li>
       <li><a href="${esc(c.contact.threads)}" target="_blank" rel="noopener">Threads</a></li>
     `;
