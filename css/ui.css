@@ -288,10 +288,17 @@
 
 .hero__intro {
   margin-top: 1.4rem;
-  font-size: clamp(1rem, 1.5vw, 1.14rem);
-  line-height: 1.75;
-  color: var(--charcoal-soft);
+  font-size: clamp(0.8rem, 1.2vw, 0.912rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.6;
+  color: #1a1a1a;
   max-width: 48ch;
+}
+
+/* No season copy: drop the line so it doesn't float on its own. */
+.hero__season:has(> span:empty) {
+  display: none;
 }
 
 .hero__actions {
@@ -1776,6 +1783,12 @@
 @media (max-width: 860px) {
   .hud__plan {
     display: none;
+  }
+
+  /* Same type as the size-card notes. */
+  .hero__intro {
+    font-family: var(--sans);
+    font-size: 0.86rem;
   }
 
   .panel {

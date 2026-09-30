@@ -351,7 +351,7 @@ class App {
     // The hero name is the logo image; the brand text becomes its alt.
     role('hero-name').alt = c.brand.logoText;
     role('hero-mark').textContent = c.brand.logoMark;
-    role('hero-season').textContent = `${c.brand.seasonLabel} — ${c.brand.seasonName}`;
+    role('hero-season').textContent = [c.brand.seasonLabel, c.brand.seasonName].filter(Boolean).join(' — ');
     role('hero-intro').textContent = c.brand.intro;
     role('enter-btn').textContent = c.brand.enterLabel;
     // The HUD brand is the logo image, so the brand copy names it rather than
