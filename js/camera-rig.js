@@ -107,6 +107,7 @@ export class CameraRig {
       this._pointer.x = e.clientX;
       this._pointer.y = e.clientY;
       this._pointer.moved = 0;
+      this._pointer.touch = e.pointerType !== 'mouse';
       dom.setPointerCapture?.(e.pointerId);
     });
 
@@ -157,8 +158,11 @@ export class CameraRig {
   }
 
   /** True if the last pointer interaction was a drag rather than a tap. */
-  wasDrag(threshold = 8) {
-    return this._pointer.moved > threshold;
+  wasDrag(threshold) {
+    // A fingertip wobbles a few pixels even on a deliberate tap, so touch
+    // gets more slack before a tap on the floor is read as a look-drag.
+    const limit = threshold ?? (this._pointer.touch ? 22 : 8);
+    return this._pointer.moved > limit;
   }
 
   /** True while a pointer is held down — i.e. mid look-around. */

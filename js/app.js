@@ -1187,11 +1187,7 @@ class App {
     // Beat two: the printer issues the invoice.
     const toPrinter = () => {
       shop.print();
-      this.rig.goTo({
-        id: 'printing',
-        position: [1.62, 1.42, 2.66],
-        target: [1.86, 1.02, 1.72],
-      }, { duration: quiet ? 0.4 : 1.2 });
+      this.rig.goTo(this.printingStop(), { duration: quiet ? 0.4 : 1.2 });
       setTimeout(() => this.showInvoice(), quiet ? 400 : 2100);
     };
 
@@ -1203,6 +1199,26 @@ class App {
     } else {
       toPrinter();
     }
+  }
+
+  /**
+   * Framing for the print. The printer is scaled up and its paper runs ~0.5 m
+   * toward the customer, so a fixed close shot filled a phone screen with
+   * blank paper. Instead look down on the printer and its paper from the
+   * front, stood back far enough that ~1.5 m × 1.2 m fits the current
+   * field of view — further back on a narrow portrait screen.
+   */
+  printingStop() {
+    const target = new THREE.Vector3(1.78, 1.0, 1.9);
+    const dir = new THREE.Vector3(-0.15, 0.55, 1).normalize();
+    const vHalf = THREE.MathUtils.degToRad(this.camera.fov / 2);
+    const hHalf = Math.atan(Math.tan(vHalf) * this.camera.aspect);
+    const distance = Math.max(1.5, 0.6 / Math.tan(vHalf), 0.75 / Math.tan(hHalf));
+    return {
+      id: 'printing',
+      position: target.clone().addScaledVector(dir, distance).toArray(),
+      target: target.toArray(),
+    };
   }
 
   showInvoice() {
@@ -1221,7 +1237,7 @@ class App {
 
     this.dom.invoice.classList.add('is-open');
     this.lastFocus = document.activeElement;
-    requestAnimationFrame(() => this.dom.invoice.focus());
+    requestAnimationFrame(() => this.dom.invoice.focus({ preventScroll: true }));
     this.trapFocus(this.dom.invoice);
     this.announce(`Invoice ${summary.reference} printed. Total ${store.money(summary.total)}.`);
   }
@@ -1230,7 +1246,7 @@ class App {
     this.dom.invoice.classList.remove('is-open');
     this.scenes.shop?.resetPrinter();
     this.releaseFocus();
-    this.lastFocus?.focus?.();
+    this.lastFocus?.focus?.({ preventScroll: true });
   }
 
   /** Keep Tab inside a true modal. Escape still closes it. */
@@ -1403,7 +1419,7 @@ class App {
     }
     this.dom.hud.classList.add('is-dimmed');
     const panel = this.dom.panels[name];
-    if (focus) requestAnimationFrame(() => panel.focus());
+    if (focus) requestAnimationFrame(() => panel.focus({ preventScroll: true }));
   }
 
   closePanel(name) {
@@ -1486,6 +1502,14 @@ class App {
   bindGlobalEvents() {
     document.addEventListener('click', (e) => this.onClick(e));
     window.addEventListener('keydown', (e) => this.onKeydown(e));
+
+    // #app clips with overflow:hidden, but iOS still scrolls it to reveal a
+    // focused field in a sliding sheet, lifting the canvas and the top of the
+    // sheet off-screen. Pin it in place.
+    const app = $('#app');
+    app?.addEventListener('scroll', () => {
+      if (app.scrollTop || app.scrollLeft) app.scrollTo(0, 0);
+    }, { passive: true });
 
     // Selecting things in the 3D space: a tap, not a drag.
     const canvas = this.dom.host;
