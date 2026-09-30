@@ -1783,7 +1783,12 @@
     width: 100%;
     max-height: 85vh;
     max-height: 85svh;
-    overflow: hidden;
+    /* Normally only the body scrolls. On a short screen, where the head and
+       the buttons would squeeze it below its minimum, the whole sheet scrolls
+       instead, so nothing is cut off at the bottom. */
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border-left: 0;
     border-top: var(--rule-faint);
     border-radius: 16px 16px 0 0;
@@ -1817,7 +1822,7 @@
      put, and min-height: 0 lets it shrink inside the capped flex column
      rather than pushing the foot off the bottom of the screen. */
   .panel__body {
-    min-height: 0;
+    min-height: min(9rem, 30svh);
     overflow-y: auto;
     padding-left: calc(1.5rem + var(--safe-l));
   }

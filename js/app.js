@@ -805,6 +805,18 @@ class App {
   }
 
   /**
+   * Done looking at something: drop the focus and hand the camera to free
+   * roaming where it stands, as on a computer. A parked guided stop springs
+   * every swipe back to its framing, which on a phone read as being locked to
+   * the tour. Next and Previous still pick the tour up from the same stop.
+   */
+  releaseToFreeRoam() {
+    if (!this.entered || this.transitioning || !this.rig) return;
+    if (this.selectedId) this.clearSelection();
+    this.rig.setMode('free', 'release');
+  }
+
+  /**
    * Show, in the side panel, whatever the current stop is — for the stops that
    * are places rather than displays or photographs.
    *
@@ -827,6 +839,12 @@ class App {
 
     const note = STOP_NOTES[stop.id];
     if (!note) return;
+    // On a phone the sheet would cover the whole floor at the door, the one
+    // place a visitor most wants to tap and walk from.
+    if (stop.kind === 'entrance' && this.isTouch()) {
+      this.closePanel('detail');
+      return;
+    }
 
     role('detail-kind').textContent = note.kind;
     role('detail-title').textContent = stop.label || note.kind;
@@ -1606,9 +1624,11 @@ class App {
         break;
       case 'close-focus':
         this.clearSelection();
+        this.releaseToFreeRoam();
         break;
       case 'close-panel':
         this.closePanels();
+        this.releaseToFreeRoam();
         break;
       case 'open-display':
         this.enter({ space: 'shop', displayId: id });
@@ -1711,6 +1731,7 @@ class App {
         this.closeInvoice();
       } else if (Object.values(this.dom.panels).some((p) => p.classList.contains('is-open'))) {
         this.closePanels();
+        this.releaseToFreeRoam();
       } else if (this.rig?.mode === 'free') {
         this.rig.setMode('guided');
         this.goToStopIndex(this.stopIndex, { announce: false });
@@ -1788,7 +1809,14 @@ class App {
     if (data.walkable) {
       // Clicking the stone walks there, stopping at whatever is in the way.
       const seconds = this.rig.walkTo(found.point);
-      if (seconds > 0) this.announce('Walking.');
+      if (seconds > 0) {
+        this.announce('Walking.');
+        // The bottom sheet covers most of the floor on a phone; walking off
+        // means the visitor is done with it.
+        if (this.isTouch() && this.dom.panels.detail?.classList.contains('is-open')) {
+          this.clearSelection();
+        }
+      }
       return;
     }
 

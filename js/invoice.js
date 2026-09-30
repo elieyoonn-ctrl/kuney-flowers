@@ -16,6 +16,23 @@ const MONO = '"SFMono-Regular", ui-monospace, Menlo, Consolas, monospace';
 const SERIF = '"Cormorant Garamond", Georgia, serif';
 const SANS = 'Inter, Helvetica, Arial, sans-serif';
 
+/* The wordmark file carries a wide transparent margin (41% above and below the
+   letters, 8.3% either side — see .hud__brand img); the canvas draws only the
+   letters. */
+const LOGO_SRC = 'images/kuneylogo.png';
+const LOGO_CROP = { x: 0.083, y: 0.41, w: 0.834, h: 0.18 };
+let logoPromise = null;
+
+function loadLogo() {
+  logoPromise ??= new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => { logoPromise = null; resolve(null); };
+    img.src = LOGO_SRC;
+  });
+  return logoPromise;
+}
+
 function money(amount, currency) {
   return `${currency} ${Number(amount).toLocaleString('en-HK')}`;
 }
@@ -115,7 +132,7 @@ export function html(summary, content) {
  * Draw the invoice as a saveable image. Pure 2D canvas so there is no
  * html2canvas-style dependency and no tainted-canvas surprise on download.
  */
-export function canvas(summary, content) {
+export function canvas(summary, content, logo = null) {
   const scale = 2;
   const W = 760;
   const el = document.createElement('canvas');
@@ -185,12 +202,23 @@ export function canvas(summary, content) {
 
   let y = 74;
 
-  // Brand
+  // Brand: the wordmark, standing on the baseline the text name used to, at
+  // roughly its cap height so the header keeps its proportions.
   ctx.textAlign = 'left';
-  ctx.font = `300 30px ${SERIF}`;
-  ctx.letterSpacing = '4px';
-  ctx.fillText(summary.brand.name, M, y);
-  ctx.letterSpacing = '0px';
+  if (logo) {
+    const sx = logo.naturalWidth * LOGO_CROP.x;
+    const sy = logo.naturalHeight * LOGO_CROP.y;
+    const sw = logo.naturalWidth * LOGO_CROP.w;
+    const sh = logo.naturalHeight * LOGO_CROP.h;
+    const h = 24;
+    const w = h * (sw / sh);
+    ctx.drawImage(logo, sx, sy, sw, sh, M, y - h, w, h);
+  } else {
+    ctx.font = `300 30px ${SERIF}`;
+    ctx.letterSpacing = '4px';
+    ctx.fillText(summary.brand.name, M, y);
+    ctx.letterSpacing = '0px';
+  }
 
   ctx.font = `400 12px ${SANS}`;
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -325,8 +353,8 @@ export function canvas(summary, content) {
 }
 
 /** Trigger a PNG download of the invoice. */
-export function download(summary, content) {
-  const el = canvas(summary, content);
+export async function download(summary, content) {
+  const el = canvas(summary, content, await loadLogo());
   const name = `kuney-flowers-${summary.reference || 'order'}.png`;
   return new Promise((resolve) => {
     el.toBlob((blob) => {
