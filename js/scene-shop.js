@@ -49,6 +49,34 @@ export const ROOM = {
 
 const EYE = 1.58;
 
+/* Phones and small tablets. iOS Safari kills a tab outright — "A problem
+   repeatedly occurred" — once decoded images and GPU uploads pass a few
+   hundred MB, so these get the smaller texture sets, smaller shadow maps and
+   one photographic download decoding at a time. */
+const LOW_MEMORY = typeof window !== 'undefined' && (
+  window.matchMedia?.('(hover: none) and (pointer: coarse)').matches ||
+  Math.min(window.innerWidth, window.innerHeight) < 600 ||
+  (navigator.deviceMemory ?? 8) <= 4
+);
+
+/**
+ * Load photographic textures one after another rather than all at once. Each
+ * JPEG is decoded to raw RGBA before upload; queuing them keeps only one of
+ * those buffers alive at a time instead of seven.
+ */
+let textureQueue = Promise.resolve();
+const queuedLoader = new THREE.TextureLoader();
+function loadQueued(path, onLoad, onProgress, onError) {
+  textureQueue = textureQueue.then(() => new Promise((done) => {
+    queuedLoader.load(
+      path,
+      (t) => { try { onLoad(t); } finally { done(); } },
+      onProgress,
+      (err) => { try { onError?.(err); } finally { done(); } }
+    );
+  }));
+}
+
 /* --- the plaster steps, on the left ------------------------------------- --
    A curved four-tread bank, lathed as one stepped profile swept through part
    of a circle. Because `amphitheatre` rises outward from the lathe's centre,
@@ -728,7 +756,7 @@ export function buildShop(content, { renderer } = {}) {
   sun.position.set(ROOM.oculus.x + 2.6, 15, ROOM.oculus.z + 3.4);
   sun.target.position.set(ROOM.oculus.x - 0.6, 0, ROOM.oculus.z - 0.4);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.setScalar(LOW_MEMORY ? 1024 : 2048);
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 34;
   sun.shadow.camera.left = -12;
@@ -827,11 +855,15 @@ export function buildShop(content, { renderer } = {}) {
      the grain does not stretch either way. */
   const BARK_REPEAT_U = 2;
   const BARK_REPEAT_V = 4;
+  /* 2K on desktop, 1K on phones. Not 4K: four of those decode to over 300 MB,
+     which is what was taking mobile Safari down, and a 1.1 m tile never shows
+     the difference. */
+  const BARK_RES = LOW_MEMORY ? '1K' : '2K';
   const BARK_FILES = {
-    map: 'public/textures/Bark014_4K-JPG_Color.jpg',
-    normalMap: 'public/textures/Bark014_4K-JPG_NormalGL.jpg',
-    roughnessMap: 'public/textures/Bark014_4K-JPG_Roughness.jpg',
-    aoMap: 'public/textures/Bark014_4K-JPG_AmbientOcclusion.jpg',
+    map: `public/textures/Bark014_${BARK_RES}-JPG_Color.jpg`,
+    normalMap: `public/textures/Bark014_${BARK_RES}-JPG_NormalGL.jpg`,
+    roughnessMap: `public/textures/Bark014_${BARK_RES}-JPG_Roughness.jpg`,
+    aoMap: `public/textures/Bark014_${BARK_RES}-JPG_AmbientOcclusion.jpg`,
   };
 
   /* Standing in until the JPEGs land, for the same reason the table is built
@@ -862,8 +894,8 @@ export function buildShop(content, { renderer } = {}) {
   addCollider(-4.4, 0, -5.9, -3.4, ROOM.height, -4.9);
 
   /* The bark itself. Gated on the renderer for the same reason the
-     environment map is: without one there is no browser to fetch 75 MB of
-     JPEG with, and the tests build the room that way. The collider above is
+     environment map is: without one there is no browser to fetch the
+     JPEGs with, and the tests build the room that way. The collider above is
      the pillar's and stands either way, so what a visitor can walk into never
      depends on the download.
 
@@ -874,9 +906,8 @@ export function buildShop(content, { renderer } = {}) {
      cylinder needs no second UV set. */
   if (renderer) {
     const barkAnisotropy = renderer.capabilities?.getMaxAnisotropy?.() ?? 8;
-    const barkLoader = new THREE.TextureLoader();
     for (const [slot, path] of Object.entries(BARK_FILES)) {
-      barkLoader.load(
+      loadQueued(
         path,
         (loaded) => {
           // Colour is the only one of the four that is colour; the normal,
@@ -1028,10 +1059,11 @@ export function buildShop(content, { renderer } = {}) {
      planes scaled by their own size, so the two meet at the same grain and
      nothing stretches along the length of the table. */
   const STONE_TILE = 1.25;
+  const STONE_RES = LOW_MEMORY ? '1K' : '2K';
   const STONE_FILES = {
-    map: 'public/textures/Travertine011_2K-JPG_Color.jpg',
-    normalMap: 'public/textures/Travertine011_2K-JPG_NormalDX.jpg',
-    roughnessMap: 'public/textures/Travertine011_2K-JPG_Roughness.jpg',
+    map: `public/textures/Travertine011_${STONE_RES}-JPG_Color.jpg`,
+    normalMap: `public/textures/Travertine011_${STONE_RES}-JPG_NormalDX.jpg`,
+    roughnessMap: `public/textures/Travertine011_${STONE_RES}-JPG_Roughness.jpg`,
   };
   /* A 4.4 m table is nearly always seen down its length, at exactly the raking
      angle where a low anisotropy sample turns the grain to mush. */
@@ -1130,9 +1162,8 @@ export function buildShop(content, { renderer } = {}) {
      only in repeat; clones of one image share a single GPU upload, so the
      table costs three textures rather than nine. Run after the meshes on
      purpose — a material built later would never be reached. */
-  const stoneLoader = new THREE.TextureLoader();
   for (const [slot, path] of Object.entries(STONE_FILES)) {
-    stoneLoader.load(path, (loaded) => {
+    loadQueued(path, (loaded) => {
       // Colour is the only one of the three that is colour; the normal and
       // roughness maps are data and must stay linear.
       if (slot === 'map') loaded.colorSpace = THREE.SRGBColorSpace;
@@ -1742,7 +1773,6 @@ export function buildShop(content, { renderer } = {}) {
 
   const frameMounts = [];
   const frameMat = plasterMaterial(theme, { color: 0xf7f4ee });
-  const textureLoader = new THREE.TextureLoader();
 
   /**
    * Hang a photograph in a frame.
@@ -1761,7 +1791,7 @@ export function buildShop(content, { renderer } = {}) {
      never seen larger than the window, so 2048 px is past the point of any
      visible difference. Cheaper than asking the owner to resize files, and it
      protects the room from whatever gets dropped into images/ later. */
-  const PHOTO_MAX_EDGE = 2048;
+  const PHOTO_MAX_EDGE = LOW_MEMORY ? 1024 : 2048;
 
   function fitPhoto(image) {
     const longest = Math.max(image.width, image.height);
@@ -1779,7 +1809,7 @@ export function buildShop(content, { renderer } = {}) {
   }
 
   function loadFramePhoto(mount, path) {
-    textureLoader.load(
+    loadQueued(
       path,
       (loaded) => {
         const img = loaded.image;
