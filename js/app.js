@@ -27,6 +27,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* The garden is still being built. Its entry points stay live but answer with
+   a coming-soon note; flip this to open the scene again. */
+const GARDEN_OPEN = false;
+
 /* --- copy for the stops that are places, not things --------------------- --
    A display carries its own panel copy and a frame carries its caption; the
    rest of the tour is rooms and furniture. They get a line each so the side
@@ -432,6 +436,7 @@ class App {
 
   async enter({ space = 'shop', displayId = null } = {}) {
     if (this.transitioning) return;
+    if (space === 'garden' && !GARDEN_OPEN) return this.gardenComingSoon();
     this.dom.landing.hidden = true;
     this.entered = true;
     this.dom.hud.hidden = false;
@@ -463,6 +468,7 @@ class App {
   /* --- space transitions ----------------------------------------------- */
 
   async transitionTo(space, { silent = false } = {}) {
+    if (space === 'garden' && !GARDEN_OPEN) return this.gardenComingSoon();
     if (this.transitioning || space === this.space) return;
     this.transitioning = true;
     this.closePanels();
@@ -1491,6 +1497,20 @@ class App {
       setTimeout(() => el.remove(), 340);
     }, 3400);
     this.announce(message);
+  }
+
+  gardenComingSoon() {
+    if (document.querySelector('.soon:not(.is-out)')) return;
+    const el = document.createElement('div');
+    el.className = 'soon';
+    el.innerHTML = '<p class="soon__title">KUNEY Garden — Coming Soon</p>'
+      + '<p>A secret botanical space is currently being cultivated.</p>';
+    document.body.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('is-out');
+      setTimeout(() => el.remove(), 420);
+    }, 3400);
+    this.announce('KUNEY Garden — Coming Soon. A secret botanical space is currently being cultivated.');
   }
 
   announce(message) {
