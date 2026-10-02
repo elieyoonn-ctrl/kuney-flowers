@@ -1258,36 +1258,6 @@
   line-height: 1.6;
 }
 
-.cal__admin {
-  border-top: var(--rule);
-  padding-top: 1rem;
-  display: grid;
-  gap: 0.7rem;
-}
-
-.cal__adminrow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: flex-end;
-}
-
-.cal__adminrow .btn {
-  min-height: 40px;
-  padding: 0.5rem 1rem;
-  font-size: 0.66rem;
-}
-
-.cal__adminnote {
-  font-size: 0.72rem;
-  color: var(--charcoal-faint);
-}
-
-.cal__adminnote a {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 .field {
   display: grid;
   gap: 0.3rem;

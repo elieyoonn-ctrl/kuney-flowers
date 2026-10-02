@@ -37,7 +37,13 @@ async function resolveFile(urlPath) {
     await stat(target);
     return target;
   } catch {
-    return null;
+    // Clean URLs, as on Vercel: /admin serves admin.html.
+    try {
+      await stat(`${target}.html`);
+      return `${target}.html`;
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -81,5 +87,5 @@ createServer(async (req, res) => {
   });
   createReadStream(file).pipe(res);
 }).listen(PORT, () => {
-  console.log(`\n  KUNEY FLOWERS\n  → http://localhost:${PORT}\n  → http://localhost:${PORT}/admin.html  (calendar + content editor)\n`);
+  console.log(`\n  KUNEY FLOWERS\n  → http://localhost:${PORT}\n  → http://localhost:${PORT}/admin       (owner panel, passcode required)\n`);
 });

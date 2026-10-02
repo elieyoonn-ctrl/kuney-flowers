@@ -154,6 +154,8 @@ export function installPage(page) {
 /* --- run ---------------------------------------------------------------- */
 
 installPage('admin.html');
+// Signed in, so the panel renders instead of the passcode screen.
+localStorage.setItem('kuney.owner', 'ab4ffe4752fdd007ed90a27685d478b30462376f90db22b17a9c4b9d8d831881');
 
 const failures = [];
 

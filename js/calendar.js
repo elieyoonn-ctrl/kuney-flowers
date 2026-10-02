@@ -6,8 +6,7 @@
    1. A canvas that becomes the texture of the plaster board on the shop wall,
       so the numbers you see across the room are the live numbers.
    2. An HTML panel for the zoomed-in view — real buttons, real focus order,
-      announced to screen readers, and editable in place when signed in as the
-      owner.
+      announced to screen readers. Availability is edited in the owner panel.
    ========================================================================== */
 
 import * as THREE from 'three';
@@ -238,19 +237,6 @@ export class CalendarPanel {
       <div class="cal__weekdays" aria-hidden="true"></div>
       <div class="cal__grid" role="grid" data-role="grid"></div>
       <p class="cal__note" data-role="note"></p>
-      <div class="cal__admin" data-role="admin" hidden>
-        <p class="eyebrow">Owner — edit availability</p>
-        <div class="cal__adminrow">
-          <label class="field">
-            <span>Remaining on <b data-role="admin-date">—</b></span>
-            <input type="number" min="0" max="99" step="1" data-role="admin-count" />
-          </label>
-          <button class="btn btn--ghost" data-action="admin-save">Save</button>
-          <button class="btn btn--ghost" data-action="admin-clear">Use default</button>
-          <button class="btn btn--ghost" data-action="admin-closed">Toggle closed</button>
-        </div>
-        <p class="cal__adminnote">Changes are saved to this browser. Export from <a href="admin.html">the admin panel</a> to publish them to everyone.</p>
-      </div>
     `;
     mount.appendChild(this.el);
 
@@ -271,17 +257,7 @@ export class CalendarPanel {
     // 'prev'/'next' to step the camera between stops.
     if (action === 'month-prev') this.shiftMonth(-1);
     else if (action === 'month-next') this.shiftMonth(1);
-    else if (action === 'admin-save') {
-      const input = this.el.querySelector('[data-role="admin-count"]');
-      if (this.selected) store.setDayLimit(this.selected, input.value);
-      this.render();
-    } else if (action === 'admin-clear') {
-      if (this.selected) store.setDayLimit(this.selected, null);
-      this.render();
-    } else if (action === 'admin-closed') {
-      if (this.selected) store.toggleClosed(this.selected);
-      this.render();
-    } else if (btn.dataset.key) {
+    else if (btn.dataset.key) {
       this.select(btn.dataset.key);
     }
   }
@@ -318,7 +294,7 @@ export class CalendarPanel {
 
   select(key) {
     const day = store.availability(key);
-    if (!day.selectable && !store.isAdmin()) return;
+    if (!day.selectable) return;
     this.selected = key;
     this.render();
     this.onSelect(key, day);
@@ -345,7 +321,6 @@ export class CalendarPanel {
 
     days.forEach((day, i) => {
       const n = i + 1;
-      const admin = store.isAdmin();
       const classes = ['cal__cell'];
       let status = '';
       let disabled = '';
@@ -357,11 +332,11 @@ export class CalendarPanel {
       } else if (day.tooSoon) {
         classes.push('is-past');
         status = '<i>too soon</i>';
-        disabled = admin ? '' : 'disabled';
+        disabled = 'disabled';
       } else if (day.soldOut) {
         classes.push('is-sold');
         status = '<i>Sold out</i>';
-        disabled = admin ? '' : 'disabled';
+        disabled = 'disabled';
       } else {
         status = `<b>${day.remaining}</b><i>left</i>`;
       }
@@ -396,22 +371,6 @@ export class CalendarPanel {
       note.textContent = lead > 0
         ? `Choose a delivery date. We need ${lead} day${lead === 1 ? '' : 's'} to prepare, so the earliest is ${store.formatLongDate(store.earliestOrderDate())}.`
         : 'Choose a delivery date. Days marked sold out are no longer available.';
-    }
-
-    const adminBox = this.el.querySelector('[data-role="admin"]');
-    adminBox.hidden = !store.isAdmin();
-    if (store.isAdmin()) {
-      const dateEl = this.el.querySelector('[data-role="admin-date"]');
-      const input = this.el.querySelector('[data-role="admin-count"]');
-      if (this.selected) {
-        dateEl.textContent = store.formatLongDate(this.selected);
-        input.value = store.baseLimitFor(this.selected);
-        input.disabled = false;
-      } else {
-        dateEl.textContent = 'a date — select one first';
-        input.value = '';
-        input.disabled = true;
-      }
     }
   }
 

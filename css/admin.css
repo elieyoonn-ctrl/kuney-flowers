@@ -5,6 +5,31 @@ body.admin {
   overflow-y: auto;
 }
 
+/* Passcode screen, shown until the owner has signed in on this browser. */
+.admin-shell[hidden],
+.admin-gate[hidden] {
+  display: none;
+}
+
+.admin-gate {
+  display: grid;
+  gap: 1.2rem;
+  width: min(320px, 86vw);
+  margin: 0 auto;
+  min-height: 100vh;
+  align-content: center;
+  text-align: center;
+}
+
+.admin-gate .field {
+  text-align: left;
+}
+
+.admin-gate__error {
+  font-size: 0.78rem;
+  color: var(--charcoal-soft);
+}
+
 .admin-shell {
   display: grid;
   grid-template-columns: 238px 1fr;

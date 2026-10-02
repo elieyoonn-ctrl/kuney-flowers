@@ -14,7 +14,6 @@ import { DEFAULT_CONTENT, CONTENT_VERSION } from './content.js';
 
 const KEY_CONTENT = 'kuney.content.v4';
 const KEY_GARDEN = 'kuney.garden.v3';
-const KEY_ADMIN = 'kuney.admin';
 
 let content = clone(DEFAULT_CONTENT);
 let loaded = false;
@@ -262,24 +261,6 @@ export function importContent(json) {
   writeJSON(KEY_CONTENT, content);
   emit();
   return content;
-}
-
-/* --- admin gate --------------------------------------------------------- */
-
-export function isAdmin() {
-  if (new URLSearchParams(location.search).get('admin') === '1') return true;
-  try {
-    return localStorage.getItem(KEY_ADMIN) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function setAdmin(on) {
-  try {
-    if (on) localStorage.setItem(KEY_ADMIN, '1');
-    else localStorage.removeItem(KEY_ADMIN);
-  } catch { /* ignore */ }
 }
 
 /* --- availability ------------------------------------------------------- */

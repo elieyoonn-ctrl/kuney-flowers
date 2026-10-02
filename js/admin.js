@@ -640,7 +640,6 @@ class AdminPanel {
   constructor(content) {
     this.content = content;
     this.host = role('sections');
-    store.setAdmin(true);
     this.render();
     this.bind();
   }
@@ -869,8 +868,73 @@ class AdminPanel {
   }
 }
 
+/* --- passcode gate ----------------------------------------------------- */
+
+/* SHA-256 of the owner passcode. To change it, run
+     printf %s 'new passcode' | shasum -a 256
+   and paste the result here; every signed-in browser is then signed out.
+   The site is static, so this keeps visitors out of the panel rather than
+   guarding data: published content is public either way. */
+const PASS_HASH = 'ab4ffe4752fdd007ed90a27685d478b30462376f90db22b17a9c4b9d8d831881';
+const KEY_OWNER = 'kuney.owner';
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function remembered() {
+  try {
+    return localStorage.getItem(KEY_OWNER) === PASS_HASH;
+  } catch {
+    return false;
+  }
+}
+
+async function tryPasscode(text) {
+  if (!text || (await sha256(text)) !== PASS_HASH) return false;
+  try { localStorage.setItem(KEY_OWNER, PASS_HASH); } catch { /* session only */ }
+  return true;
+}
+
+/** Resolves once the owner is signed in: remembered, ?key=…, or the form. */
+async function unlock() {
+  if (remembered()) return;
+
+  const params = new URLSearchParams(location.search);
+  const key = params.get('key');
+  if (key !== null) {
+    // Keep the passcode out of the address bar and history.
+    params.delete('key');
+    const query = params.toString();
+    history.replaceState(null, '', location.pathname + (query ? `?${query}` : '') + location.hash);
+    if (await tryPasscode(key)) return;
+  }
+
+  const gate = role('gate');
+  const input = role('gate-input');
+  const error = role('gate-error');
+  gate.hidden = false;
+  input.focus();
+  await new Promise((resolve) => {
+    gate.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (await tryPasscode(input.value)) {
+        gate.hidden = true;
+        resolve();
+      } else {
+        error.hidden = false;
+        input.select();
+      }
+    });
+  });
+}
+
 /* --- start -------------------------------------------------------------- */
 
-Promise.all([store.load(), loadImageList()]).then(([content]) => {
-  new AdminPanel(content);
-});
+unlock()
+  .then(() => Promise.all([store.load(), loadImageList()]))
+  .then(([content]) => {
+    role('shell').hidden = false;
+    new AdminPanel(content);
+  });

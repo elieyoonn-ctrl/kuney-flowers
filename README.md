@@ -35,8 +35,7 @@ Then:
 | Page | What it is |
 | --- | --- |
 | `/` | The landing page, the shop and the garden |
-| `/admin.html` | Owner panel — calendar stock, prices, copy, colours |
-| `/?admin=1` | The shop with in-place calendar editing turned on |
+| `/admin` | Owner panel — calendar stock, prices, copy, colours (passcode required) |
 
 Deploying is a file copy: Netlify, Vercel, GitHub Pages, Cloudflare Pages or
 any web host. There is nothing to compile and no server-side code;
@@ -202,12 +201,9 @@ have seen different numbers for the same day.
 
 ### Editing it
 
-Open `/admin.html` → **Availability calendar**. Type a number into any day, or
+Open `/admin` → **Availability calendar**. Type a number into any day, or
 use **Apply to month** for a whole month. **Closed** shuts a day outright;
 **Default** removes the override.
-
-You can also edit from inside the shop: open `/?admin=1`, navigate to the
-calendar, and the owner controls appear under it.
 
 ---
 
@@ -216,7 +212,7 @@ calendar, and the owner controls appear under it.
 Admin edits are saved in **your browser only**. To make them live for
 everybody:
 
-1. `/admin.html` → **Publish & backup** → **Download content.json**
+1. `/admin` → **Publish & backup** → **Download content.json**
 2. Replace `data/content.json` with that file
 3. Re-upload the site
 
@@ -235,7 +231,7 @@ The landing hero and the featured cards are rendered from the live 3D room at
 load, so the site looks finished with no assets at all.
 
 To hang real photographs: **drop the files into `images/`**, then open
-`/admin.html` and pick them from the dropdown — the list is read from the folder,
+`/admin` and pick them from the dropdown — the list is read from the folder,
 so there is no path to type, and a preview tells you at once whether the file was
 found.
 

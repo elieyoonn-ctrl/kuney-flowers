@@ -59,7 +59,17 @@
 </head>
 <body class="admin">
 
-<div class="admin-shell">
+<form class="admin-gate" data-role="gate" hidden>
+  <p class="admin-nav__mark">KUNEY</p>
+  <label class="field">
+    <span>Passcode</span>
+    <input type="password" data-role="gate-input" autocomplete="current-password" required />
+  </label>
+  <button class="btn" type="submit">Enter</button>
+  <p class="admin-gate__error" data-role="gate-error" hidden>That passcode is not right.</p>
+</form>
+
+<div class="admin-shell" data-role="shell" hidden>
 
   <nav class="admin-nav" aria-label="Sections">
     <p class="admin-nav__mark">KUNEY</p>
@@ -79,8 +89,7 @@
       <li><a href="#sec-io">Publish &amp; backup</a></li>
     </ul>
     <div class="admin-nav__foot">
-      <a href="index.html">← Back to the shop</a>
-      <a href="index.html?admin=1">Open the shop in owner mode</a>
+      <a href="./">← Back to the shop</a>
       <p>Edits are saved in this browser as you type. Publish from “Publish &amp; backup”.</p>
     </div>
   </nav>
@@ -100,7 +109,7 @@
     <div class="admin-bar">
       <button class="btn btn--ghost" data-admin="reload">Reload from saved</button>
       <button class="btn btn--ghost" data-admin="reset">Reset everything</button>
-      <a class="btn btn--ghost" href="index.html?admin=1" target="_blank" rel="noopener">Preview shop</a>
+      <a class="btn btn--ghost" href="./" target="_blank" rel="noopener">Preview shop</a>
       <span class="admin-bar__status" data-role="status">Ready</span>
     </div>
 
