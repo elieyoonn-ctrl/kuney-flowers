@@ -81,3 +81,10 @@
   font-display: swap;
   src: url('../fonts/inter-500.woff2') format('woff2');
 }
+
+/* Main-store Roboto 400, fetched from the storefront on 2026-10-03. */
+@font-face {
+  font-family: 'Roboto'; font-style: normal; font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/roboto-400.woff2') format('woff2');
+}

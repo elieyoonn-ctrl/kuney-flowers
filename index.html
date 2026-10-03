@@ -16,6 +16,7 @@
 
 <link rel="stylesheet" href="css/base.css" />
 <link rel="stylesheet" href="css/ui.css" />
+<link rel="stylesheet" href="css/brand-phase1.css" />
 
 <!-- Diagnostics: installed before the modules so it catches load failures too.
      Silent unless something actually breaks. -->
@@ -231,10 +232,12 @@
   <!-- Landing --------------------------------------------------------- -->
   <main id="landing">
     <section class="hero">
-      <div class="hero__plate"></div>
-      <div class="hero__image" data-role="hero-image"></div>
-      <div class="hero__scrim"></div>
-      <div class="hero__motes" data-role="motes" aria-hidden="true"></div>
+      <div class="hero__stage">
+        <div class="hero__plate"></div>
+        <div class="hero__image" data-role="hero-image"></div>
+        <div class="hero__scrim"></div>
+        <div class="hero__motes" data-role="motes" aria-hidden="true"></div>
+      </div>
 
       <div class="hero__inner">
         <p class="eyebrow hero__eyebrow" data-role="hero-eyebrow">Hong Kong · Seasonal Florist</p>
@@ -243,12 +246,16 @@
           <b data-role="hero-mark">FLOWERS</b>
         </h1>
         <p class="hero__season"><span data-role="hero-season">Late Summer Selection</span></p>
-        <p class="hero__intro" data-role="hero-intro"></p>
+        <p class="hero__tagline">A shared experience of beauty and connection.</p>
         <div class="hero__actions">
           <button class="btn" data-action="enter" data-role="enter-btn">Enter KUNEY FLOWER SHOP</button>
           <button class="btn btn--ghost" data-action="enter-garden">Visit the Garden</button>
         </div>
       </div>
+    </section>
+
+    <section class="intro">
+      <p class="hero__intro" data-role="hero-intro"></p>
     </section>
 
     <section class="sizes" aria-labelledby="sizes-title">

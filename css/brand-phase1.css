@@ -1,0 +1,154 @@
+/* KUNEY phase 1: storefront typography and neutral UI.
+ * Keep the existing 16px rem root: scene UI geometry depends on it.
+ * Storefront dimensions below are converted to CSS px, not copied as rem.
+ */
+:root {
+  --bone: #fff;
+  --bone-warm: #f3f3f3;
+  --charcoal: #121212;
+  --charcoal-soft: #454545;
+  --charcoal-faint: #595959;
+  --sans: 'Assistant', Arial, sans-serif;
+  --heading: 'Roboto', Arial, sans-serif;
+  --panel: #fff;
+  --panel-blur: none;
+  --rule: 1px solid #d6d6d6;
+  --rule-faint: 1px solid #e5e5e5;
+  --shadow-soft: 0 2px 8px rgb(0 0 0 / 6%);
+}
+body { font-family: var(--sans); font-size: 15px; font-weight: 400; line-height: 1.8; letter-spacing: .6px; }
+h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: .6px; line-height: 1.3; }
+.hero__intro, .prose, .sizes__grid p, .site-foot__note,
+.site-foot li, .site-foot .u-link { font-family: var(--sans); font-size: 15px; font-weight: 400; line-height: 1.8; letter-spacing: .6px; }
+.panel__head h2, .sizes #sizes-title { font-size: 20px; letter-spacing: .6px; line-height: 1.3; }
+.sizes__grid h3, .site-foot h4 { font-size: 17px; letter-spacing: .6px; line-height: 1.3; }
+.eyebrow, .section > h3 { font-size: 12px; font-weight: 400; letter-spacing: 1px; line-height: 1.5; color: #595959; }
+.sizes__price { font-size: 15px; letter-spacing: .6px; color: #121212; }
+.site-foot__legal { color: #595959; }
+.btn { --btn-fg: #fff; --btn-bg: #121212; border-radius: 0; min-height: 45px; padding: 9px 30px 11px; font-family: var(--sans); font-size: 15px; font-weight: 400; letter-spacing: 1px; line-height: 1.2; }
+.btn--ghost { --btn-fg: #121212; --btn-bg: #fff; border-color: #121212; }
+.btn--sage { --btn-bg: #121212; --btn-fg: #fff; }
+@media (hover:hover) {
+  .btn--sage:hover { color: #121212; }
+  .btn--ghost:hover { background: #f3f3f3; border-color: #121212; }
+}
+.panel, .panel__foot { background: #fff; }
+.panel { box-shadow: -4px 0 18px rgb(0 0 0 / 8%); }
+.hud__group, .hud__steps, .hud__hint, .hud__plan, .basket__pill { border-radius: 0; }
+.icon-btn, .hud__stepbtn { border-radius: 0; min-width: 44px; min-height: 44px; }
+.hud__group .icon-btn { width: 44px; height: 44px; }
+.hud__stepnow b { letter-spacing: .6px; line-height: 1.3; }
+.hud__stepnow span { font-size: 11px; letter-spacing: .6px; }
+.basket__pill { min-height: 44px; font-size: 13px; letter-spacing: .6px; }
+.hud__hint { font-size: 12px; letter-spacing: .4px; }
+:focus-visible { outline-color: #121212; }
+
+/* Homepage (Option B): the animated shop full width, then a compact white
+   bar, then the introduction. Layout only: heroDrift, the motes and the image
+   fade run exactly as in ui.css, inside the stage that clips them. */
+.hero { padding: 0; display: block; min-height: 0; background: #fff; }
+.hero__stage { position: relative; overflow: hidden; height: clamp(320px, 76svh, 1000px); }
+.hero__plate { background: #f3f3f3; }
+.hero__image { background-position: center; }
+.hero__scrim { display: none; }
+.hero__inner { position: relative; z-index: 1; max-width: none; display: flex; align-items: center; gap: 24px 40px; padding: 20px var(--gutter); background: #fff; border-bottom: var(--rule-faint); }
+.hero__title { flex: none; margin: 0; font-size: 1rem; line-height: 0; }
+.hero__logo { --w: 156px; }
+.hero__eyebrow, .hero__title b, .hero__season { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.hero__tagline { flex: 1 1 auto; margin: 0; text-align: center; font-family: var(--heading); font-size: 18px; line-height: 1.4; letter-spacing: .6px; color: #121212; }
+.hero__actions { flex: none; margin: 0; flex-wrap: nowrap; gap: 12px; }
+.hero__actions .btn { padding-inline: 20px; white-space: nowrap; }
+.intro { padding: clamp(40px, 7vh, 72px) var(--gutter); }
+.intro .hero__intro { max-width: 62ch; margin: 0 auto; color: #121212; font-weight: 400; }
+
+@media (min-width: 750px) {
+  body, .hero__intro, .prose, .sizes__grid p, .site-foot__note,
+  .site-foot li, .site-foot .u-link { font-size: 16px; }
+  .panel__head h2, .sizes #sizes-title { font-size: 24px; }
+  .sizes__grid h3, .site-foot h4 { font-size: 18px; }
+}
+@media (max-width: 860px) {
+  #app { height: 100svh; height: 100dvh; bottom: auto; }
+  .hero__stage { height: clamp(280px, 56svh, 520px); }
+  .hero__inner { flex-direction: column; gap: 16px; padding: 28px 24px 32px; text-align: center; }
+  .hero__tagline { flex: none; font-size: 17px; }
+  .hero__actions { align-self: stretch; flex-direction: column; flex-wrap: nowrap; }
+  .hero__actions .btn { flex: none; width: 100%; white-space: normal; }
+  .panel { border-radius: 0; max-height: 85dvh; }
+  .hud__topbar { gap: 8px; }
+  .hud__brand { margin-left: 0; }
+  .hud__brand img { width: 144px; margin: -41px -12px; }
+  .hud__group { gap: 0; padding: 3px; }
+  .hud__steps { left: calc(12px + var(--safe-l)); right: calc(12px + var(--safe-r)); bottom: calc(12px + var(--safe-b)); transform: none; width: auto; max-width: none; padding: 4px; gap: 0; }
+  .hud__stepbtn { width: 44px; height: 44px; flex: 0 0 44px; }
+  .hud__stepnow { flex: 1 1 auto; padding: 0 4px; }
+  .hud__stepnow b { font-size: 14px; max-width: none; }
+  .hud__basket { right: calc(12px + var(--safe-r)); bottom: calc(76px + var(--safe-b)); }
+  .hud__hint { left: calc(12px + var(--safe-l)); right: calc(12px + var(--safe-r)); bottom: calc(130px + var(--safe-b)); transform: none; width: auto; max-width: none; white-space: normal; overflow: visible; text-align: center; line-height: 1.4; }
+}
+@media (max-width: 380px) {
+  .hud__brand img { width: 112px; margin: -32px -9px; }
+  .hud__topbar { padding-left: 8px; padding-right: 8px; }
+}
+@media (max-height: 460px) and (min-width: 640px) {
+  .hud__basket { bottom: calc(76px + var(--safe-b)); }
+  .panel { max-height: none; }
+}
+
+/* --- Phase 1 refinements ------------------------------------------------ */
+
+/* Panel close buttons: just the X. The 44px box stays as the hit area, and
+   :focus-visible still draws its outline. */
+.panel__head .icon-btn,
+.panel__head .icon-btn:hover {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Footer: main-site theme values, in px because the root rem sizes differ. */
+.site-foot h4 { font-family: var(--heading); font-weight: 400; font-size: 16px; line-height: 1.3; letter-spacing: .6px; margin: 0 0 20px; }
+.site-foot ul { gap: 0; }
+.site-foot li { font-family: var(--sans); font-weight: 400; font-size: 14px; line-height: 1.8; letter-spacing: .6px; }
+.site-foot li > a,
+.site-foot li > .u-link { font-family: var(--sans); font-weight: 400; font-size: 14px; line-height: 1.8; letter-spacing: .6px; color: rgba(18, 18, 18, .75); padding-block: 10px; }
+@media (min-width: 750px) {
+  .site-foot li:first-child > a,
+  .site-foot li:first-child > .u-link { padding-top: 0; }
+}
+@media (min-width: 990px) {
+  .site-foot h4 { font-size: 18px; }
+  .site-foot li > a,
+  .site-foot li > .u-link { padding-block: 5px; }
+  .site-foot li:first-child > a,
+  .site-foot li:first-child > .u-link { padding-top: 0; }
+}
+
+/* Bouquet options keep ui.css geometry (pills; 4px size cards). Selected is
+   solid #121212 with no outer ring; keyboard focus alone draws an outline. */
+.chip { background: #fff; }
+.chip[aria-pressed='true'] { background: #121212; border-color: #121212; color: #fff; }
+.chip:focus-visible { outline: 2px solid #121212; outline-offset: 2px; }
+
+/* Corner controls (top-right toolbar, gathered-stems badge) at 80% of the
+   sizes set above. Corner offsets are unchanged. */
+.hud__group { gap: 5.12px; padding: 3.84px; }
+.hud__group .icon-btn { width: 35.2px; height: 35.2px; min-width: 0; min-height: 0; }
+.hud__group .icon-btn svg { width: 13.6px; height: 13.6px; }
+.basket__pill { gap: 7.68px; padding: 7.04px 11.52px 7.04px 9.6px; min-height: 35.2px; font-size: 10.4px; letter-spacing: .48px; }
+.basket__swatches i { width: 10.4px; height: 10.4px; border-width: 1.2px; margin-left: -4px; }
+.basket__swatches i:first-child { margin-left: 0; }
+@media (max-width: 860px) {
+  .hud__group { gap: 0; padding: 2.4px; }
+}
+/* Touch: an invisible 44px hit area around each smaller control; the toolbar
+   gap widens just enough that neighbouring hit areas don't overlap. */
+@media (pointer: coarse) {
+  .hud__group { gap: 8.8px; }
+  .hud__group .icon-btn,
+  .basket__pill { position: relative; }
+  .hud__group .icon-btn::after { content: ''; position: absolute; inset: -4.4px; }
+  .basket__pill::after { content: ''; position: absolute; inset: -4.4px 0; }
+}
