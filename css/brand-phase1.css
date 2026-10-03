@@ -45,13 +45,17 @@ h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: 
 
 /* Homepage (Option B): the animated shop full width, then a compact white
    bar, then the introduction. Layout only: heroDrift, the motes and the image
-   fade run exactly as in ui.css, inside the stage that clips them. */
-.hero { padding: 0; display: block; min-height: 0; background: #fff; }
-.hero__stage { position: relative; overflow: hidden; height: clamp(320px, 76svh, 1000px); }
+   fade run exactly as in ui.css, inside the stage that clips them.
+   Scene + bar fill exactly one viewport: the bar takes its natural height and
+   the scene the rest, so the bar's bottom rule meets the viewport bottom.
+   min-height (not height) lets very short screens or large text push the bar
+   below the fold rather than clip it. #landing already pads the side insets. */
+.hero { padding: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; align-content: stretch; min-height: 100vh; min-height: 100dvh; background: #fff; }
+.hero__stage { position: relative; overflow: hidden; min-height: 0; }
 .hero__plate { background: #f3f3f3; }
 .hero__image { background-position: center; }
 .hero__scrim { display: none; }
-.hero__inner { position: relative; z-index: 1; max-width: none; display: flex; align-items: center; gap: 24px 40px; padding: 20px var(--gutter); background: #fff; border-bottom: var(--rule-faint); }
+.hero__inner { position: relative; z-index: 1; max-width: none; display: flex; align-items: center; gap: 24px 40px; padding: 20px var(--gutter) calc(20px + var(--safe-b)); background: #fff; border-bottom: var(--rule-faint); }
 .hero__title { flex: none; margin: 0; font-size: 1rem; line-height: 0; }
 .hero__logo { --w: 156px; }
 .hero__eyebrow, .hero__title b, .hero__season { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -59,7 +63,7 @@ h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: 
 .hero__actions { flex: none; margin: 0; flex-wrap: nowrap; gap: 12px; }
 .hero__actions .btn { padding-inline: 20px; white-space: nowrap; }
 .intro { padding: clamp(40px, 7vh, 72px) var(--gutter); }
-.intro .hero__intro { max-width: 62ch; margin: 0 auto; color: #121212; font-weight: 400; }
+.intro .hero__intro { max-width: 960px; margin: 0 auto; text-align: center; color: #121212; font-weight: 400; }
 
 @media (min-width: 750px) {
   body, .hero__intro, .prose, .sizes__grid p, .site-foot__note,
@@ -69,8 +73,7 @@ h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: 
 }
 @media (max-width: 860px) {
   #app { height: 100svh; height: 100dvh; bottom: auto; }
-  .hero__stage { height: clamp(280px, 56svh, 520px); }
-  .hero__inner { flex-direction: column; gap: 16px; padding: 28px 24px 32px; text-align: center; }
+  .hero__inner { flex-direction: column; gap: 16px; padding: 28px 24px calc(32px + var(--safe-b)); text-align: center; }
   .hero__tagline { flex: none; font-size: 17px; }
   .hero__actions { align-self: stretch; flex-direction: column; flex-wrap: nowrap; }
   .hero__actions .btn { flex: none; width: 100%; white-space: normal; }
@@ -89,6 +92,10 @@ h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: 
 @media (max-width: 380px) {
   .hud__brand img { width: 112px; margin: -32px -9px; }
   .hud__topbar { padding-left: 8px; padding-right: 8px; }
+}
+/* Landscape phones: keep some scene; the bar then starts below the fold. */
+@media (max-height: 460px) {
+  .hero { grid-template-rows: minmax(160px, 1fr) auto; }
 }
 @media (max-height: 460px) and (min-width: 640px) {
   .hud__basket { bottom: calc(76px + var(--safe-b)); }
@@ -118,8 +125,16 @@ h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: 
   .site-foot li:first-child > a,
   .site-foot li:first-child > .u-link { padding-top: 0; }
 }
+/* Delivery is plain text: the same row box as the links above, put on the
+   <li> itself. Wrapped lines inside one entry keep the 1.8 line-height. */
+.site-foot [data-role='foot-delivery'] > li { padding-block: 10px; color: rgba(18, 18, 18, .75); }
+@media (min-width: 750px) {
+  .site-foot [data-role='foot-delivery'] > li:first-child { padding-top: 0; }
+}
 @media (min-width: 990px) {
   .site-foot h4 { font-size: 18px; }
+  .site-foot [data-role='foot-delivery'] > li { padding-block: 5px; }
+  .site-foot [data-role='foot-delivery'] > li:first-child { padding-top: 0; }
   .site-foot li > a,
   .site-foot li > .u-link { padding-block: 5px; }
   .site-foot li:first-child > a,
@@ -151,4 +166,16 @@ h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: 
   .basket__pill { position: relative; }
   .hud__group .icon-btn::after { content: ''; position: absolute; inset: -4.4px; }
   .basket__pill::after { content: ''; position: absolute; inset: -4.4px 0; }
+}
+
+/* Mobile body copy: the main-site collection description (under SEASONAL
+   COMPOSITION) — Assistant 400, 16px / 24px, 0.6px tracking, theme body
+   colour rgba(18,18,18,.75). px, not the theme's rem: the roots differ. */
+@media (max-width: 749px) {
+  .intro .hero__intro,
+  .sizes .sizes__grid p,
+  .sizes .sizes__grid .sizes__price,
+  .sizes .site-foot__note { font-family: var(--sans); font-weight: 400; font-size: 16px; line-height: 1.5; letter-spacing: .6px; color: rgba(18, 18, 18, .75); }
+  .intro { padding-inline: 24px; }
+  .intro .hero__intro { text-align: left; }
 }
