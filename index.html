@@ -79,6 +79,35 @@
      A blocked or slow CDN meant the shop simply never started, with nothing on
      screen to explain why; the site is worth more when it cannot be taken down
      by someone else's network. Update by replacing the two files in vendor/. -->
+<!-- Usable viewport height for #app on phones (css/brand-phase1.css). 100dvh is
+     the default; where mobile Safari's visual viewport reports less (the strip
+     its toolbar covers), --app-h narrows the app to what is actually visible.
+     Left alone while pinch-zoomed or typing, when the visual viewport shrinks
+     for reasons the layout should not follow. -->
+<script>
+(function () {
+  var vv = window.visualViewport;
+  if (!vv) return;
+  var root = document.documentElement;
+  var queued = false;
+  function update() {
+    queued = false;
+    var a = document.activeElement;
+    if (vv.scale > 1.01 || (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)))) return;
+    root.style.setProperty('--app-h', Math.round(Math.min(vv.height, window.innerHeight)) + 'px');
+  }
+  function schedule() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(update);
+  }
+  update();
+  vv.addEventListener('resize', schedule);
+  window.addEventListener('resize', schedule);
+  window.addEventListener('orientationchange', function () { schedule(); setTimeout(schedule, 250); });
+})();
+</script>
+
 <script type="importmap">
 {
   "imports": {
@@ -242,7 +271,7 @@
       <div class="hero__inner">
         <p class="eyebrow hero__eyebrow" data-role="hero-eyebrow">Hong Kong · Seasonal Florist</p>
         <h1 class="hero__title">
-          <img class="hero__logo" src="images/kuneylogo.png" alt="KUNEY" data-role="hero-name" />
+          <a class="hero__home" href="https://kuneyflowers.com"><img class="hero__logo" src="images/kuneylogo.png" alt="KUNEY" data-role="hero-name" /></a>
           <b data-role="hero-mark">FLOWERS</b>
         </h1>
         <p class="hero__season"><span data-role="hero-season">Late Summer Selection</span></p>

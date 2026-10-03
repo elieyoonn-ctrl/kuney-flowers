@@ -179,3 +179,46 @@ h1, h2, h3, h4 { font-family: var(--heading); font-weight: 400; letter-spacing: 
   .intro { padding-inline: 24px; }
   .intro .hero__intro { text-align: left; }
 }
+
+/* Desktop tagline: the main-site header nav ("Gallery", "Send Flowers"),
+   Dawn 2.5.0 `.header__menu-item.link`: body font Assistant 400, .link's
+   1.4rem (14px at the theme's 62.5% root, body_scale 100), and
+   .header__menu-item's rgba(foreground #121212, .75). */
+@media (min-width: 861px) {
+  .hero__tagline { font-family: var(--sans); font-size: 14px; font-weight: 400; color: rgba(18, 18, 18, .75); }
+}
+
+/* Homepage logo link: no visual change; the image keeps its own crop. */
+.hero__home { display: block; width: fit-content; color: inherit; }
+
+@media (max-width: 860px) {
+  /* One source of truth for the usable height: #app follows the visible
+     viewport (--app-h from index.html, else 100dvh), and the homepage, the
+     tour bar and the sheets are all sized against #app, not the viewport. */
+  #app { height: var(--app-h, 100dvh); }
+  .panel { max-height: 85%; }
+  /* Only the body scrolls, so the foot's buttons stay in view. */
+  .panel__body { min-height: 0; }
+
+  /* First screen, top to bottom: logo header, scene, tagline, buttons. The
+     bar's children join the hero grid so the logo can lead it; the scene
+     row takes whatever height the other three leave. */
+  .hero { min-height: 100%; grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-columns: minmax(0, 1fr); }
+  .hero__inner { display: contents; }
+  .hero__title { grid-row: 1; }
+  .hero__stage { grid-row: 2; }
+  .hero__tagline { grid-row: 3; padding: 28px 24px 0; text-align: center; }
+  .hero__actions { grid-row: 4; padding: 16px 24px calc(32px + var(--safe-b)); border-bottom: var(--rule-faint); }
+  /* Main-site mobile header (Dawn 2.5.0 .header): 1rem = 10px above and
+     below a 4.4rem = 44px row, page-width side padding 1.5rem = 15px, a
+     0.1rem border at 8% foreground, and the 130px logo (logo_width). The
+     wordmark spans 83.4% of its image, so --w = 130 / 0.834. */
+  .hero__title { display: flex; align-items: center; justify-content: center; min-height: calc(64px + var(--safe-t)); padding: calc(10px + var(--safe-t)) 15px 10px; background: #fff; border-bottom: 1px solid rgba(18, 18, 18, .08); }
+  .hero__logo { --w: 155.9px; margin: calc(var(--w) * -0.29) calc(var(--w) * -0.083); }
+}
+@media (max-width: 860px) and (max-height: 460px) {
+  .hero { grid-template-rows: auto minmax(160px, 1fr) auto auto; }
+}
+@media (max-width: 860px) and (max-height: 460px) and (min-width: 640px) {
+  .panel { max-height: none; }
+}
