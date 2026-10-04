@@ -1803,6 +1803,7 @@ export function buildShop(content, { renderer } = {}) {
   /* --- photographic frames + calendar (back wall) ----------------------- */
 
   const frameMounts = [];
+  const frameLoads = [];
   const frameMat = plasterMaterial(theme, { color: 0xf7f4ee });
 
   /**
@@ -1839,8 +1840,10 @@ export function buildShop(content, { renderer } = {}) {
     return canvas;
   }
 
+  /** Settles once the photograph is on the wall, or has failed and the
+   *  placeholder stays — never rejects, so a still can wait on it safely. */
   function loadFramePhoto(mount, path) {
-    loadQueued(
+    return new Promise((settle) => loadQueued(
       path,
       (loaded) => {
         const img = loaded.image;
@@ -1874,13 +1877,15 @@ export function buildShop(content, { renderer } = {}) {
         mount.material.color.set(0xffffff);
         mount.material.needsUpdate = true;
         mount.photo = path;
+        settle();
       },
       undefined,
       () => {
         console.warn(`[KUNEY] frame photo not found: ${path} — keeping the placeholder`);
         globalThis.KUNEY_REPORT?.(`frame photo missing: ${path}`);
+        settle();
       }
-    );
+    ));
   }
 
   /** A soft plaster card bearing the title, shown until a photo is supplied. */
@@ -1972,7 +1977,7 @@ export function buildShop(content, { renderer } = {}) {
       opening: { width: openW, height: openH },
     };
     frameMounts.push(mount);
-    if (f.photo) loadFramePhoto(mount, f.photo);
+    if (f.photo) frameLoads.push(loadFramePhoto(mount, f.photo));
 
     const focus = new THREE.Vector3(x, y, -halfD + 0.06);
     stops.push({
@@ -2129,6 +2134,8 @@ export function buildShop(content, { renderer } = {}) {
     calendarStop,
     calendarMaterial: calMat,
     stoneReady,
+    /** Settles once the three wall photographs have landed (or failed). */
+    framesReady: Promise.all(frameLoads),
     envTexture,
     vase: { group: vaseGroup, holder: stemHolder, water, hero: heroVase },
     bouquet: { group: bouquetGroup, paperInner, paperOuter, ribbon, tails, state: wrapState },

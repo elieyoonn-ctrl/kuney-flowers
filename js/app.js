@@ -31,6 +31,24 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
    a coming-soon note; flip this to open the scene again. */
 const GARDEN_OPEN = false;
 
+/* --- homepage views ------------------------------------------------------ --
+   The homepage still is shot from its own pose per layout, separate from the
+   tour stops and the entrance. Each pose was fitted to a reference screenshot
+   of the shop (the frames' corners, the floor vases and shelf glass), so
+   `fov` and `aspect` are that screenshot's, and `stageAspect` is the stage
+   shape assumed when the other layout's stage cannot be measured.
+   Desktop: square on to the three photographs, the branch installation
+   filling the lower right. Mobile: down the right-hand shelves, the
+   photographs small on the far wall to the left.
+   ---------------------------------------------------------------------- */
+const HOME_MOBILE_QUERY = '(max-width: 860px)';
+const HOME_VIEWS = {
+  desktop: { position: [3.32, 1.5, -6.47], target: [3.35, 1.455, -10.97], fov: 52, aspect: 1.94, stageAspect: 2.1 },
+  mobile: { position: [7.37, 1.48, 3.27], target: [7.08, 1.53, -6.73], fov: 71.7, aspect: 0.558, stageAspect: 1 },
+};
+/* heroDrift zooms the still between 1.04 and 1.1. */
+const HOME_DRIFT_ZOOM = () => (reducedMotion() ? 1 : 1.07);
+
 /* --- copy for the stops that are places, not things --------------------- --
    A display carries its own panel copy and a frame carries its caption; the
    rest of the tour is rooms and furniture. They get a line each so the side
@@ -145,8 +163,9 @@ class App {
     this.status('Letting the light in');
     await wait(30);
     this.captureStills({ hero: false });
-    // The hero shows the counter, so it waits for the photographed stone.
-    this.scenes.shop.stoneReady.then(() => this.captureStills({ displays: false }));
+    // The hero shows the stone and the wall photographs, so it waits for both.
+    Promise.all([this.scenes.shop.stoneReady, this.scenes.shop.framesReady])
+      .then(() => this.captureStills({ displays: false }));
 
     this.dom.host.classList.add('is-live');
     this.dom.loader.hidden = true;
@@ -309,8 +328,33 @@ class App {
     try {
       const heroEl = withHero && role('hero-image');
       if (heroEl) {
-        const hero = shoot([2.6, 1.72, 8.2], [-0.6, 1.5, -2.4], 1600, 900, 54);
-        heroEl.style.backgroundImage = `url(${hero})`;
+        /* One still per homepage layout, each from its own pose, shot at the
+           shape of the stage it will fill. Only the current layout's stage
+           can be measured; the other gets that layout's usual shape. */
+        const stage = heroEl.parentElement;
+        const mobile = window.matchMedia(HOME_MOBILE_QUERY);
+        const measured = stage?.clientWidth && stage?.clientHeight
+          ? stage.clientWidth / stage.clientHeight : 0;
+        const views = {};
+        for (const [name, view] of Object.entries(HOME_VIEWS)) {
+          const aspect = (mobile.matches === (name === 'mobile') && measured) || view.stageAspect;
+          /* Frame the reference view the way background-size: cover would:
+             a stage wider than it keeps its width, a taller one its height.
+             Opened by the drift's mean zoom so the animated image settles on
+             that framing rather than inside it. */
+          const tanHalf = Math.tan(THREE.MathUtils.degToRad(view.fov / 2)) *
+            Math.min(1, view.aspect / aspect) * HOME_DRIFT_ZOOM();
+          const fov = THREE.MathUtils.radToDeg(2 * Math.atan(tanHalf));
+          const w = Math.round(aspect >= 1 ? 1600 : 1600 * aspect);
+          const h = Math.round(aspect >= 1 ? 1600 / aspect : 1600);
+          views[name] = shoot(view.position, view.target, w, h, fov);
+        }
+        const apply = () => {
+          heroEl.style.backgroundImage = `url(${views[mobile.matches ? 'mobile' : 'desktop']})`;
+        };
+        apply();
+        if (!this._heroQuery) mobile.addEventListener?.('change', () => this._heroQuery?.());
+        this._heroQuery = apply;
         heroEl.classList.add('is-set');
       }
 
