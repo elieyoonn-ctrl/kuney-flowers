@@ -448,3 +448,8 @@ body.admin {
     padding: 0.3rem;
   }
 }
+
+.field input[aria-invalid='true'] {
+  border-color: #b83a3f;
+  outline-color: #b83a3f;
+}

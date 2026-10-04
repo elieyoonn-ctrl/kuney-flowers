@@ -677,3 +677,65 @@ export function displayColorGroups(content, display) {
   const single = colorById(content, display.colorId);
   return [{ ...single, count: display.kind === 'floor' ? 7 : 9 }];
 }
+
+/* --- interior colours -----------------------------------------------------
+   The shop's plaster surfaces each take their own colour from the theme. None
+   of these keys is in DEFAULT_CONTENT on purpose: a theme saved before they
+   existed has to keep building the room it always did, so a missing key falls
+   back to the shared plaster texture under the surface's old fixed tint. Once
+   the owner picks a colour it is stored and used as-is. */
+
+/** Theme key -> the fixed tint the surface carried over `theme.plaster`. */
+export const INTERIOR_SURFACES = {
+  shopWall: '#ffffff',
+  shopCeiling: '#fbf9f5',
+  shopStairs: '#faf8f4',
+  shopTable: '#fbfaf6',
+  shopStools: '#fbfaf6',
+};
+
+/** How far the floor's slab joints lean toward chalk-white unless set. */
+const JOINT_LIFT = 0.16;
+export const DEFAULT_JOINT_CONTRAST = 0.5;
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** A six-digit `#rrggbb`, or null — `##777168`, `#fff` and `red` are refused. */
+export function validHex(value) {
+  return typeof value === 'string' && HEX.test(value.trim()) ? value.trim().toLowerCase() : null;
+}
+
+const toRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const toHex = (rgb) => `#${rgb.map((v) => Math.round(Math.max(0, Math.min(255, v)))
+  .toString(16).padStart(2, '0')).join('')}`;
+
+/**
+ * The colour the owner chose for an interior surface, or null when none has
+ * been chosen (or the saved value is not a valid hex) and the old look stands.
+ */
+export function interiorColour(theme, key) {
+  return validHex(theme?.[key]);
+}
+
+/** What the surface looks like now, for showing in the owner panel. */
+export function interiorColourShown(theme, key) {
+  const chosen = interiorColour(theme, key);
+  if (chosen) return chosen;
+  const plaster = toRgb(validHex(theme?.plaster) || '#f6f3ed');
+  const tint = toRgb(INTERIOR_SURFACES[key] || '#ffffff');
+  return toHex(plaster.map((v, i) => (v * tint[i]) / 255));
+}
+
+/** The colour of the floor's slab joints: chosen, or a touch above the stone. */
+export function floorJointColour(theme) {
+  const chosen = validHex(theme?.floorJoint);
+  if (chosen) return chosen;
+  const base = toRgb(validHex(theme?.floor) || '#e6dece');
+  return toHex(base.map((v, i) => v + ([255, 253, 246][i] - v) * JOINT_LIFT));
+}
+
+/** 0 = joints vanish into the stone, 1 = the old bright worn edge. */
+export function floorJointContrast(theme) {
+  const n = Number(theme?.floorJointContrast);
+  return Number.isFinite(n) && theme?.floorJointContrast !== '' ? Math.max(0, Math.min(1, n)) : DEFAULT_JOINT_CONTRAST;
+}

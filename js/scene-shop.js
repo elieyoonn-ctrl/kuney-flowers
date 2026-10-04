@@ -24,7 +24,9 @@ import {
   VASE_PROFILES, SPECIAL_VASE_PROFILE, POT_PROFILE, seeded,
 } from './geometry.js';
 import { createGroupedBunch, createStem, createOliveTree } from './flowers.js';
-import { displayColorGroups, colorById } from './content.js';
+import {
+  displayColorGroups, colorById, interiorColour, floorJointColour, floorJointContrast,
+} from './content.js';
 import { CameraRig } from './camera-rig.js';
 
 export const ROOM = {
@@ -207,6 +209,22 @@ function plasterMaterial(theme, extra = {}) {
     metalness: 0,
     ...extra,
   });
+}
+
+/**
+ * Plaster for one of the shop's own surfaces, coloured from `theme[key]`.
+ *
+ * Unset, it is exactly the material it always was: the shared plaster texture
+ * under the surface's old fixed tint. Set, the plaster is ground in the chosen
+ * colour instead — same trowel figure and relief — and the tint is dropped, so
+ * the colour picked is the colour seen. Each surface gets its own material, so
+ * one control never reaches another surface.
+ */
+function shopPlasterMaterial(theme, key, extra = {}) {
+  const chosen = interiorColour(theme, key);
+  if (!chosen) return plasterMaterial(theme, extra);
+  const t = tex.plaster(chosen);
+  return plasterMaterial(theme, { ...extra, color: 0xffffff, map: t.map, normalMap: t.normalMap });
 }
 
 /**
@@ -444,7 +462,11 @@ export function buildShop(content, { renderer } = {}) {
      seams read as a busy grid rather than as a stone floor. */
   const SLABS_PER_TILE = 3;
   const SLAB_SIZE = 1.3;
-  const floorTex = tex.tumbledTravertine(theme.floor, { slabs: SLABS_PER_TILE });
+  const floorTex = tex.tumbledTravertine(theme.floor, {
+    slabs: SLABS_PER_TILE,
+    jointHex: floorJointColour(theme),
+    jointContrast: floorJointContrast(theme),
+  });
   const repeatX = ROOM.width / (SLAB_SIZE * SLABS_PER_TILE);
   const repeatZ = ROOM.depth / (SLAB_SIZE * SLABS_PER_TILE);
   for (const map of [floorTex.map, floorTex.normalMap, floorTex.roughnessMap]) {
@@ -472,7 +494,7 @@ export function buildShop(content, { renderer } = {}) {
 
   /* --- walls ------------------------------------------------------------ */
 
-  const wallMat = plasterMaterial(theme, { side: THREE.FrontSide });
+  const wallMat = shopPlasterMaterial(theme, 'shopWall', { side: THREE.FrontSide });
 
   const back = wallWithOpening(ROOM.width, ROOM.height, wallMat, null);
   back.position.set(0, 0, -halfD);
@@ -682,7 +704,7 @@ export function buildShop(content, { renderer } = {}) {
 
   /* --- ceiling + oculus ------------------------------------------------- */
 
-  const ceilingMat = plasterMaterial(theme, { color: 0xfbf9f5, side: THREE.DoubleSide });
+  const ceilingMat = shopPlasterMaterial(theme, 'shopCeiling', { color: 0xfbf9f5, side: THREE.DoubleSide });
   const ceiling = new THREE.Mesh(
     planeWithHole(ROOM.width, ROOM.depth, ROOM.oculus.radius, {
       holeX: ROOM.oculus.x,
@@ -776,7 +798,7 @@ export function buildShop(content, { renderer } = {}) {
 
   /* --- the plaster steps (left) ----------------------------------------- */
 
-  const seatMat = plasterMaterial(theme, { color: 0xfaf8f4, side: THREE.DoubleSide });
+  const seatMat = shopPlasterMaterial(theme, 'shopStairs', { color: 0xfaf8f4, side: THREE.DoubleSide });
   const seating = new THREE.Mesh(
     amphitheatre({
       tiers: STAIRS.tiers,
@@ -979,7 +1001,9 @@ export function buildShop(content, { renderer } = {}) {
 
   /* --- low white table + stools (right, front) -------------------------- */
 
-  const lowTableMat = plasterMaterial(theme, { color: 0xfbfaf6, roughness: 0.72 });
+  const lowTableMat = shopPlasterMaterial(theme, 'shopTable', { color: 0xfbfaf6, roughness: 0.72 });
+  // Its own material, though it starts identical: the stools are a separate control.
+  const stoolMat = shopPlasterMaterial(theme, 'shopStools', { color: 0xfbfaf6, roughness: 0.72 });
   const lowTable = new THREE.Mesh(slab(2.9, 0.86, 0.075, { radius: 0.035, bevel: 0.02 }), lowTableMat);
   lowTable.position.set(5.0, 0.44, 4.3);
   lowTable.castShadow = true;
@@ -997,7 +1021,7 @@ export function buildShop(content, { renderer } = {}) {
   [[3.7, 3.2], [5.0, 3.15], [6.3, 3.25], [4.35, 5.5], [5.7, 5.45]].forEach(([x, z]) => {
     const stool = new THREE.Mesh(
       turned([[0.001, 0], [0.19, 0], [0.20, 0.02], [0.185, 0.40], [0.20, 0.42], [0.205, 0.44], [0.001, 0.44]], { segments: 30 }),
-      lowTableMat
+      stoolMat
     );
     stool.position.set(x, 0, z);
     stool.castShadow = true;
@@ -2338,6 +2362,7 @@ export function buildShop(content, { renderer } = {}) {
         scene.environment = envTexture;
         scene.environmentIntensity = 0.9;
       }
+      // `theme.wall` is the background colour only, behind the room's geometry.
       scene.background = new THREE.Color(theme.wall).multiplyScalar(0.92);
     },
   };

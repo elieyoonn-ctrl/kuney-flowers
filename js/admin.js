@@ -10,6 +10,9 @@
    ========================================================================== */
 
 import * as store from './store.js';
+import {
+  validHex, interiorColourShown, floorJointColour, floorJointContrast,
+} from './content.js';
 
 /* Declared locally rather than imported from calendar.js / flowers.js: those
    modules pull in three.js, and the owner panel has no 3D in it. Keep the
@@ -65,8 +68,8 @@ function list(value) {
 
 /* --- field renderers ---------------------------------------------------- */
 
-function textField(content, { path, label, help, type = 'text', wide = false, min, max, step }) {
-  const value = getPath(content, path) ?? '';
+function textField(content, { path, label, help, type = 'text', wide = false, min, max, step, shown }) {
+  const value = getPath(content, path) ?? shown ?? '';
   const attrs = [
     `type="${type}"`,
     min !== undefined ? `min="${min}"` : '',
@@ -89,8 +92,10 @@ function areaField(content, { path, label, help, rows = 4 }) {
     </label>`;
 }
 
-function colorField(content, { path, label }) {
-  const value = getPath(content, path) ?? '#ffffff';
+function colorField(content, { path, label, shown }) {
+  // `shown` is what an unset key looks like in the room; the key stays unset
+  // until the owner actually picks a colour.
+  const value = validHex(getPath(content, path)) || shown || validHex(getPath(content, path) ?? '') || '#ffffff';
   return `
     <label class="field field--color">
       <span>${esc(label)}</span>
@@ -230,8 +235,8 @@ function themeSection(c) {
     'These re-tint the 3D room. Reload the shop tab after changing them.',
     `<div class="grid3">
       ${colorField(c, { path: 'theme.floor', label: 'Travertine floor' })}
-      ${colorField(c, { path: 'theme.wall', label: 'Wall tone' })}
-      ${colorField(c, { path: 'theme.plaster', label: 'Plaster' })}
+      ${colorField(c, { path: 'theme.wall', label: 'Scene background (behind the room)' })}
+      ${colorField(c, { path: 'theme.plaster', label: 'Plaster base (corridor, garden, trims)' })}
       ${colorField(c, { path: 'theme.concrete', label: 'Concrete column' })}
       ${colorField(c, { path: 'theme.island', label: 'Long table stone' })}
       ${colorField(c, { path: 'theme.islandVein', label: 'Table strata' })}
@@ -242,6 +247,17 @@ function themeSection(c) {
       ${colorField(c, { path: 'theme.ribbon', label: 'Ribbon' })}
       ${colorField(c, { path: 'theme.daylight', label: 'Daylight' })}
       ${textField(c, { path: 'theme.daylightIntensity', label: 'Daylight strength', type: 'number', min: 0, max: 8, step: 0.1 })}
+    </div>
+    <p class="cal__adminnote" style="margin:18px 0 10px"><strong>Shop surfaces.</strong> Each colour changes only the
+      surface named. Until one is picked, the surface follows the plaster base as before.</p>
+    <div class="grid3">
+      ${colorField(c, { path: 'theme.shopWall', label: 'Shop walls', shown: interiorColourShown(c.theme, 'shopWall') })}
+      ${colorField(c, { path: 'theme.shopCeiling', label: 'Shop ceiling', shown: interiorColourShown(c.theme, 'shopCeiling') })}
+      ${colorField(c, { path: 'theme.shopStairs', label: 'Display stairs', shown: interiorColourShown(c.theme, 'shopStairs') })}
+      ${colorField(c, { path: 'theme.shopTable', label: 'Right-side table', shown: interiorColourShown(c.theme, 'shopTable') })}
+      ${colorField(c, { path: 'theme.shopStools', label: 'Right-side stools', shown: interiorColourShown(c.theme, 'shopStools') })}
+      ${colorField(c, { path: 'theme.floorJoint', label: 'Floor joint colour', shown: floorJointColour(c.theme) })}
+      ${textField(c, { path: 'theme.floorJointContrast', label: 'Floor joint contrast', help: '0 hidden – 1 strong', type: 'number', min: 0, max: 1, step: 0.05, shown: floorJointContrast(c.theme) })}
     </div>`);
 }
 
@@ -686,7 +702,7 @@ class AdminPanel {
     this.host.addEventListener('input', (e) => {
       const el = e.target;
       if (el.dataset.path && el.type !== 'color') {
-        this.writePath(el);
+        this.writePath(el, e);
       } else if (el.dataset.line) {
         this.writeLine(el);
       }
@@ -704,7 +720,7 @@ class AdminPanel {
         }
         return;
       }
-      if (el.dataset.path) this.writePath(el);
+      if (el.dataset.path) this.writePath(el, e);
     });
 
     this.host.addEventListener('click', (e) => {
@@ -719,7 +735,7 @@ class AdminPanel {
     });
   }
 
-  writePath(el) {
+  writePath(el, event) {
     const path = el.dataset.path;
     let value = el.value;
 
@@ -729,6 +745,23 @@ class AdminPanel {
       value = value === 'true';
     } else if (el.type === 'number') {
       value = value === '' ? 0 : Number(value);
+    } else if (el.dataset.mirror) {
+      // A colour typed by hand: anything but #rrggbb is refused and the last
+      // good colour stays saved. Leaving the field puts that colour back.
+      const hex = validHex(value);
+      el.setAttribute('aria-invalid', String(!hex));
+      if (!hex) {
+        if (event?.type === 'change') {
+          const saved = getPath(store.getContent(), path);
+          el.value = validHex(saved) || this.host.querySelector(`input[type="color"][data-mirror="${el.dataset.mirror}"]`)?.value || '';
+          el.setAttribute('aria-invalid', 'false');
+          toast('Not a colour — use #rrggbb, e.g. #777168.');
+        } else {
+          this.status('Not saved — a colour is # and six hex digits');
+        }
+        return;
+      }
+      value = hex;
     }
 
     store.setContentPath(path, value);
@@ -736,7 +769,7 @@ class AdminPanel {
     // Keep paired colour inputs in step without a full re-render.
     if (el.dataset.mirror) {
       for (const twin of this.host.querySelectorAll(`[data-mirror="${el.dataset.mirror}"]`)) {
-        if (twin !== el) twin.value = el.value;
+        if (twin !== el) twin.value = value;
       }
     }
 

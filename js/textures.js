@@ -196,12 +196,19 @@ export function travertine(baseHex = '#e3dbcd', { size = 512, tiles = 2 } = {}) 
  * the joint is a soft chalky seam rather than a drawn line. Each slab also
  * gets its own offset into the noise field, so no two carry the same figure.
  */
-export function tumbledTravertine(baseHex = '#e6dece', { size = 1024, slabs = 3 } = {}) {
-  return memo(`tumbled:${baseHex}:${slabs}`, () => {
+export function tumbledTravertine(baseHex = '#e6dece', {
+  size = 1024, slabs = 3, jointHex = null, jointContrast = 1,
+} = {}) {
+  return memo(`tumbled:${baseHex}:${slabs}:${jointHex}:${jointContrast}`, () => {
     const base = hexToRgb(baseHex);
     const warm = mixRgb(base, [206, 184, 152], 0.5);    // ochre bedding planes
     const dark = mixRgb(base, [132, 116, 94], 0.5);     // open pores
     const pale = mixRgb(base, [255, 253, 246], 0.7);    // worn, chalky edges
+    /* The joint itself. Left to `pale` it read as a white grid drawn over the
+       room: the colour blend and the dished relief both lit it up. The owner
+       panel now sets its colour and how strongly it shows (1 = the old edge). */
+    const joint = jointHex ? hexToRgb(jointHex) : pale;
+    const jointMix = 0.25 + 0.25 * jointContrast;
 
     const { canvas, height, size: s } = generate(size, (u, v) => {
       // One offset per slab, so the figure never repeats slab to slab.
@@ -232,8 +239,8 @@ export function tumbledTravertine(baseHex = '#e6dece', { size = 1024, slabs = 3 
       const eu = Math.abs(((u * slabs) % 1) - 0.5) * 2;
       const ev = Math.abs(((v * slabs) % 1) - 0.5) * 2;
       const edge = Math.pow(Math.max(eu, ev), 16);
-      rgb = mixRgb(rgb, pale, edge * 0.5);
-      h -= edge * 0.34;
+      rgb = mixRgb(rgb, joint, edge * jointMix);
+      h -= edge * 0.34 * jointContrast;
 
       return { rgb, h };
     });
