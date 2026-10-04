@@ -21,20 +21,26 @@
     "productUrl": "https://kuneyflowers.com/products/let-us-create-something-unique-florist-choice"
   },
   "theme": {
-    "floor": "#e6dece",
-    "wall": "#f3efe8",
-    "plaster": "#f6f3ed",
+    "floor": "#b7b4a4",
+    "wall": "#C5C0B7",
+    "plaster": "#d1cfcc",
     "concrete": "#cfc9be",
     "island": "#ded2ba",
-    "islandVein": "#94a291",
+    "islandVein": "#5f695e",
     "tableGlow": "#ffe4bd",
-    "curtain": "#dbd0bd",
+    "curtain": "#b2b5a4",
     "terracotta": "#b5866b",
     "wrapPaper": "#efe7d8",
     "ribbon": "#8c9a82",
     "daylight": "#fff6e8",
     "daylightIntensity": 3.1,
-    "accent": "#8c9a82"
+    "accent": "#8c9a82",
+    "shopTable": "#ceccc3",
+    "shopStairs": "#cfccc5",
+    "shopStools": "#ceccc3",
+    "shopWall": "#c1c1ba",
+    "shopCeiling": "#b8b8af",
+    "floorJoint": "#e0d8d1"
   },
   "stockColors": [
     {
