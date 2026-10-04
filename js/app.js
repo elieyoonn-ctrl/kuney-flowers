@@ -42,12 +42,20 @@ const GARDEN_OPEN = false;
    photographs small on the far wall to the left.
    ---------------------------------------------------------------------- */
 const HOME_MOBILE_QUERY = '(max-width: 860px)';
+/* Mobile is fitted to design-refs/homepage-mobile-reference-v2.jpeg and is
+   `contain`: the whole reference — the Craspedia heads at the top, all three
+   photographs at the left — stays in any stage shape, which then shows more
+   of the room around it instead of cropping into it. */
 const HOME_VIEWS = {
   desktop: { position: [3.32, 1.5, -6.47], target: [3.35, 1.455, -10.97], fov: 52, aspect: 1.94, stageAspect: 2.1 },
-  mobile: { position: [7.37, 1.48, 3.27], target: [7.08, 1.53, -6.73], fov: 71.7, aspect: 0.558, stageAspect: 1 },
+  mobile: { position: [7.37, 1.48, 3.27], target: [7.08, 3.2, -6.73], fov: 51.3, aspect: 0.84, stageAspect: 1, contain: true },
 };
 /* heroDrift zooms the still between 1.04 and 1.1. */
 const HOME_DRIFT_ZOOM = () => (reducedMotion() ? 1 : 1.07);
+/* Its peak, 1.1 with a 1.2% shift, crops 0.5 − 0.5/1.1 + 0.012 of the width
+   off each side; opening by 1.13 keeps a contained view whole through it. */
+const HOME_DRIFT_OVERSCAN = () => (reducedMotion() ? 1 : 1.13);
+const HOME_DRIFT_PEAK = () => (reducedMotion() ? 1 : 1.1);
 
 /* --- copy for the stops that are places, not things --------------------- --
    A display carries its own panel copy and a frame carries its caption; the
@@ -312,7 +320,7 @@ class App {
     const savedFov = this.camera.fov;
     const savedAspect = this.camera.aspect;
 
-    const shoot = (position, target, w, h, fov = 46) => {
+    const shoot = (position, target, w, h, fov = 46, quality = 0.82) => {
       this.renderer.setPixelRatio(1);
       this.renderer.setSize(w, h, false);
       this.camera.fov = fov;
@@ -322,7 +330,7 @@ class App {
       this.camera.lookAt(new THREE.Vector3().fromArray(target));
       this.renderer.render(this.scene, this.camera);
       // Read synchronously, before the browser composites and clears.
-      return this.renderer.domElement.toDataURL('image/jpeg', 0.82);
+      return this.renderer.domElement.toDataURL('image/jpeg', quality);
     };
 
     try {
@@ -335,19 +343,34 @@ class App {
         const mobile = window.matchMedia(HOME_MOBILE_QUERY);
         const measured = stage?.clientWidth && stage?.clientHeight
           ? stage.clientWidth / stage.clientHeight : 0;
+        /* The still is shown at the stage's device pixels times the drift's
+           peak zoom, so it is shot at that, not stretched up to it. Capped at
+           what the GPU allows and at ~8 MP (4 MP on phones) of buffer. */
+        const gl = this.renderer.getContext();
+        const maxEdge = Math.min(4096, this.renderer.capabilities.maxTextureSize || 4096,
+          gl.getParameter?.(gl.MAX_RENDERBUFFER_SIZE) || 4096);
+        const maxPixels = window.matchMedia('(pointer: coarse)').matches ? 4e6 : 8.3e6;
         const views = {};
         for (const [name, view] of Object.entries(HOME_VIEWS)) {
-          const aspect = (mobile.matches === (name === 'mobile') && measured) || view.stageAspect;
-          /* Frame the reference view the way background-size: cover would:
-             a stage wider than it keeps its width, a taller one its height.
-             Opened by the drift's mean zoom so the animated image settles on
-             that framing rather than inside it. */
-          const tanHalf = Math.tan(THREE.MathUtils.degToRad(view.fov / 2)) *
-            Math.min(1, view.aspect / aspect) * HOME_DRIFT_ZOOM();
+          const current = mobile.matches === (name === 'mobile') && measured;
+          const aspect = current || view.stageAspect;
+          /* Desktop frames the reference view the way background-size: cover
+             would: a stage wider than it keeps its width, a taller one its
+             height, opened by the drift's mean zoom so the animated image
+             settles on that framing. Mobile contains it instead, opened by
+             the drift's peak so the subjects never leave the frame. */
+          const tanHalf = Math.tan(THREE.MathUtils.degToRad(view.fov / 2)) * (view.contain
+            ? Math.max(1, view.aspect / aspect) * HOME_DRIFT_OVERSCAN()
+            : Math.min(1, view.aspect / aspect) * HOME_DRIFT_ZOOM());
           const fov = THREE.MathUtils.radToDeg(2 * Math.atan(tanHalf));
-          const w = Math.round(aspect >= 1 ? 1600 : 1600 * aspect);
-          const h = Math.round(aspect >= 1 ? 1600 / aspect : 1600);
-          views[name] = shoot(view.position, view.target, w, h, fov);
+          // The other layout's stage cannot be measured; it keeps 1600 px.
+          let long = current
+            ? Math.max(stage.clientWidth, stage.clientHeight) * (window.devicePixelRatio || 1) * HOME_DRIFT_PEAK()
+            : 1600;
+          long = Math.min(long, maxEdge, Math.sqrt(maxPixels * Math.max(aspect, 1 / aspect)));
+          const w = Math.round(aspect >= 1 ? long : long * aspect);
+          const h = Math.round(aspect >= 1 ? long / aspect : long);
+          views[name] = shoot(view.position, view.target, w, h, fov, 0.92);
         }
         const apply = () => {
           heroEl.style.backgroundImage = `url(${views[mobile.matches ? 'mobile' : 'desktop']})`;
