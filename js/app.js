@@ -42,12 +42,14 @@ const GARDEN_OPEN = false;
    photographs small on the far wall to the left.
    ---------------------------------------------------------------------- */
 const HOME_MOBILE_QUERY = '(max-width: 860px)';
-/* Mobile is fitted to design-refs/homepage-mobile-reference-v2.jpeg and is
+/* Desktop is fitted to design-refs/homepage-desktop-reference-v2.png, the
+   branch low enough to leave the bouquets clear. Mobile is fitted to
+   design-refs/homepage-mobile-reference-v2.jpeg and is
    `contain`: the whole reference — the Craspedia heads at the top, all three
    photographs at the left — stays in any stage shape, which then shows more
    of the room around it instead of cropping into it. */
 const HOME_VIEWS = {
-  desktop: { position: [3.32, 1.5, -6.47], target: [3.35, 1.455, -10.97], fov: 52, aspect: 1.94, stageAspect: 2.1 },
+  desktop: { position: [3.333, 1.583, -6.434], target: [3.377, 1.34, -10.927], fov: 52, aspect: 1.94, stageAspect: 2.1 },
   mobile: { position: [7.37, 1.48, 3.27], target: [7.08, 3.2, -6.73], fov: 51.3, aspect: 0.84, stageAspect: 1, contain: true },
 };
 /* heroDrift zooms the still between 1.04 and 1.1. */
