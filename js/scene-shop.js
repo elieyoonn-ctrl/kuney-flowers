@@ -1162,7 +1162,12 @@ export function buildShop(content, { renderer } = {}) {
      only in repeat; clones of one image share a single GPU upload, so the
      table costs three textures rather than nine. Run after the meshes on
      purpose — a material built later would never be reached. */
+  /* Settles once every stone map has landed (or failed), so a still of the
+     room can wait for the finished table rather than the onyx stand-in. */
+  const stoneLoads = [];
   for (const [slot, path] of Object.entries(STONE_FILES)) {
+    let settle;
+    stoneLoads.push(new Promise((resolve) => { settle = resolve; }));
     loadQueued(path, (loaded) => {
       // Colour is the only one of the three that is colour; the normal and
       // roughness maps are data and must stay linear.
@@ -1179,8 +1184,10 @@ export function buildShop(content, { renderer } = {}) {
         material[slot] = t;
         material.needsUpdate = true;
       }
-    });
+      settle();
+    }, undefined, () => settle());
   }
+  const stoneReady = Promise.all(stoneLoads);
 
   /* The concealed strip. An emissive band tucked into the shadow gap under the
      overhang, plus two real lights so the stone above it actually lifts. */
@@ -2097,6 +2104,7 @@ export function buildShop(content, { renderer } = {}) {
     portalStop,
     calendarStop,
     calendarMaterial: calMat,
+    stoneReady,
     envTexture,
     vase: { group: vaseGroup, holder: stemHolder, water, hero: heroVase },
     bouquet: { group: bouquetGroup, paperInner, paperOuter, ribbon, tails, state: wrapState },

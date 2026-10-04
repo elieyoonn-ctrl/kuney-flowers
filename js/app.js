@@ -144,7 +144,9 @@ class App {
     this.renderer.render(this.scene, this.camera);
     this.status('Letting the light in');
     await wait(30);
-    this.captureStills();
+    this.captureStills({ hero: false });
+    // The hero shows the counter, so it waits for the photographed stone.
+    this.scenes.shop.stoneReady.then(() => this.captureStills({ displays: false }));
 
     this.dom.host.classList.add('is-live');
     this.dom.loader.hidden = true;
@@ -281,7 +283,7 @@ class App {
    * featured cards. Cheaper and truer than shipping stock photography, and it
    * updates automatically when the interior is re-themed.
    */
-  captureStills() {
+  captureStills({ hero: withHero = true, displays: withDisplays = true } = {}) {
     const shop = this.scenes.shop;
     const savedSize = new THREE.Vector2();
     this.renderer.getSize(savedSize);
@@ -305,9 +307,9 @@ class App {
     };
 
     try {
-      const hero = shoot([2.6, 1.72, 8.2], [-0.6, 1.5, -2.4], 1600, 900, 54);
-      const heroEl = role('hero-image');
+      const heroEl = withHero && role('hero-image');
       if (heroEl) {
+        const hero = shoot([2.6, 1.72, 8.2], [-0.6, 1.5, -2.4], 1600, 900, 54);
         heroEl.style.backgroundImage = `url(${hero})`;
         heroEl.classList.add('is-set');
       }
@@ -316,8 +318,8 @@ class App {
          full render plus a synchronous toDataURL, and the shop now stands
          twenty-one vases — shooting the seventeen nobody will look at only
          made the loader sit there longer. */
-      this.stills = new Map();
-      for (const display of this.featuredDisplays) {
+      if (withDisplays) this.stills = new Map();
+      for (const display of withDisplays ? this.featuredDisplays : []) {
         const entry = shop.displays.get(display.id);
         if (!entry) continue;
         this.stills.set(
